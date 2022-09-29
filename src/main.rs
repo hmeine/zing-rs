@@ -123,7 +123,7 @@ struct VisibleStack {
 
 #[cfg(test)]
 mod tests {
-    use crate::Card;
+    use crate::{Card, deck};
 
     #[test]
     fn test_card_str() {
@@ -135,6 +135,12 @@ mod tests {
     fn test_card_unicode() {
         let card = Card{ rank: crate::Rank::King, suit: crate::Suit::Hearts, back: crate::Back::Blue };
         assert_eq!(card.unicode(), '🂾');
+    }
+
+    #[test]
+    fn test_deck() {
+        let deck52 = deck(crate::Back::Blue);
+        assert_eq!(deck52.len(), 52);
     }
 }
 
