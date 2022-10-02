@@ -7,4 +7,7 @@ fn main() {
         zing_rs::table::Player{ name: "Darko".into() }
     ]};
     let game = ZingGame::new_from_table(table);
+    for player in game.players {
+        println!("{}: {}", player.name, String::from_iter(player.hand.iter().map(|card| card.unicode())));
+    }
 }
