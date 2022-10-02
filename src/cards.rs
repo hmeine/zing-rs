@@ -31,11 +31,11 @@ pub enum Back {
     Blue,
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct Card {
-    rank: Rank,
-    suit: Suit,
-    back: Back,
+    pub rank: Rank,
+    pub suit: Suit,
+    pub back: Back,
 }
 
 impl Card {
