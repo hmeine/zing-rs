@@ -101,6 +101,8 @@ impl GameState {
         Ok(())
     }
 
+    /// Play a single card from the given player's hand to the target stack.
+    /// Currently always face up.
     pub fn play_card_to_stack(&mut self, player: usize, card_index: usize, stack_index: usize) {
         let draw_stack = self
             .stacks

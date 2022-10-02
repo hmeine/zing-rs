@@ -1,0 +1,44 @@
+Design Thoughts
+===============
+
+The server has the full state, clients have "views" and do not know about face
+down card values.
+
+During a game, everything that happens is that cards move.  We want to model
+such actions, probably using the builder pattern, in order to have a consistent
+interface for drawing new cards, passing cards to others, playing cards to the
+table, etc.
+
+Clients should receive updates in such a way that it facilitates incrementally
+updating the views (or animating card moves), which means that we need some kind
+of observation mechanism and action descriptions.
+
+Card moving actions consist of:
+
+- source stack or hand
+- source indices of the respective cards (defaulting to last n)
+- number of cards (defaulting to 1)
+- target stack or hand
+- whether the cards should be face up or down (defaulting to source state)
+
+Stacks can be
+
+- "stock" for drawing stacks (face down, shuffled)
+- player hands (usually only visible to the respective player, although there
+  are exceptions in both directions)
+- discard pile (face up, stacked)
+- open table cards (face up, all visible, like in "Schwimmen")
+- owned cards (theoretically known, but usually placed face down, for later
+  score counting)
+
+Each stack has
+
+- a position on the table (view property, actually)
+- a list of cards
+- each of which can be face up or face down
+- or peeking out (like a bookmark)
+
+The server does not have to care about the position of stacks, but it is
+responsible for the game logic.  It will be interesting to see how the frontend
+can indicate valid moves, because we want the logic to be on the server side
+mostly.
