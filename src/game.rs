@@ -36,14 +36,14 @@ impl From<CardState> for CardView {
 }
 
 pub struct StackState {
-    name: String,
-    cards: Vec<CardState>,
+    id: String,
+    pub cards: Vec<CardState>,
 }
 
 impl StackState {
-    pub fn new_from_deck(name: String, deck: Vec<Card>, face_up: bool) -> Self {
+    pub fn new_from_deck(id: String, deck: Vec<Card>, face_up: bool) -> Self {
         Self {
-            name,
+            id,
             cards: deck
                 .iter()
                 .map(|card| CardState {
