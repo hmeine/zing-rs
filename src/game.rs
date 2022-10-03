@@ -53,6 +53,13 @@ impl StackState {
                 .collect(),
         }
     }
+
+    pub fn flip_cards(cards: &Vec<CardState>) -> Vec<CardState> {
+        cards.iter().rev().map(|card_state| CardState {
+            card: card_state.card,
+            face_up: !card_state.face_up,
+        }).collect()
+    }
 }
 
 pub struct GameState {
