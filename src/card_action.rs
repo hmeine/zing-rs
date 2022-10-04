@@ -75,4 +75,8 @@ impl CardAction {
         self.rotation = Some(target_rotation);
         self
     }
+
+    pub fn apply(&self, game: &mut GameState) {
+        
+    }
 }

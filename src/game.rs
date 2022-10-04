@@ -41,6 +41,13 @@ pub struct StackState {
 }
 
 impl StackState {
+    pub fn new(id: String) -> Self {
+        Self {
+            id,
+            cards: Vec::new()
+        }
+    }
+    
     pub fn new_from_deck(id: String, deck: Vec<Card>, face_up: bool) -> Self {
         Self {
             id,
@@ -83,46 +90,5 @@ impl GameState {
             result.players.push(Player::new(player.name.clone()));
         }
         result
-    }
-
-    /// Pop off `count` cards from the first stack and give them to the player's
-    /// hand with the 0-based index `player`.  This will panic if there is no
-    /// card stack, and it may return a `CardGameError::DrawingStackEmpty` error
-    /// if the first stack does not contain at least `count` cards.
-    pub fn hand_out_cards(&mut self, player: usize, count: usize) -> Result<(), CardGameError> {
-        let draw_stack = self.stacks.first_mut().unwrap_or_else(|| {
-            panic!("handing out cards requires at least one stack to draw from")
-        });
-        if draw_stack.cards.len() < count {
-            return Err(CardGameError::DrawingStackEmpty);
-        }
-
-        let player_hand = &mut self.players[player].hand;
-
-        player_hand.extend(
-            draw_stack
-                .cards
-                .drain(draw_stack.cards.len() - count..)
-                .map(|card_state| card_state.card),
-        );
-        Ok(())
-    }
-
-    /// Play a single card from the given player's hand to the target stack.
-    /// Currently always face up.
-    pub fn play_card_to_stack(&mut self, player: usize, card_index: usize, stack_index: usize) {
-        let draw_stack = self
-            .stacks
-            .get_mut(stack_index)
-            .unwrap_or_else(|| panic!("trying to play card to inexistant stack"));
-
-        let player_hand = &mut self.players[player].hand;
-
-        let card = player_hand.remove(card_index);
-
-        draw_stack.cards.push(CardState {
-            card,
-            face_up: true,
-        });
     }
 }
