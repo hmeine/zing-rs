@@ -3,7 +3,10 @@ use crate::{Back, Card};
 
 pub struct Player {
     pub name: String,
-    pub hand: Vec<Card>,
+    /// The difference between player hands and other stacks of cards is that
+    /// other players are never able to see these cards, even if they're face
+    /// up.
+    pub hand: Vec<CardState>,
 }
 
 impl Player {
@@ -44,10 +47,10 @@ impl StackState {
     pub fn new(id: String) -> Self {
         Self {
             id,
-            cards: Vec::new()
+            cards: Vec::new(),
         }
     }
-    
+
     pub fn new_from_deck(id: String, deck: Vec<Card>, face_up: bool) -> Self {
         Self {
             id,
@@ -62,10 +65,14 @@ impl StackState {
     }
 
     pub fn flip_cards(cards: &Vec<CardState>) -> Vec<CardState> {
-        cards.iter().rev().map(|card_state| CardState {
-            card: card_state.card,
-            face_up: !card_state.face_up,
-        }).collect()
+        cards
+            .iter()
+            .rev()
+            .map(|card_state| CardState {
+                card: card_state.card,
+                face_up: !card_state.face_up,
+            })
+            .collect()
     }
 }
 
