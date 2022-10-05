@@ -24,8 +24,11 @@ pub struct CardState {
 }
 
 pub fn unicode(cards: &Vec<CardState>) -> String {
-    let cards = String::from_iter(cards.iter().map(|card_state| card_state.card.unicode()));
-    cards//.join(" ").collect()
+    let cards = String::from_iter(itertools::intersperse(
+        cards.iter().map(|card_state| card_state.card.unicode()),
+        ' ',
+    ));
+    cards //.join(" ").collect()
 }
 
 pub enum CardView {
