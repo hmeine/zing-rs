@@ -12,9 +12,9 @@ pub enum CardRotation {
 
 #[derive(Default)]
 pub struct CardAction {
-    source_location: Option<CardLocation>,
-    source_index: usize,
-    source_card_indices: Vec<usize>,
+    pub source_location: Option<CardLocation>,
+    pub source_index: usize,
+    pub source_card_indices: Vec<usize>,
 
     dest_location: Option<CardLocation>,
     dest_index: usize,

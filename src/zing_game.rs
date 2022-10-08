@@ -1,11 +1,12 @@
 use crate::{
-    card_action::{CardAction, CardRotation},
+    card_action::{CardAction, CardLocation, CardRotation},
     decks::shuffled_deck,
     game::{GameState, StackState},
 };
 
 pub struct ZingGame {
     pub game_state: GameState,
+    pub turn: usize,
 }
 
 impl ZingGame {
@@ -18,7 +19,10 @@ impl ZingGame {
         ));
         game_state.stacks.push(StackState::new("table".into()));
 
-        let mut result = Self { game_state };
+        let mut result = Self {
+            game_state,
+            turn: 0,
+        };
         result.hand_out_cards();
         result.initial_cards_to_table();
 
@@ -41,5 +45,17 @@ impl ZingGame {
             .to_stack_top(&self.game_state, 1)
             .rotate(CardRotation::FaceUp)
             .apply(&mut self.game_state);
+    }
+
+    pub fn is_valid_action(&self, action: &CardAction) -> bool {
+        match action.source_location {
+            Some(CardLocation::PlayerHand) => {
+                (action.source_index == self.turn)
+                    && (action.source_card_indices.len() == 1)
+                    && (*action.source_card_indices.first().unwrap()
+                        < self.game_state.players[self.turn].hand.len())
+            }
+            _ => false,
+        }
     }
 }
