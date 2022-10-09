@@ -1,16 +1,18 @@
 use crate::game::{CardState, GameState};
 
+#[derive(Clone, Debug)]
 pub enum CardLocation {
     PlayerHand,
     Stack,
 }
 
+#[derive(Clone, Debug)]
 pub enum CardRotation {
     FaceUp,
     FaceDown,
 }
 
-#[derive(Default)]
+#[derive(Clone, Default, Debug)]
 pub struct CardAction {
     pub source_location: Option<CardLocation>,
     pub source_index: usize,

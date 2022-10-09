@@ -26,6 +26,7 @@ impl ZingGame {
         for a in result.hand_out_cards_actions() {
             a.apply(&mut result.game_state);
         }
+
         result
             .initial_cards_to_table_action()
             .apply(&mut result.game_state);
@@ -35,26 +36,22 @@ impl ZingGame {
 
     pub fn hand_out_cards_actions(&self) -> Vec<CardAction> {
         (0..self.game_state.players.len())
-            .map(
-                |player| {
-                    let mut action = CardAction::new();
-                    action
-                        .from_stack_top(&self.game_state, 0, 4)
-                        .to_hand(&self.game_state, player)
-                        .rotate(CardRotation::FaceUp);
-                    action
-                }, //.apply(&mut self.game_state);
-            )
+            .map(|player| {
+                CardAction::new()
+                    .from_stack_top(&self.game_state, 0, 4, 4*player)
+                    .to_hand(&self.game_state, player)
+                    .rotate(CardRotation::FaceUp)
+                    .clone()
+            })
             .collect()
     }
 
     pub fn initial_cards_to_table_action(&self) -> CardAction {
-        let mut action = CardAction::new();
-        action
-            .from_stack_top(&self.game_state, 0, 4)
+        CardAction::new()
+            .from_stack_top(&self.game_state, 0, 4, 0)
             .to_stack_top(&self.game_state, 1)
-            .rotate(CardRotation::FaceUp);
-        action
+            .rotate(CardRotation::FaceUp)
+            .clone()
     }
 
     pub fn is_valid_action(&self, action: &CardAction) -> bool {
@@ -78,9 +75,15 @@ impl ZingGame {
         {
             return self.hand_out_cards_actions();
         }
-        let table_stack = &self.game_state.stacks[0];
+
+        let table_stack = &self.game_state.stacks[1];
         if let [.., card1, card2] = &table_stack.cards[..] {
-            if card1.card.rank == card2.card.rank {}
+            if card1.card.rank == card2.card.rank {
+                return vec![CardAction::new()
+                    .from_stack_top(&self.game_state, 1, table_stack.cards.len(), 0)
+                    .to_stack_top(&self.game_state, self.turn % 2)
+                    .clone()];
+            }
         }
         //        if table_stack.cards.len() >= 2 {
         //            let (card1, card2) = table_stack.cards.iter().rev().take(2);
