@@ -19,6 +19,9 @@ impl ZingGame {
         ));
         game_state.stacks.push(StackState::new("table".into()));
 
+        game_state.stacks.push(StackState::new("score_0".into()));
+        game_state.stacks.push(StackState::new("score_1".into()));
+
         let mut result = Self {
             game_state,
             turn: first_turn,

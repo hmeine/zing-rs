@@ -76,12 +76,13 @@ impl CardAction {
         game: &GameState,
         stack: usize,
         card_count: usize,
+        offset: usize,
     ) -> &'a mut Self {
         let cards = &game.stacks.get(stack).unwrap().cards;
         self.from_stack(
             game,
             stack,
-            (cards.len() - card_count..cards.len()).collect(),
+            (cards.len() - card_count - offset..cards.len() - offset).collect(),
         )
     }
 
@@ -101,6 +102,8 @@ impl CardAction {
 
     pub fn apply(&self, game: &mut GameState) {
         assert_eq!(self.source_card_indices.len(), self.dest_card_indices.len());
+
+        //dbg!(self);
 
         let source_cards: Vec<CardState> = {
             let source_stack = match self.source_location {
