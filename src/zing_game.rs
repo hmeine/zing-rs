@@ -10,7 +10,7 @@ pub struct ZingGame {
 }
 
 impl ZingGame {
-    pub fn new_from_table(table: crate::table::Table) -> Self {
+    pub fn new_from_table(table: crate::table::Table, first_turn: usize) -> Self {
         let mut game_state = GameState::new_from_table(table);
         game_state.stacks.push(StackState::new_from_deck(
             "stock".into(),
@@ -21,7 +21,7 @@ impl ZingGame {
 
         let mut result = Self {
             game_state,
-            turn: 0,
+            turn: first_turn,
         };
         for a in result.hand_out_cards_actions() {
             a.apply(&mut result.game_state);
@@ -70,9 +70,12 @@ impl ZingGame {
     }
 
     pub fn auto_action(&self) -> Vec<CardAction> {
-        // we can assume that all players have the same number of cards at the
-        // beginning of each round:
-        if (self.turn == 0) && self.game_state.players[0].hand.is_empty() {
+        if self
+            .game_state
+            .players
+            .iter()
+            .all(|player| player.hand.is_empty())
+        {
             return self.hand_out_cards_actions();
         }
         let table_stack = &self.game_state.stacks[0];

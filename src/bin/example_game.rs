@@ -25,6 +25,6 @@ fn main() {
             },
         ],
     };
-    let game = ZingGame::new_from_table(table);
+    let game = ZingGame::new_from_table(table, 1);
     show_state(&game.game_state);
 }
