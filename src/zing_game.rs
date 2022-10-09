@@ -23,28 +23,38 @@ impl ZingGame {
             game_state,
             turn: 0,
         };
-        result.hand_out_cards();
-        result.initial_cards_to_table();
+        for a in result.hand_out_cards_actions() {
+            a.apply(&mut result.game_state);
+        }
+        result
+            .initial_cards_to_table_action()
+            .apply(&mut result.game_state);
 
         result
     }
 
-    pub fn hand_out_cards(&mut self) {
-        for player in 0..self.game_state.players.len() {
-            CardAction::new()
-                .from_stack_top(&self.game_state, 0, 4)
-                .to_hand(&self.game_state, player)
-                .rotate(CardRotation::FaceUp)
-                .apply(&mut self.game_state);
-        }
+    pub fn hand_out_cards_actions(&self) -> Vec<CardAction> {
+        (0..self.game_state.players.len())
+            .map(
+                |player| {
+                    let mut action = CardAction::new();
+                    action
+                        .from_stack_top(&self.game_state, 0, 4)
+                        .to_hand(&self.game_state, player)
+                        .rotate(CardRotation::FaceUp);
+                    action
+                }, //.apply(&mut self.game_state);
+            )
+            .collect()
     }
 
-    pub fn initial_cards_to_table(&mut self) {
-        CardAction::new()
+    pub fn initial_cards_to_table_action(&self) -> CardAction {
+        let mut action = CardAction::new();
+        action
             .from_stack_top(&self.game_state, 0, 4)
             .to_stack_top(&self.game_state, 1)
-            .rotate(CardRotation::FaceUp)
-            .apply(&mut self.game_state);
+            .rotate(CardRotation::FaceUp);
+        action
     }
 
     pub fn is_valid_action(&self, action: &CardAction) -> bool {
@@ -57,5 +67,21 @@ impl ZingGame {
             }
             _ => false,
         }
+    }
+
+    pub fn auto_action(&self) -> Vec<CardAction> {
+        // we can assume that all players have the same number of cards at the
+        // beginning of each round:
+        if (self.turn == 0) && self.game_state.players[0].hand.is_empty() {
+            return self.hand_out_cards_actions();
+        }
+        let table_stack = &self.game_state.stacks[0];
+        if let [.., card1, card2] = &table_stack.cards[..] {
+            if card1.card.rank == card2.card.rank {}
+        }
+        //        if table_stack.cards.len() >= 2 {
+        //            let (card1, card2) = table_stack.cards.iter().rev().take(2);
+        //        }
+        Vec::new()
     }
 }

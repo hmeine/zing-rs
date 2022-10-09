@@ -8,7 +8,7 @@ pub enum Suit {
     Clubs,
 }
 
-#[derive(Copy, Clone, Debug, EnumIter)]
+#[derive(Copy, Clone, Debug, EnumIter, PartialEq)]
 pub enum Rank {
     Two,
     Three,
