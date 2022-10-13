@@ -106,4 +106,8 @@ impl GameState {
         }
         result
     }
+
+    pub fn player_count(&self) -> usize {
+        self.players.len()
+    }
 }

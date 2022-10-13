@@ -53,7 +53,7 @@ impl ZingGame {
     }
 
     pub fn hand_out_cards(&mut self) {
-        for player in 0..self.game_state.players.len() {
+        for player in 0..self.game_state.player_count() {
             CardAction::new()
                 .from_stack_top(&self.game_state, 0, 4)
                 .to_hand(&self.game_state, player)
