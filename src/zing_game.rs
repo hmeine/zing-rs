@@ -2,6 +2,7 @@ use crate::{
     card_action::{CardAction, CardLocation, CardRotation},
     decks::shuffled_deck,
     game::{GameState, StackState},
+    Rank,
 };
 
 pub struct ZingGame {
@@ -117,6 +118,20 @@ impl ZingGame {
                         .rotate(CardRotation::FaceDown)
                         .apply(&mut self.game_state);
                 }
+            }
+        }
+
+        let table_stack = &self.game_state.stacks[1];
+        if let Some(top_card) = table_stack.cards.last() {
+            if top_card.card.rank == Rank::Jack {
+                let target_stack = 2 + self.turn % 2;
+                self.last_winner = target_stack;
+
+                CardAction::new()
+                    .from_stack_top(&self.game_state, 1, table_stack.cards.len())
+                    .to_stack_top(&self.game_state, target_stack)
+                    .rotate(CardRotation::FaceDown)
+                    .apply(&mut self.game_state);
             }
         }
 
