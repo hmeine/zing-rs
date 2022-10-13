@@ -95,6 +95,15 @@ impl CardAction {
         self
     }
 
+    pub fn to_stack_bottom<'a>(&'a mut self, game: &GameState, stack: usize) -> &'a mut Self {
+        assert!(stack < game.stacks.len());
+        self.dest_location = Some(CardLocation::Stack);
+        self.dest_index = stack;
+        self.dest_card_indices =
+            (0..self.source_card_indices.len()).collect();
+        self
+    }
+
     pub fn rotate<'a>(&'a mut self, target_rotation: CardRotation) -> &'a mut Self {
         self.rotation = Some(target_rotation);
         self
