@@ -25,6 +25,14 @@ fn main() {
             },
         ],
     };
-    let game = ZingGame::new_from_table(table, 1);
-    show_state(&game.game_state);
+    let mut game = ZingGame::new_from_table(table, 1);
+
+    while game.state().stacks[0].cards.len() > 0 {
+        show_state(&game.state());
+
+        game.play_card(1, 0);
+        break;
+    
+    }
+
 }

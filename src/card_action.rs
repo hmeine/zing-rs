@@ -76,13 +76,12 @@ impl CardAction {
         game: &GameState,
         stack: usize,
         card_count: usize,
-        offset: usize,
     ) -> &'a mut Self {
         let cards = &game.stacks.get(stack).unwrap().cards;
         self.from_stack(
             game,
             stack,
-            (cards.len() - card_count - offset..cards.len() - offset).collect(),
+            (cards.len() - card_count..cards.len()).collect(),
         )
     }
 
