@@ -52,4 +52,6 @@ fn main() {
             thread_rng().gen_range(0..game.state().players[player].hand.len()),
         );
     }
+
+    show_state(&game);
 }

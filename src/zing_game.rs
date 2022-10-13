@@ -96,6 +96,7 @@ impl ZingGame {
         if let [.., card1, card2] = &table_stack.cards[..] {
             if card1.card.rank == card2.card.rank {
                 let target_stack = 2 + self.turn % 2;
+                self.last_winner = target_stack;
 
                 if table_stack.cards.len() == 2 {
                     // Zing!
@@ -127,6 +128,13 @@ impl ZingGame {
         {
             if self.game_state.stacks[0].cards.len() > 0 {
                 self.hand_out_cards();
+            } else {
+                let table_stack = &self.game_state.stacks[1];
+                CardAction::new()
+                    .from_stack_top(&self.game_state, 1, table_stack.cards.len())
+                    .to_stack_top(&self.game_state, self.last_winner)
+                    .rotate(CardRotation::FaceDown)
+                    .apply(&mut self.game_state);
             }
         }
     }

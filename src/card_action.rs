@@ -98,8 +98,7 @@ impl CardAction {
         assert!(stack < game.stacks.len());
         self.dest_location = Some(CardLocation::Stack);
         self.dest_index = stack;
-        self.dest_card_indices =
-            (0..self.source_card_indices.len()).collect();
+        self.dest_card_indices = (0..self.source_card_indices.len()).collect();
         self
     }
 
