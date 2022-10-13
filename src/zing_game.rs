@@ -7,6 +7,7 @@ use crate::{
 pub struct ZingGame {
     game_state: GameState,
     turn: usize,
+    last_winner: usize,
 }
 
 impl ZingGame {
@@ -25,8 +26,9 @@ impl ZingGame {
         let mut result = Self {
             game_state,
             turn: first_turn,
+            last_winner: 999, // will always be overwritten; needs to be 0/1
         };
-        
+
         result.hand_out_cards();
         result.initial_cards_to_table();
 
@@ -37,11 +39,14 @@ impl ZingGame {
         &self.game_state
     }
 
+    pub fn current_player(&self) -> usize {
+        self.turn
+    }
+
     pub fn apply(&mut self, action: CardAction) {
         action.apply(&mut self.game_state);
     }
 
-    // TODO: return actions, incl. automatic actions; requires card offset (table stack is +1 after this)
     pub fn play_card(&mut self, player: usize, card_index: usize) {
         assert!(player == self.turn);
 
@@ -50,6 +55,10 @@ impl ZingGame {
             .to_stack_top(&self.game_state, 1)
             .rotate(CardRotation::FaceUp)
             .apply(&mut self.game_state);
+
+        self.auto_actions();
+
+        self.turn = (self.turn + 1) % self.state().player_count();
     }
 
     pub fn hand_out_cards(&mut self) {
@@ -116,7 +125,9 @@ impl ZingGame {
             .iter()
             .all(|player| player.hand.is_empty())
         {
-            self.hand_out_cards();
+            if self.game_state.stacks[0].cards.len() > 0 {
+                self.hand_out_cards();
+            }
         }
     }
 }
