@@ -1,6 +1,6 @@
 use strum_macros::EnumIter;
 
-#[derive(Copy, Clone, Debug, EnumIter)]
+#[derive(Copy, Clone, Debug, EnumIter, PartialEq)]
 pub enum Suit {
     Diamonds,
     Hearts,

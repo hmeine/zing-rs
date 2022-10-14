@@ -1,8 +1,10 @@
+use itertools::Itertools;
+
 use crate::{
     card_action::{CardAction, CardLocation, CardRotation},
     decks::shuffled_deck,
-    game::{GameState, StackState},
-    Rank,
+    game::{CardState, GameState, StackState},
+    Card, Rank, Suit,
 };
 
 pub struct ZingGame {
@@ -42,6 +44,79 @@ impl ZingGame {
 
     pub fn current_player(&self) -> usize {
         self.turn
+    }
+
+    pub fn card_points(card: &Card) -> u32 {
+        match card.rank {
+            Rank::Jack | Rank::Queen | Rank::King | Rank::Ace => 1,
+            Rank::Ten => {
+                if card.suit == Suit::Diamonds {
+                    2
+                } else {
+                    1
+                }
+            }
+            Rank::Two => {
+                if card.suit == Suit::Clubs {
+                    1
+                } else {
+                    0
+                }
+            }
+            _ => 0,
+        }
+    }
+
+    pub fn zing_points(card_state: &CardState) -> u32 {
+        match (card_state.face_up, card_state.card.rank) {
+            (true, Rank::Jack) => 20,
+            (true, _) => 10,
+            (false, _) => 0,
+        }
+    }
+
+    pub fn total_card_points(&self) -> (u32, u32) {
+        self.game_state.stacks[2..4]
+            .iter()
+            .map(|score_stack| {
+                score_stack
+                    .cards
+                    .iter()
+                    .map(|card_state| Self::card_points(&card_state.card))
+                    .sum()
+            })
+            .collect_tuple()
+            .unwrap()
+    }
+
+    pub fn total_zing_points(&self) -> (u32, u32) {
+        self.game_state.stacks[2..4]
+            .iter()
+            .map(|score_stack| score_stack.cards.iter().map(Self::zing_points).sum())
+            .collect_tuple()
+            .unwrap()
+    }
+
+    pub fn card_count_points(&self) -> (u32, u32) {
+        let len0 = self.game_state.stacks[2].cards.len();
+        let len1 = self.game_state.stacks[3].cards.len();
+        if len0 == len1 {
+            (0, 0)
+        } else if len0 > len1 {
+            (3, 0)
+        } else {
+            (0, 3)
+        }
+    }
+
+    pub fn total_points(&self) -> (u32, u32) {
+        let card_points = self.total_card_points();
+        let zing_points = self.total_zing_points();
+        let card_count_points = self.card_count_points();
+        (
+            card_points.0 + card_count_points.0 + zing_points.0,
+            card_points.1 + card_count_points.1 + zing_points.1,
+        )
     }
 
     pub fn apply(&mut self, action: CardAction) {
