@@ -102,7 +102,7 @@ impl CardAction {
         self
     }
 
-    pub fn rotate<'a>(&'a mut self, target_rotation: CardRotation) -> &'a mut Self {
+    pub fn rotate(&mut self, target_rotation: CardRotation) -> &mut Self {
         self.rotation = Some(target_rotation);
         self
     }
@@ -133,7 +133,7 @@ impl CardAction {
                 .collect();
 
             let mut remove_indices = self.source_card_indices.clone();
-            remove_indices.sort();
+            remove_indices.sort_unstable();
             for i in remove_indices.iter().rev() {
                 source_stack.remove(*i);
             }

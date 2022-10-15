@@ -23,7 +23,7 @@ pub struct CardState {
     pub face_up: bool,
 }
 
-pub fn unicode(cards: &Vec<CardState>) -> String {
+pub fn unicode(cards: &[CardState]) -> String {
     let cards = String::from_iter(itertools::intersperse(
         cards.iter().map(|card_state| card_state.card.unicode()),
         ' ',
@@ -72,7 +72,7 @@ impl StackState {
         }
     }
 
-    pub fn flip_cards(cards: &Vec<CardState>) -> Vec<CardState> {
+    pub fn flip_cards(cards: &[CardState]) -> Vec<CardState> {
         cards
             .iter()
             .rev()

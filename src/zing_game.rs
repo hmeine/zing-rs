@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use itertools::Itertools;
 
 use crate::{
@@ -100,12 +102,10 @@ impl ZingGame {
     pub fn card_count_points(&self) -> (u32, u32) {
         let len0 = self.game_state.stacks[2].cards.len();
         let len1 = self.game_state.stacks[3].cards.len();
-        if len0 == len1 {
-            (0, 0)
-        } else if len0 > len1 {
-            (3, 0)
-        } else {
-            (0, 3)
+        match len0.cmp(&len1) {
+            Ordering::Equal => (0, 0),
+            Ordering::Greater => (3, 0),
+            Ordering::Less => (0, 3),
         }
     }
 
@@ -216,7 +216,7 @@ impl ZingGame {
             .iter()
             .all(|player| player.hand.is_empty())
         {
-            if self.game_state.stacks[0].cards.len() > 0 {
+            if !self.game_state.stacks[0].cards.is_empty() {
                 self.hand_out_cards();
             } else {
                 let table_stack = &self.game_state.stacks[1];

@@ -1,5 +1,5 @@
 use rand::{thread_rng, Rng};
-use zing_rs::game::{unicode, GameState};
+use zing_rs::game::unicode;
 use zing_rs::{table::Table, zing_game::ZingGame};
 
 fn show_state(game: &ZingGame) {
@@ -22,7 +22,7 @@ fn show_state(game: &ZingGame) {
             }
         );
     }
-    println!("");
+    println!();
 }
 
 fn main() {
@@ -42,7 +42,7 @@ fn main() {
         .state()
         .players
         .iter()
-        .any(|player| player.hand.len() > 0)
+        .any(|player| !player.hand.is_empty())
     {
         show_state(&game);
 
