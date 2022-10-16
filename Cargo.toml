@@ -3,6 +3,9 @@ name = "zing-rs"
 version = "0.1.0"
 edition = "2021"
 
+[workspace]
+resolver = "2" # Important! wgpu/Bevy needs this!
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -10,3 +13,13 @@ strum = "0.24"
 strum_macros = "0.24"
 rand = "0.8.5"
 itertools = "0.10.5"
+
+bevy = "0.8"
+bevy_svg = { version = "0.8", default-features = false, features = ["2d"] }
+
+# Enable max optimizations for dependencies, but not for our code:
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.release]
+lto = "thin"
