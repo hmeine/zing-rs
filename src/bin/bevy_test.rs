@@ -25,7 +25,7 @@ fn setup_system(
 ) {
     commands.spawn_bundle(Camera2dBundle::default());
 
-    let svg = asset_server.load("svg_cards_1.3/king_of_clubs2.svg");
+    let svg = asset_server.load("vector_cards_3.2/CLUB-1.svg");
 
     commands.spawn_bundle(Svg2dBundle {
         svg,
