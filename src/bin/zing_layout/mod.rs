@@ -1,6 +1,6 @@
 use bevy::{prelude::*, render::camera::ScalingMode};
 use bevy_svg::prelude::*;
-use zing_rs::card_action::CardLocation;
+use zing_rs::{card_action::CardLocation, game::CardState, Back, Rank, Suit};
 
 pub struct LayoutPlugin;
 
@@ -36,7 +36,31 @@ const PLAYING_CENTER_Y: f32 = (OWN_CARD_ZOOM - 1.) * CARD_HEIGHT / 2.;
 // TODO: we need to consider having four players
 
 #[derive(Component)]
-struct Card;
+struct Card(CardState);
+
+impl Card {
+    fn spawn_bundle(
+        commands: &mut Commands,
+        asset_server: &Res<AssetServer>,
+        card_state: CardState,
+    ) -> Entity {
+        let svg = asset_server.load("vector_cards_3.2/BACK-BLUE.svg");
+        // SVG size: 238.11, 332.6
+        let scale = CARD_HEIGHT / 88.;
+
+        commands
+            .spawn_bundle(Svg2dBundle {
+                svg,
+                transform: Transform {
+                    scale: Vec3::new(scale, scale, 1.0),
+                    ..Default::default()
+                },
+                ..Default::default()
+            })
+            .insert(Card(card_state))
+            .id()
+    }
+}
 
 #[derive(Component)]
 struct CardStack {
@@ -156,23 +180,18 @@ pub fn setup_card_stacks(mut commands: Commands, asset_server: Res<AssetServer>)
     ));
 
     for stack in stacks {
-        let svg = asset_server.load("vector_cards_3.2/CLUB-6.svg");
-        // SVG size: 238.11075, 332.5986
-        let scale = CARD_HEIGHT / 332.5986;
-
-        let card = commands
-            .spawn_bundle(Svg2dBundle {
-                svg,
-                transform: Transform {
-                    scale: Vec3::new(scale, scale, 1.0),
-                    ..Default::default()
+        let card = Card::spawn_bundle(
+            &mut commands,
+            &asset_server,
+            CardState {
+                card: zing_rs::Card {
+                    rank: Rank::Ace,
+                    suit: Suit::Spades,
+                    back: Back::Blue,
                 },
-                ..Default::default()
-            })
-            .insert(Card)
-            .id();
+                face_up: false,
+            },
+        );
         commands.entity(stack).push_children(&[card]);
     }
-
-    //    let svg = asset_server.load("vector_cards_3.2/BACK-BLUE.svg"));
 }
