@@ -42,3 +42,21 @@ The server does not have to care about the position of stacks, but it is
 responsible for the game logic.  It will be interesting to see how the frontend
 can indicate valid moves, because we want the logic to be on the server side
 mostly.
+
+Graphical Layout
+----------------
+
+There can be two or four players.  In two player mode, player hands should be at
+bottom and top, "self" at the bottom, with openly visible hand.  Other hands
+will only be backs, but spread out nevertheless.  In four player mode, left and
+right should be rotated.
+
+The open card(s) should be in the middle.
+
+The drawing stack can be at the side (two player mode), or as close to that as
+possible (four player mode).
+
+The winning stacks should be at the bottom right (for one self) or at the top
+left (two player mode enemy).  In four player mode, the position of the latter
+should be closer to the side and also rotated (the opposite player is your
+friend).
