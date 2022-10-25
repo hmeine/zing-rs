@@ -14,8 +14,13 @@ strum_macros = "0.24"
 rand = "0.8.5"
 itertools = "0.10.5"
 
-bevy = "0.8"
+bevy = { version = "0.8", features = ["dynamic"] }
 bevy_svg = { version = "0.8", default-features = false, features = ["2d"] }
+#bevy_svg = { path = "../bevy_svg", default-features = false, features = ["2d"] }
+
+# Enable a small amount of optimization in debug mode
+[profile.dev]
+opt-level = 1
 
 # Enable max optimizations for dependencies, but not for our code:
 [profile.dev.package."*"]
