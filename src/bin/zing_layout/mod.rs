@@ -1,4 +1,4 @@
-use bevy::{prelude::*, window::WindowResized};
+use bevy::{prelude::*, render::camera::ScalingMode};
 use zing_rs::card_action::CardLocation;
 
 pub struct LayoutPlugin;
@@ -6,7 +6,6 @@ pub struct LayoutPlugin;
 impl Plugin for LayoutPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system(setup_card_stacks);
-        app.add_system(adjust_camera_on_resize);
     }
 }
 
@@ -43,16 +42,6 @@ struct CardStack {
     index: usize,
 }
 
-pub fn adjust_camera_on_resize(
-    mut commands: Commands,
-    mut events: EventReader<WindowResized>,
-    camera_query: Query<&mut OrthographicProjection>,
-) {
-    for ev in events.iter() {
-        //layout.screen_width = ev.width;
-    }
-}
-
 fn spawn_card_stack(
     commands: &mut Commands,
     top_left_position: Vec3,
@@ -74,9 +63,21 @@ fn spawn_card_stack(
 pub fn setup_card_stacks(mut commands: Commands) {
     let opposite_hand_pos_y = PLAYING_CENTER_Y - VERTICAL_SPACING - 1.5 * CARD_HEIGHT;
 
+    commands.spawn_bundle(Camera2dBundle {
+        projection: OrthographicProjection {
+            scaling_mode: ScalingMode::FixedVertical(1.0),
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+
     spawn_card_stack(
         &mut commands,
-        Vec3::new(PLAYING_CENTER_X - FULL_HAND_WIDTH / 2., opposite_hand_pos_y, 0.),
+        Vec3::new(
+            PLAYING_CENTER_X - FULL_HAND_WIDTH / 2.,
+            opposite_hand_pos_y,
+            0.,
+        ),
         CardLocation::PlayerHand,
         0, // FIXME: we need to know which player we are
     );
