@@ -43,7 +43,7 @@ impl Card {
         Self{rank, suit, back}
     }
 
-    fn rank_str(&self) -> &'static str {
+    pub fn rank_str(&self) -> &'static str {
         match self.rank {
             Rank::Two => "2",
             Rank::Three => "3",

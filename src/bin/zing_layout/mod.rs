@@ -39,14 +39,48 @@ const PLAYING_CENTER_Y: f32 = (OWN_CARD_ZOOM - 1.) * CARD_HEIGHT / 2.;
 struct Card(CardState);
 
 impl Card {
+    fn svg_path_and_height(card_state: &CardState) -> (String, f32) {
+        let (basename, height) = if card_state.face_up {
+            (
+                format!(
+                    "{}-{}",
+                    match card_state.card.suit {
+                        Suit::Diamonds => "DIAMOND",
+                        Suit::Hearts => "HEART",
+                        Suit::Spades => "SPADE",
+                        Suit::Clubs => "CLUB",
+                    },
+                    match card_state.card.rank {
+                        Rank::Jack => "JACK",
+                        Rank::Queen => "QUEEN",
+                        Rank::King => "KING",
+                        Rank::Ace => "1",
+                        _ => card_state.card.rank_str(),
+                    }
+                ),
+                332.6,
+            )
+        } else {
+            (
+                match card_state.card.back {
+                    Back::Blue => "BACK-BLUE",
+                    Back::Red => "BACK-RED",
+                }
+                .into(),
+                88.,
+            )
+        };
+        (format!("vector_cards_3.2/{}.svg", basename), height)
+    }
+
     fn spawn_bundle(
         commands: &mut Commands,
         asset_server: &Res<AssetServer>,
         card_state: CardState,
     ) -> Entity {
-        let svg = asset_server.load("vector_cards_3.2/BACK-BLUE.svg");
-        // SVG size: 238.11, 332.6
-        let scale = CARD_HEIGHT / 88.;
+        let (svg_path, svg_height) = Self::svg_path_and_height(&card_state);
+        let svg = asset_server.load(&svg_path);
+        let scale = CARD_HEIGHT / svg_height;
 
         commands
             .spawn_bundle(Svg2dBundle {
@@ -189,7 +223,7 @@ pub fn setup_card_stacks(mut commands: Commands, asset_server: Res<AssetServer>)
                     suit: Suit::Spades,
                     back: Back::Blue,
                 },
-                face_up: false,
+                face_up: true,
             },
         );
         commands.entity(stack).push_children(&[card]);
