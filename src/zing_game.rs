@@ -54,6 +54,10 @@ impl ZingGame {
         (self.first_player + self.turn) % self.state().player_count()
     }
 
+    pub fn turn(&self) -> usize {
+        self.turn
+    }
+
     pub fn card_points(card: &Card) -> u32 {
         match card.rank {
             Rank::Jack | Rank::Queen | Rank::King | Rank::Ace => 1,

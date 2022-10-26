@@ -290,8 +290,7 @@ fn setup_random_game(
             ),
         };
 
-        let peeping_offset = if stack.location == CardLocation::Stack && stack.index == 1 {
-            // TODO: use stack.peeping_offset initially, until after first turn
+        let peeping_offset = if stack.location == CardLocation::Stack && stack.index == 1 && game.turn() > 0 {
             Vec3::ZERO
         } else {
             stack.peeping_offset
