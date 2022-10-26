@@ -1,6 +1,6 @@
 use crate::game::{CardState, GameState};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CardLocation {
     PlayerHand,
     Stack,

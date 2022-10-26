@@ -290,7 +290,13 @@ fn setup_random_game(
             ),
         };
 
-        let mut peeping_offset = (1i8..).map(|i| f32::from(i) * stack.peeping_offset);
+        let peeping_offset = if stack.location == CardLocation::Stack && stack.index == 1 {
+            // TODO: use stack.peeping_offset initially, until after first turn
+            Vec3::ZERO
+        } else {
+            stack.peeping_offset
+        };
+        let mut peeping_offset = (1i8..).map(|i| f32::from(i) * peeping_offset);
 
         let card_entities: Vec<_> = (0i8..)
             .zip(card_states.iter())
