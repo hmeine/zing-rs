@@ -23,6 +23,7 @@ impl ZingGame {
             shuffled_deck(crate::Back::Blue),
             false,
         ));
+
         game_state.stacks.push(StackState::new("table".into()));
 
         game_state.stacks.push(StackState::new("score_0".into()));
@@ -35,6 +36,7 @@ impl ZingGame {
         };
 
         result.hand_out_cards();
+        result.show_bottom_card_of_dealer();
         result.initial_cards_to_table();
 
         result
@@ -145,6 +147,15 @@ impl ZingGame {
                 .rotate(CardRotation::FaceUp)
                 .apply(&mut self.game_state);
         }
+    }
+
+    pub fn show_bottom_card_of_dealer(&mut self) {
+        // rotate bottom card face up (belongs to dealer, who is in advantage)
+        CardAction::new()
+            .from_stack(&self.game_state, 0, vec![0])
+            .to_stack_bottom(&self.game_state, 0)
+            .rotate(CardRotation::FaceUp)
+            .apply(&mut self.game_state);
     }
 
     pub fn initial_cards_to_table(&mut self) {
