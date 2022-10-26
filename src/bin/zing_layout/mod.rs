@@ -94,7 +94,7 @@ impl Card {
                 },
                 ..Default::default()
             })
-            .insert(Card(card_state.clone()))
+            .insert(Self(card_state.clone()))
             .id()
     }
 }
@@ -105,25 +105,28 @@ struct CardStack {
     index: usize,
 }
 
-fn spawn_card_stack(
-    commands: &mut Commands,
-    top_left_position: Vec3,
-    scale: Vec3,
-    location: CardLocation,
-    index: usize,
-) -> Entity {
-    commands
-        .spawn_bundle(SpatialBundle {
-            transform: Transform {
-                translation: top_left_position,
-                scale,
+impl CardStack {
+    fn spawn_bundle(
+        commands: &mut Commands,
+        top_left_position: Vec3,
+        scale: Vec3,
+        location: CardLocation,
+        index: usize,
+    ) -> Entity {
+        commands
+            .spawn_bundle(SpatialBundle {
+                transform: Transform {
+                    translation: top_left_position,
+                    scale,
+                    ..Default::default()
+                },
                 ..Default::default()
-            },
-            ..Default::default()
-        })
-        .insert(CardStack { location, index })
-        .id()
+            })
+            .insert(Self { location, index })
+            .id()
+    }
 }
+
 
 pub fn setup_camera(mut commands: Commands) {
     commands.spawn_bundle(Camera2dBundle {
@@ -140,7 +143,7 @@ pub fn setup_card_stacks(mut commands: Commands, asset_server: Res<AssetServer>)
 
     info!("layouting card stacks");
 
-    spawn_card_stack(
+    CardStack::spawn_bundle(
         &mut commands,
         Vec3::new(
             PLAYING_CENTER_X - FULL_HAND_WIDTH / 2.,
@@ -154,7 +157,7 @@ pub fn setup_card_stacks(mut commands: Commands, asset_server: Res<AssetServer>)
 
     let own_hand_pos_y = PLAYING_CENTER_Y - 0.5 * CARD_HEIGHT - VERTICAL_SPACING;
 
-    spawn_card_stack(
+    CardStack::spawn_bundle(
         &mut commands,
         Vec3::new(
             PLAYING_CENTER_X - FULL_HAND_WIDTH * OWN_CARD_ZOOM / 2.,
@@ -168,7 +171,7 @@ pub fn setup_card_stacks(mut commands: Commands, asset_server: Res<AssetServer>)
 
     // TODO: we need to know if we have two or four players
 
-    spawn_card_stack(
+    CardStack::spawn_bundle(
         &mut commands,
         Vec3::new(
             PLAYING_CENTER_X - CARD_WIDTH * 2.3,
@@ -180,7 +183,7 @@ pub fn setup_card_stacks(mut commands: Commands, asset_server: Res<AssetServer>)
         0, // "stock"
     );
 
-    spawn_card_stack(
+    CardStack::spawn_bundle(
         &mut commands,
         Vec3::new(
             PLAYING_CENTER_X - CARD_WIDTH / 2.,
@@ -192,7 +195,7 @@ pub fn setup_card_stacks(mut commands: Commands, asset_server: Res<AssetServer>)
         1, // "table"
     );
 
-    spawn_card_stack(
+    CardStack::spawn_bundle(
         &mut commands,
         Vec3::new(
             PLAYING_CENTER_X + FULL_HAND_WIDTH * OWN_CARD_ZOOM / 2. + SCORE_STACK_SPACING,
@@ -204,7 +207,7 @@ pub fn setup_card_stacks(mut commands: Commands, asset_server: Res<AssetServer>)
         2, // "score_0"
     );
 
-    spawn_card_stack(
+    CardStack::spawn_bundle(
         &mut commands,
         Vec3::new(
             PLAYING_CENTER_X + FULL_HAND_WIDTH * OWN_CARD_ZOOM / 2. + SCORE_STACK_SPACING,
