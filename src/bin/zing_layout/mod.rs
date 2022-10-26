@@ -1,6 +1,6 @@
-use rand::{thread_rng, Rng};
 use bevy::{prelude::*, render::camera::ScalingMode};
 use bevy_svg::prelude::*;
+use rand::{thread_rng, Rng};
 use zing_rs::{card_action::CardLocation, game::CardState, Back, Rank, Suit};
 use zing_rs::{table::Table, zing_game::ZingGame};
 
@@ -21,6 +21,10 @@ const MARGIN: f32 = 0.05;
 const CARD_HEIGHT: f32 = 0.23;
 /// horizontal base size of all cards
 const CARD_WIDTH: f32 = CARD_HEIGHT / 1.4;
+/// horizontal offset for making card value visible
+const HORIZONTAL_PEEPING: f32 = CARD_WIDTH * 0.166;
+/// vertical offset for making card value visible
+const VERTICAL_PEEPING: f32 = CARD_HEIGHT * 0.2;
 /// horizontal offset for spreading out cards on player hands
 const HAND_CARD_OFFSET_X: f32 = CARD_WIDTH * 1.14;
 /// full width of four spread out cards on hand
@@ -119,12 +123,14 @@ impl Card {
 struct CardStack {
     location: CardLocation,
     index: usize,
+    peeping_offset: Vec3,
 }
 
 impl CardStack {
     fn spawn_bundle(
         commands: &mut Commands,
         top_left_position: Vec3,
+        peeping_offset: Vec3,
         scale: Vec3,
         location: CardLocation,
         index: usize,
@@ -138,7 +144,11 @@ impl CardStack {
                 },
                 ..Default::default()
             })
-            .insert(Self { location, index })
+            .insert(Self {
+                location,
+                index,
+                peeping_offset,
+            })
             .id()
     }
 }
@@ -165,6 +175,7 @@ pub fn setup_card_stacks(mut commands: Commands) {
             opposite_hand_pos_y,
             0.,
         ),
+        Vec3::ZERO,
         Vec3::ONE,
         CardLocation::PlayerHand,
         0, // FIXME: we need to know which player we are
@@ -179,6 +190,7 @@ pub fn setup_card_stacks(mut commands: Commands) {
             own_hand_pos_y,
             0.,
         ),
+        Vec3::ZERO,
         Vec3::splat(OWN_CARD_ZOOM),
         CardLocation::PlayerHand,
         1, // FIXME: we need to know which player we are
@@ -193,6 +205,7 @@ pub fn setup_card_stacks(mut commands: Commands) {
             PLAYING_CENTER_Y + CARD_HEIGHT / 2.,
             0.,
         ),
+        Vec3::new(-HORIZONTAL_PEEPING, 0., 0.),
         Vec3::ONE,
         CardLocation::Stack,
         0, // "stock"
@@ -205,6 +218,7 @@ pub fn setup_card_stacks(mut commands: Commands) {
             PLAYING_CENTER_Y + CARD_HEIGHT / 2.,
             0.,
         ),
+        Vec3::new(HORIZONTAL_PEEPING, 0., 0.),
         Vec3::ONE,
         CardLocation::Stack,
         1, // "table"
@@ -217,6 +231,7 @@ pub fn setup_card_stacks(mut commands: Commands) {
             opposite_hand_pos_y,
             0.,
         ),
+        Vec3::new(0., -VERTICAL_PEEPING, 0.),
         Vec3::ONE,
         CardLocation::Stack,
         2, // "score_0"
@@ -229,6 +244,7 @@ pub fn setup_card_stacks(mut commands: Commands) {
             own_hand_pos_y,
             0.,
         ),
+        Vec3::new(0., VERTICAL_PEEPING, 0.),
         Vec3::ONE,
         CardLocation::Stack,
         3, // "score_1"
@@ -255,8 +271,7 @@ fn setup_random_game(
     };
     let mut game = ZingGame::new_from_table(table, 1);
 
-    for _i in 0..19
-    {
+    for _i in 0..19 {
         let player = game.current_player();
         game.play_card(
             player,
@@ -275,6 +290,8 @@ fn setup_random_game(
             ),
         };
 
+        let mut peeping_offset = (1i8..).map(|i| f32::from(i) * stack.peeping_offset);
+
         let card_entities: Vec<_> = (0i8..)
             .zip(card_states.iter())
             .map(|(index, card_state)| {
@@ -282,7 +299,13 @@ fn setup_random_game(
                     &mut commands,
                     &asset_server,
                     card_state,
-                    card_offset * f32::from(index) + Vec3::new(0., 0., f32::from(index)),
+                    card_offset * f32::from(index)
+                        + Vec3::new(0., 0., f32::from(index))
+                        + if card_state.face_up {
+                            peeping_offset.next().unwrap()
+                        } else {
+                            Vec3::ZERO
+                        },
                 )
             })
             .collect();
