@@ -153,7 +153,7 @@ pub fn setup_camera(mut commands: Commands) {
     });
 }
 
-pub fn setup_card_stacks(mut commands: Commands, asset_server: Res<AssetServer>) {
+pub fn setup_card_stacks(mut commands: Commands) {
     let opposite_hand_pos_y = PLAYING_CENTER_Y + VERTICAL_SPACING + 1.5 * CARD_HEIGHT;
 
     info!("layouting card stacks");
@@ -255,7 +255,7 @@ fn setup_random_game(
     };
     let mut game = ZingGame::new_from_table(table, 1);
 
-    for i in 0..19
+    for _i in 0..19
     {
         let player = game.current_player();
         game.play_card(
