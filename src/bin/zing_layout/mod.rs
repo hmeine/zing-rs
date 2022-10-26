@@ -255,7 +255,7 @@ fn setup_random_game(
     };
     let mut game = ZingGame::new_from_table(table, 1);
 
-    for i in (0..19)
+    for i in 0..19
     {
         let player = game.current_player();
         game.play_card(
@@ -282,7 +282,7 @@ fn setup_random_game(
                     &mut commands,
                     &asset_server,
                     card_state,
-                    card_offset * f32::from(index),
+                    card_offset * f32::from(index) + Vec3::new(0., 0., f32::from(index)),
                 )
             })
             .collect();
