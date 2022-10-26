@@ -38,11 +38,7 @@ fn main() {
     };
     let mut game = ZingGame::new_from_table(table, 1);
 
-    while game
-        .state()
-        .players
-        .iter()
-        .any(|player| !player.hand.is_empty())
+    while !game.finished()
     {
         show_state(&game);
 

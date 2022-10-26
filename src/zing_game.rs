@@ -50,12 +50,19 @@ impl ZingGame {
         &self.game_state
     }
 
-    pub fn current_player(&self) -> usize {
-        (self.first_player + self.turn) % self.state().player_count()
-    }
-
     pub fn turn(&self) -> usize {
         self.turn
+    }
+    
+    pub fn current_player(&self) -> usize {
+        (self.first_player + self.turn) % self.state().player_count()
+    }    
+    
+    pub fn finished(&self) -> bool {
+        self.state()
+            .players
+            .iter()
+            .all(|player| player.hand.is_empty())
     }
 
     pub fn card_points(card: &Card) -> u32 {
@@ -129,7 +136,7 @@ impl ZingGame {
         )
     }
 
-    pub fn apply(&mut self, action: CardAction) {
+    fn apply(&mut self, action: CardAction) {
         action.apply(&mut self.game_state);
         self.history.push(action);
     }
