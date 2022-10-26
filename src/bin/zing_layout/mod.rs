@@ -11,7 +11,8 @@ impl Plugin for LayoutPlugin {
         app.add_startup_system(setup_camera);
         app.add_startup_system(setup_card_stacks);
 
-        app.add_startup_system_to_stage(StartupStage::PostStartup, setup_random_game);
+        app.add_startup_system(setup_random_game);
+        app.add_startup_system_to_stage(StartupStage::PostStartup, show_game_state);
     }
 }
 
@@ -256,8 +257,6 @@ struct GameState(ZingGame);
 
 fn setup_random_game(
     mut commands: Commands,
-    query_stacks: Query<(Entity, &CardStack)>,
-    asset_server: Res<AssetServer>,
 ) {
     let table = Table {
         players: vec![
@@ -279,7 +278,18 @@ fn setup_random_game(
         );
     }
 
-    info!("game state set up, looking for stacks...");
+    commands.insert_resource(GameState(game));
+}
+
+fn show_game_state(
+    mut commands: Commands,
+    game_state: Res<GameState>,
+    query_stacks: Query<(Entity, &CardStack)>,
+    asset_server: Res<AssetServer>,
+) {
+    info!("assuming game state is set up, looking for stacks...");
+
+    let game = &game_state.0;
 
     for (stack_id, stack) in query_stacks.iter() {
         let (card_states, card_offset) = match stack.location {
@@ -317,6 +327,4 @@ fn setup_random_game(
 
         commands.entity(stack_id).push_children(&card_entities);
     }
-
-    commands.insert_resource(GameState(game));
 }
