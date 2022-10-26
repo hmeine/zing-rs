@@ -63,7 +63,7 @@
         <rect
            ry="10.664032"
            rx="10.677567"
-           style="display:inline;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:1.00057;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+           style="display:inline;opacity:1;fill:#ffffff;fill-opacity:1;stroke:#808080;stroke-width:1.00057;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:0.75"
            id="rect9870-7-0"
            width="223.22835"
            height="311.81104"
