@@ -20,14 +20,27 @@ const MARGIN: f32 = 0.05;
 const CARD_HEIGHT: f32 = 0.23;
 /// horizontal base size of all cards
 const CARD_WIDTH: f32 = CARD_HEIGHT / 1.4;
-/// offset for spreading out cards on player hands
-const HAND_CARD_OFFSET: f32 = CARD_WIDTH * 1.14;
+/// horizontal offset for spreading out cards on player hands
+const HAND_CARD_OFFSET_X: f32 = CARD_WIDTH * 1.14;
 /// full width of four spread out cards on hand
-const FULL_HAND_WIDTH: f32 = CARD_WIDTH + 3. * HAND_CARD_OFFSET;
+const FULL_HAND_WIDTH: f32 = CARD_WIDTH + 3. * HAND_CARD_OFFSET_X;
 /// additional scale factor > 1 for cards representing own player hand
 const OWN_CARD_ZOOM: f32 = 1.15;
 /// horizontal offset between (own) player hand and (own) score stack
 const SCORE_STACK_SPACING: f32 = MARGIN;
+
+/// offset for spreading out cards on player hands
+const HAND_CARD_OFFSET: Vec3 = Vec3 {
+    x: HAND_CARD_OFFSET_X,
+    y: 0.,
+    z: 0.,
+};
+/// offset for visualizing stacks of cards
+const ISOMETRIC_CARD_OFFSET: Vec3 = Vec3 {
+    x: CARD_WIDTH / 300.,
+    y: CARD_WIDTH / 250.,
+    z: 0.,
+};
 
 /// remaining space after subtracting three rows of cards and margins is evenly distributed:
 const VERTICAL_SPACING: f32 = (1. - 2. * MARGIN - (2. + OWN_CARD_ZOOM) * CARD_HEIGHT) / 2.;
@@ -80,6 +93,7 @@ impl Card {
         commands: &mut Commands,
         asset_server: &Res<AssetServer>,
         card_state: &CardState,
+        translation: Vec3,
     ) -> Entity {
         let (svg_path, svg_height) = Self::svg_path_and_height(&card_state);
         let svg = asset_server.load(&svg_path);
@@ -89,6 +103,7 @@ impl Card {
             .spawn_bundle(Svg2dBundle {
                 svg,
                 transform: Transform {
+                    translation,
                     scale: Vec3::new(scale, scale, 1.0),
                     ..Default::default()
                 },
@@ -126,7 +141,6 @@ impl CardStack {
             .id()
     }
 }
-
 
 pub fn setup_camera(mut commands: Commands) {
     commands.spawn_bundle(Camera2dBundle {
@@ -220,11 +234,14 @@ pub fn setup_card_stacks(mut commands: Commands, asset_server: Res<AssetServer>)
     );
 }
 
-
 #[derive(Component)]
 struct GameState(ZingGame);
 
-fn setup_random_game(mut commands: Commands, query_stacks: Query<(Entity, &CardStack)>, asset_server: Res<AssetServer>) {
+fn setup_random_game(
+    mut commands: Commands,
+    query_stacks: Query<(Entity, &CardStack)>,
+    asset_server: Res<AssetServer>,
+) {
     let table = Table {
         players: vec![
             zing_rs::table::Player {
@@ -240,21 +257,27 @@ fn setup_random_game(mut commands: Commands, query_stacks: Query<(Entity, &CardS
     info!("game state set up, looking for stacks...");
 
     for (stack_id, stack) in query_stacks.iter() {
-        let card_states = match stack.location {
-            CardLocation::PlayerHand => &game.state().players[stack.index].hand,
-            CardLocation::Stack => &game.state().stacks[stack.index].cards,
+        let (card_states, card_offset) = match stack.location {
+            CardLocation::PlayerHand => (&game.state().players[stack.index].hand, HAND_CARD_OFFSET),
+            CardLocation::Stack => (
+                &game.state().stacks[stack.index].cards,
+                ISOMETRIC_CARD_OFFSET,
+            ),
         };
 
-        let card_entities: Vec<_> = card_states.iter().map(
-            |card_state| Card::spawn_bundle(
-                &mut commands,
-                &asset_server,
-                card_state,
-            )
-        ).collect();
+        let card_entities: Vec<_> = (0i8..)
+            .zip(card_states.iter())
+            .map(|(index, card_state)| {
+                Card::spawn_bundle(
+                    &mut commands,
+                    &asset_server,
+                    card_state,
+                    card_offset * f32::from(index),
+                )
+            })
+            .collect();
 
         commands.entity(stack_id).push_children(&card_entities);
-
     }
 
     commands.insert_resource(GameState(game));
