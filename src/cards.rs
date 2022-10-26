@@ -1,6 +1,6 @@
 use strum_macros::EnumIter;
 
-#[derive(Copy, Clone, Debug, EnumIter, PartialEq)]
+#[derive(Copy, Clone, Debug, EnumIter, PartialEq, Eq)]
 pub enum Suit {
     Diamonds,
     Hearts,
@@ -8,7 +8,7 @@ pub enum Suit {
     Clubs,
 }
 
-#[derive(Copy, Clone, Debug, EnumIter, PartialEq)]
+#[derive(Copy, Clone, Debug, EnumIter, PartialEq, Eq)]
 pub enum Rank {
     Two,
     Three,

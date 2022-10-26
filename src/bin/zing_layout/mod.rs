@@ -96,7 +96,7 @@ impl Card {
         card_state: &CardState,
         translation: Vec3,
     ) -> Entity {
-        let (svg_path, svg_height) = Self::svg_path_and_height(&card_state);
+        let (svg_path, svg_height) = Self::svg_path_and_height(card_state);
         let svg = asset_server.load(&svg_path);
         let scale = CARD_HEIGHT / svg_height;
 
