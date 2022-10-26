@@ -1,6 +1,6 @@
-use rand::{thread_rng, Rng};
 use zing_rs::game::unicode;
 use zing_rs::{table::Table, zing_game::ZingGame};
+use zing_rs::zing_ai::{ZingAI, RandomPlayer};
 
 fn show_state(game: &ZingGame) {
     for stack in &game.state().stacks {
@@ -37,16 +37,13 @@ fn main() {
         ],
     };
     let mut game = ZingGame::new_from_table(table, 1);
+    let players = [RandomPlayer::new(0), RandomPlayer::new(1)];
 
     while !game.finished()
     {
         show_state(&game);
 
-        let player = game.current_player();
-        game.play_card(
-            player,
-            thread_rng().gen_range(0..game.state().players[player].hand.len()),
-        );
+        players[game.current_player()].auto_play(&mut game);
     }
 
     show_state(&game);
