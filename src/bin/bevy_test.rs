@@ -16,12 +16,5 @@ fn main() {
         .add_plugin(bevy_svg::prelude::SvgPlugin)
         //.insert_resource(game.state())
         .add_plugin(zing_layout::LayoutPlugin)
-        .add_startup_system(setup_system)
         .run();
-}
-
-fn setup_system(
-    mut commands: Commands,
-) {
-    commands.spawn_bundle(Camera2dBundle::default());
 }
