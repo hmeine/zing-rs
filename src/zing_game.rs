@@ -11,13 +11,14 @@ use crate::{
 
 pub struct ZingGame {
     game_state: GameState,
-    turn: usize,
+    first_player: usize,
+    turn: usize, // number of cards actively played
     last_winner: usize,
     history: Vec<CardAction>,
 }
 
 impl ZingGame {
-    pub fn new_from_table(table: crate::table::Table, first_turn: usize) -> Self {
+    pub fn new_from_table(table: crate::table::Table, first_player: usize) -> Self {
         let mut game_state = GameState::new_from_table(table);
         game_state.stacks.push(StackState::new_from_deck(
             "stock".into(),
@@ -32,7 +33,8 @@ impl ZingGame {
 
         let mut result = Self {
             game_state,
-            turn: first_turn,
+            first_player,
+            turn: 0,
             last_winner: 999, // will always be overwritten; needs to be 0/1
             history: Vec::new(),
         };
@@ -49,7 +51,7 @@ impl ZingGame {
     }
 
     pub fn current_player(&self) -> usize {
-        self.turn
+        (self.first_player + self.turn) % self.state().player_count()
     }
 
     pub fn card_points(card: &Card) -> u32 {
@@ -141,7 +143,7 @@ impl ZingGame {
 
         self.auto_actions();
 
-        self.turn = (self.turn + 1) % self.state().player_count();
+        self.turn += 1;
     }
 
     pub fn hand_out_cards(&mut self) {
