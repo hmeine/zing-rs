@@ -305,7 +305,8 @@ fn show_game_state(
         } else {
             stack.peeping_offset
         };
-        let mut peeping_offset = (1i8..).map(|i| f32::from(i) * peeping_offset);
+        let total_peeping: i8 = card_states.iter().map(|cs| if cs.face_up { 1 } else { 0 }).sum();
+        let mut peeping_offset = (0i8..).map(|i| f32::from(total_peeping - i) * peeping_offset);
 
         let card_entities: Vec<_> = (0i8..)
             .zip(card_states.iter())
