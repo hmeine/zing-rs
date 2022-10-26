@@ -67,9 +67,9 @@ impl Card {
                         Suit::Clubs => "CLUB",
                     },
                     match card_state.card.rank {
-                        Rank::Jack => "JACK",
-                        Rank::Queen => "QUEEN",
-                        Rank::King => "KING",
+                        Rank::Jack => "11-JACK",
+                        Rank::Queen => "12-QUEEN",
+                        Rank::King => "13-KING",
                         Rank::Ace => "1",
                         _ => card_state.card.rank_str(),
                     }
