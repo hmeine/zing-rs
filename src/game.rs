@@ -18,6 +18,7 @@ impl Player {
     }
 }
 
+#[derive(Clone)]
 pub struct CardState {
     pub card: Card,
     pub face_up: bool,

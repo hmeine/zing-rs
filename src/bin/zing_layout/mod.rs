@@ -1,6 +1,7 @@
 use bevy::{prelude::*, render::camera::ScalingMode};
 use bevy_svg::prelude::*;
 use zing_rs::{card_action::CardLocation, game::CardState, Back, Rank, Suit};
+use zing_rs::{table::Table, zing_game::ZingGame};
 
 pub struct LayoutPlugin;
 
@@ -8,6 +9,8 @@ impl Plugin for LayoutPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system(setup_camera);
         app.add_startup_system(setup_card_stacks);
+
+        app.add_startup_system_to_stage(StartupStage::PostStartup, setup_random_game);
     }
 }
 
@@ -76,7 +79,7 @@ impl Card {
     fn spawn_bundle(
         commands: &mut Commands,
         asset_server: &Res<AssetServer>,
-        card_state: CardState,
+        card_state: &CardState,
     ) -> Entity {
         let (svg_path, svg_height) = Self::svg_path_and_height(&card_state);
         let svg = asset_server.load(&svg_path);
@@ -91,7 +94,7 @@ impl Card {
                 },
                 ..Default::default()
             })
-            .insert(Card(card_state))
+            .insert(Card(card_state.clone()))
             .id()
     }
 }
@@ -135,9 +138,9 @@ pub fn setup_camera(mut commands: Commands) {
 pub fn setup_card_stacks(mut commands: Commands, asset_server: Res<AssetServer>) {
     let opposite_hand_pos_y = PLAYING_CENTER_Y + VERTICAL_SPACING + 1.5 * CARD_HEIGHT;
 
-    let mut stacks = Vec::new();
+    info!("layouting card stacks");
 
-    stacks.push(spawn_card_stack(
+    spawn_card_stack(
         &mut commands,
         Vec3::new(
             PLAYING_CENTER_X - FULL_HAND_WIDTH / 2.,
@@ -147,11 +150,11 @@ pub fn setup_card_stacks(mut commands: Commands, asset_server: Res<AssetServer>)
         Vec3::ONE,
         CardLocation::PlayerHand,
         0, // FIXME: we need to know which player we are
-    ));
+    );
 
     let own_hand_pos_y = PLAYING_CENTER_Y - 0.5 * CARD_HEIGHT - VERTICAL_SPACING;
 
-    stacks.push(spawn_card_stack(
+    spawn_card_stack(
         &mut commands,
         Vec3::new(
             PLAYING_CENTER_X - FULL_HAND_WIDTH * OWN_CARD_ZOOM / 2.,
@@ -161,11 +164,11 @@ pub fn setup_card_stacks(mut commands: Commands, asset_server: Res<AssetServer>)
         Vec3::splat(OWN_CARD_ZOOM),
         CardLocation::PlayerHand,
         1, // FIXME: we need to know which player we are
-    ));
+    );
 
     // TODO: we need to know if we have two or four players
 
-    stacks.push(spawn_card_stack(
+    spawn_card_stack(
         &mut commands,
         Vec3::new(
             PLAYING_CENTER_X - CARD_WIDTH * 2.3,
@@ -175,9 +178,9 @@ pub fn setup_card_stacks(mut commands: Commands, asset_server: Res<AssetServer>)
         Vec3::ONE,
         CardLocation::Stack,
         0, // "stock"
-    ));
+    );
 
-    stacks.push(spawn_card_stack(
+    spawn_card_stack(
         &mut commands,
         Vec3::new(
             PLAYING_CENTER_X - CARD_WIDTH / 2.,
@@ -187,9 +190,9 @@ pub fn setup_card_stacks(mut commands: Commands, asset_server: Res<AssetServer>)
         Vec3::ONE,
         CardLocation::Stack,
         1, // "table"
-    ));
+    );
 
-    stacks.push(spawn_card_stack(
+    spawn_card_stack(
         &mut commands,
         Vec3::new(
             PLAYING_CENTER_X + FULL_HAND_WIDTH * OWN_CARD_ZOOM / 2. + SCORE_STACK_SPACING,
@@ -199,9 +202,9 @@ pub fn setup_card_stacks(mut commands: Commands, asset_server: Res<AssetServer>)
         Vec3::ONE,
         CardLocation::Stack,
         2, // "score_0"
-    ));
+    );
 
-    stacks.push(spawn_card_stack(
+    spawn_card_stack(
         &mut commands,
         Vec3::new(
             PLAYING_CENTER_X + FULL_HAND_WIDTH * OWN_CARD_ZOOM / 2. + SCORE_STACK_SPACING,
@@ -211,21 +214,45 @@ pub fn setup_card_stacks(mut commands: Commands, asset_server: Res<AssetServer>)
         Vec3::ONE,
         CardLocation::Stack,
         3, // "score_1"
-    ));
+    );
+}
 
-    for stack in stacks {
-        let card = Card::spawn_bundle(
-            &mut commands,
-            &asset_server,
-            CardState {
-                card: zing_rs::Card {
-                    rank: Rank::Ace,
-                    suit: Suit::Spades,
-                    back: Back::Blue,
-                },
-                face_up: true,
+
+#[derive(Component)]
+struct GameState(ZingGame);
+
+fn setup_random_game(mut commands: Commands, query_stacks: Query<(Entity, &CardStack)>, asset_server: Res<AssetServer>) {
+    let table = Table {
+        players: vec![
+            zing_rs::table::Player {
+                name: "Hans".into(),
             },
-        );
-        commands.entity(stack).push_children(&[card]);
+            zing_rs::table::Player {
+                name: "Darko".into(),
+            },
+        ],
+    };
+    let mut game = ZingGame::new_from_table(table, 1);
+
+    info!("game state set up, looking for stacks...");
+
+    for (stack_id, stack) in query_stacks.iter() {
+        let card_states = match stack.location {
+            CardLocation::PlayerHand => &game.state().players[stack.index].hand,
+            CardLocation::Stack => &game.state().stacks[stack.index].cards,
+        };
+
+        let card_entities: Vec<_> = card_states.iter().map(
+            |card_state| Card::spawn_bundle(
+                &mut commands,
+                &asset_server,
+                card_state,
+            )
+        ).collect();
+
+        commands.entity(stack_id).push_children(&card_entities);
+
     }
+
+    commands.insert_resource(GameState(game));
 }
