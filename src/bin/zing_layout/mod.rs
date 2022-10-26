@@ -1,3 +1,4 @@
+use rand::{thread_rng, Rng};
 use bevy::{prelude::*, render::camera::ScalingMode};
 use bevy_svg::prelude::*;
 use zing_rs::{card_action::CardLocation, game::CardState, Back, Rank, Suit};
@@ -253,6 +254,15 @@ fn setup_random_game(
         ],
     };
     let mut game = ZingGame::new_from_table(table, 1);
+
+    for i in (0..19)
+    {
+        let player = game.current_player();
+        game.play_card(
+            player,
+            thread_rng().gen_range(0..game.state().players[player].hand.len()),
+        );
+    }
 
     info!("game state set up, looking for stacks...");
 
