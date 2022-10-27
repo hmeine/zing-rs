@@ -300,6 +300,40 @@ fn perform_random_action(mut game_state: ResMut<GameState>, time: Res<Time>) {
     }
 }
 
+fn card_offsets_for_stack<'a>(
+    card_states: &'a Vec<CardState>,
+    stack: &CardStack,
+    in_game: bool,
+) -> impl Iterator<Item = Vec3> + 'a {
+    let card_offset = match stack.location {
+        CardLocation::PlayerHand => HAND_CARD_OFFSET,
+        CardLocation::Stack => ISOMETRIC_CARD_OFFSET,
+    };
+
+    let peeping_offset = if stack.location == CardLocation::Stack && stack.index == 1 && in_game {
+        Vec3::ZERO
+    } else {
+        stack.peeping_offset
+    };
+
+    let total_peeping: i8 = card_states
+        .iter()
+        .map(|cs| if cs.face_up { 1 } else { 0 })
+        .sum();
+    let mut peeping_offset = (0i8..).map(move |i| f32::from(total_peeping - i) * peeping_offset);
+
+    (0i8..)
+        .zip(card_states.iter())
+        .map(move |(index, card_state)| {
+            card_offset * f32::from(index)
+                + if card_state.face_up {
+                    peeping_offset.next().unwrap()
+                } else {
+                    Vec3::ZERO
+                }
+        })
+}
+
 fn spawn_cards_for_game_state(
     mut commands: Commands,
     mut game_state: ResMut<GameState>,
@@ -311,41 +345,16 @@ fn spawn_cards_for_game_state(
     let game = &game_state.game;
 
     for (stack_id, stack) in query_stacks.iter() {
-        let (card_states, card_offset) = match stack.location {
-            CardLocation::PlayerHand => (&game.state().players[stack.index].hand, HAND_CARD_OFFSET),
-            CardLocation::Stack => (
-                &game.state().stacks[stack.index].cards,
-                ISOMETRIC_CARD_OFFSET,
-            ),
+        let card_states = match stack.location {
+            CardLocation::PlayerHand => &game.state().players[stack.index].hand,
+            CardLocation::Stack => &game.state().stacks[stack.index].cards,
         };
 
-        let peeping_offset =
-            if stack.location == CardLocation::Stack && stack.index == 1 && game.turn() > 0 {
-                Vec3::ZERO
-            } else {
-                stack.peeping_offset
-            };
-        let total_peeping: i8 = card_states
+        let card_entities: Vec<_> = card_states
             .iter()
-            .map(|cs| if cs.face_up { 1 } else { 0 })
-            .sum();
-        let mut peeping_offset = (0i8..).map(|i| f32::from(total_peeping - i) * peeping_offset);
-
-        let card_entities: Vec<_> = (0i8..)
-            .zip(card_states.iter())
-            .map(|(index, card_state)| {
-                Card::spawn_bundle(
-                    &mut commands,
-                    &asset_server,
-                    card_state,
-                    card_offset * f32::from(index)
-                        //+ Vec3::new(0., 0., f32::from(index))
-                        + if card_state.face_up {
-                            peeping_offset.next().unwrap()
-                        } else {
-                            Vec3::ZERO
-                        },
-                )
+            .zip(card_offsets_for_stack(card_states, stack, game.turn() > 0))
+            .map(|(card_state, card_offset)| {
+                Card::spawn_bundle(&mut commands, &asset_server, card_state, card_offset)
             })
             .collect();
 
@@ -363,7 +372,10 @@ fn update_cards_from_game_state(
     let game = &game_state.game;
 
     if game.history().len() > game_state.last_synced_history_len {
-        let action = game.history()[game_state.last_synced_history_len..].iter().next().unwrap();
+        let action = game.history()[game_state.last_synced_history_len..]
+            .iter()
+            .next()
+            .unwrap();
 
         let mut source_parent = None;
         let mut target_parent = None;
