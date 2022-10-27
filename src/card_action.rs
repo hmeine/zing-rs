@@ -1,12 +1,12 @@
 use crate::game::{CardState, GameState};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CardLocation {
     PlayerHand,
     Stack,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CardRotation {
     FaceUp,
     FaceDown,
@@ -18,11 +18,11 @@ pub struct CardAction {
     pub source_index: usize,
     pub source_card_indices: Vec<usize>,
 
-    dest_location: Option<CardLocation>,
-    dest_index: usize,
-    dest_card_indices: Vec<usize>,
+    pub dest_location: Option<CardLocation>,
+    pub dest_index: usize,
+    pub dest_card_indices: Vec<usize>,
 
-    rotation: Option<CardRotation>,
+    pub rotation: Option<CardRotation>,
 }
 
 impl CardAction {

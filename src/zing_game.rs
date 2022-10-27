@@ -140,7 +140,7 @@ impl ZingGame {
         )
     }
 
-    fn apply(&mut self, action: CardAction) {
+    fn perform_and_remember_action(&mut self, action: CardAction) {
         action.apply(&mut self.game_state);
         self.history.push(action);
     }
@@ -148,7 +148,7 @@ impl ZingGame {
     pub fn play_card(&mut self, player: usize, card_index: usize) {
         assert!(player == self.current_player());
 
-        self.apply(
+        self.perform_and_remember_action(
             CardAction::new()
                 .from_hand(&self.game_state, player, vec![card_index])
                 .to_stack_top(&self.game_state, 1)
@@ -163,7 +163,7 @@ impl ZingGame {
 
     pub fn hand_out_cards(&mut self) {
         for player in 0..self.game_state.player_count() {
-            self.apply(
+            self.perform_and_remember_action(
                 CardAction::new()
                     .from_stack_top(&self.game_state, 0, 4)
                     .to_hand(&self.game_state, player)
@@ -175,7 +175,7 @@ impl ZingGame {
 
     pub fn show_bottom_card_of_dealer(&mut self) {
         // rotate bottom card face up (belongs to dealer, who is in advantage)
-        self.apply(
+        self.perform_and_remember_action(
             CardAction::new()
                 .from_stack(&self.game_state, 0, vec![0])
                 .to_stack_bottom(&self.game_state, 0)
@@ -185,7 +185,7 @@ impl ZingGame {
     }
 
     pub fn initial_cards_to_table(&mut self) {
-        self.apply(
+        self.perform_and_remember_action(
             CardAction::new()
                 .from_stack_top(&self.game_state, 0, 4)
                 .to_stack_top(&self.game_state, 1)
@@ -195,14 +195,14 @@ impl ZingGame {
 
         while self.game_state.stacks[1].cards.last().unwrap().card.rank == Rank::Jack {
             // put any Jack to bottom of stock, for dealer but public
-            self.apply(
+            self.perform_and_remember_action(
                 CardAction::new()
                     .from_stack_top(&self.game_state, 1, 1)
                     .to_stack_bottom(&self.game_state, 0)
                     .rotate(CardRotation::FaceUp)
                     .clone(),
             );
-            self.apply(
+            self.perform_and_remember_action(
                 CardAction::new()
                     .from_stack_top(&self.game_state, 0, 1)
                     .to_stack_top(&self.game_state, 1)
@@ -233,14 +233,14 @@ impl ZingGame {
 
                 if table_stack.cards.len() == 2 {
                     // Zing!
-                    self.apply(
+                    self.perform_and_remember_action(
                         CardAction::new()
                             .from_stack_top(&self.game_state, 1, 1)
                             .to_stack_top(&self.game_state, target_score_stack)
                             .rotate(CardRotation::FaceDown)
                             .clone(),
                     );
-                    self.apply(
+                    self.perform_and_remember_action(
                         CardAction::new()
                             .from_stack_top(&self.game_state, 1, 1)
                             .to_stack_bottom(&self.game_state, target_score_stack)
@@ -248,7 +248,7 @@ impl ZingGame {
                             .clone(),
                     );
                 } else {
-                    self.apply(
+                    self.perform_and_remember_action(
                         CardAction::new()
                             .from_stack_top(&self.game_state, 1, table_stack.cards.len())
                             .to_stack_top(&self.game_state, target_score_stack)
@@ -265,7 +265,7 @@ impl ZingGame {
                 let target_stack = 2 + self.current_player() % 2;
                 self.last_winner = target_stack;
 
-                self.apply(
+                self.perform_and_remember_action(
                     CardAction::new()
                         .from_stack_top(&self.game_state, 1, table_stack.cards.len())
                         .to_stack_top(&self.game_state, target_stack)
@@ -285,7 +285,7 @@ impl ZingGame {
                 self.hand_out_cards();
             } else {
                 let table_stack = &self.game_state.stacks[1];
-                self.apply(
+                self.perform_and_remember_action(
                     CardAction::new()
                         .from_stack_top(&self.game_state, 1, table_stack.cards.len())
                         .to_stack_top(&self.game_state, self.last_winner)

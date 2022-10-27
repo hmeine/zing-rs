@@ -293,7 +293,6 @@ fn perform_random_action(mut game_state: ResMut<GameState>, time: Res<Time>) {
 
         let player = RandomPlayer::new(game.current_player());
         player.auto_play(game);
-        println!("history has {} steps", game.history().len());
 
         if game.finished() {
             game_state.auto_play_timer.pause();
@@ -340,7 +339,7 @@ fn spawn_cards_for_game_state(
                     &asset_server,
                     card_state,
                     card_offset * f32::from(index)
-                        + Vec3::new(0., 0., f32::from(index))
+                        //+ Vec3::new(0., 0., f32::from(index))
                         + if card_state.face_up {
                             peeping_offset.next().unwrap()
                         } else {
@@ -359,18 +358,44 @@ fn spawn_cards_for_game_state(
 fn update_cards_from_game_state(
     mut commands: Commands,
     mut game_state: ResMut<GameState>,
-    query_stacks: Query<(Entity, &CardStack)>,
+    query_stacks: Query<(Entity, &Children, &CardStack)>,
 ) {
     let game = &game_state.game;
 
-    if game_state.last_synced_history_len < game.history().len() {
-        println!(
-            "performing {}-{}={} card actions",
-            game.history().len(),
-            game_state.last_synced_history_len,
-            game.history().len() - game_state.last_synced_history_len
-        );
-    }
+    if game.history().len() > game_state.last_synced_history_len {
+        let action = game.history()[game_state.last_synced_history_len..].iter().next().unwrap();
 
-    game_state.last_synced_history_len = game.history().len();
+        let mut source_parent = None;
+        let mut target_parent = None;
+
+        for (parent, children, card_stack) in &query_stacks {
+            if action.source_location.unwrap() == card_stack.location
+                && action.source_index == card_stack.index
+            {
+                source_parent = Some((parent, children, card_stack));
+            }
+            if action.dest_location.unwrap() == card_stack.location
+                && action.dest_index == card_stack.index
+            {
+                target_parent = Some((parent, children, card_stack));
+            }
+        }
+
+        let (source_parent, source_children, _source_card_stack) = source_parent.unwrap();
+        let (target_parent, _target_children, _target_card_stack) = target_parent.unwrap();
+
+        let source_cards: Vec<_> = action
+            .source_card_indices
+            .iter()
+            .map(|i| source_children[*i])
+            .collect();
+        commands
+            .entity(source_parent)
+            .remove_children(&source_cards);
+        commands
+            .entity(target_parent)
+            .insert_children(*action.dest_card_indices.first().unwrap(), &source_cards);
+
+        game_state.last_synced_history_len += 1;
+    }
 }
