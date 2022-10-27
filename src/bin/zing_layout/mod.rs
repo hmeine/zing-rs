@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use bevy::{prelude::*, render::camera::ScalingMode};
 use bevy_svg::prelude::*;
+use zing_rs::card_action::CardRotation;
 use zing_rs::zing_ai::{RandomPlayer, ZingAI};
 use zing_rs::{card_action::CardLocation, game::CardState, Back, Rank, Suit};
 use zing_rs::{table::Table, zing_game::ZingGame};
@@ -375,7 +376,9 @@ struct StackRepositioning;
 fn update_cards_from_game_state(
     mut commands: Commands,
     mut game_state: ResMut<GameState>,
-    query_stacks: Query<(Entity, &Children, &CardStack)>,
+    query_stacks: Query<(Entity, &CardStack, &Children, &Transform)>,
+    mut query_cards: Query<(&Card, &mut Transform), Without<CardStack>>,
+    asset_server: Res<AssetServer>,
 ) {
     let game = &game_state.game;
 
@@ -388,31 +391,70 @@ fn update_cards_from_game_state(
         let mut source_parent = None;
         let mut target_parent = None;
 
-        for (parent, children, card_stack) in &query_stacks {
+        for (parent, card_stack, children, transform) in &query_stacks {
             if action.source_location.unwrap() == card_stack.location
                 && action.source_index == card_stack.index
             {
-                source_parent = Some((parent, children));
+                source_parent = Some((parent, children, transform));
             }
             if action.dest_location.unwrap() == card_stack.location
                 && action.dest_index == card_stack.index
             {
-                target_parent = Some((parent, children));
+                target_parent = Some((parent, children, transform));
             }
         }
 
-        let (source_parent, source_children) = source_parent.unwrap();
-        let (target_parent, _target_children) = target_parent.unwrap();
+        // determine translation offset between the source and destination stacks
+        let (source_parent, source_children, source_transform) = source_parent.unwrap();
+        let (target_parent, _target_children, target_transform) = target_parent.unwrap();
+        let stack_offset = source_transform.translation - target_transform.translation;
 
-        let source_cards: Vec<_> = action
+        let mut source_cards: Vec<_> = action
             .source_card_indices
             .iter()
             .map(|i| source_children[*i])
             .collect();
+
         commands
             .entity(source_parent)
-            .remove_children(&source_cards)
-            .insert(StackRepositioning);
+            .remove_children(&source_cards);
+        if let Some(CardLocation::Stack) = action.source_location {
+            commands.entity(source_parent).insert(StackRepositioning);
+        }
+
+        if let Some(rotation) = action.rotation {
+            let face_up = match rotation {
+                CardRotation::FaceUp => true,
+                CardRotation::FaceDown => false,
+            };
+
+            let mut states_and_offsets = Vec::new();
+            for entity in source_cards {
+                let (card, transform) = query_cards.get(entity).unwrap();
+                states_and_offsets.push((card.0.clone(), transform.translation));
+                commands.entity(entity).despawn();
+            }
+
+            source_cards = states_and_offsets
+                .iter()
+                .map(|(old_state, old_pos)| {
+                    Card::spawn_bundle(
+                        &mut commands,
+                        &asset_server,
+                        &CardState {
+                            face_up,
+                            ..*old_state
+                        },
+                        *old_pos + stack_offset,
+                    )
+                })
+                .collect();
+        } else {
+            for card in &source_cards {
+                query_cards.get_mut(*card).unwrap().1.translation += stack_offset;
+            }
+        }
+
         commands
             .entity(target_parent)
             .insert_children(*action.dest_card_indices.first().unwrap(), &source_cards)
