@@ -465,15 +465,20 @@ fn update_cards_from_game_state(
 }
 
 fn reposition_cards_after_action(
+    mut commands: Commands,
     game_state: Res<GameState>,
-    query_stacks: Query<(Entity, &Children, &CardStack)>,
+    query_stacks: Query<(Entity, &Children, &CardStack), With<StackRepositioning>>,
     mut query_transform: Query<&mut Transform>,
 ) {
     let game = &game_state.game;
 
-    for (_, children, stack) in &query_stacks {
-        for (pos, card) in card_offsets_for_stack(stack.card_states(game), stack, true).zip(children) {
+    for (entity, children, stack) in &query_stacks {
+        for (pos, card) in
+            card_offsets_for_stack(stack.card_states(game), stack, true).zip(children)
+        {
             query_transform.get_mut(*card).unwrap().translation = pos;
         }
+
+        commands.entity(entity).remove::<StackRepositioning>();
     }
 }
