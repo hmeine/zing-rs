@@ -392,17 +392,17 @@ fn update_cards_from_game_state(
             if action.source_location.unwrap() == card_stack.location
                 && action.source_index == card_stack.index
             {
-                source_parent = Some((parent, children, card_stack));
+                source_parent = Some((parent, children));
             }
             if action.dest_location.unwrap() == card_stack.location
                 && action.dest_index == card_stack.index
             {
-                target_parent = Some((parent, children, card_stack));
+                target_parent = Some((parent, children));
             }
         }
 
-        let (source_parent, source_children, _source_card_stack) = source_parent.unwrap();
-        let (target_parent, _target_children, _target_card_stack) = target_parent.unwrap();
+        let (source_parent, source_children) = source_parent.unwrap();
+        let (target_parent, _target_children) = target_parent.unwrap();
 
         let source_cards: Vec<_> = action
             .source_card_indices
