@@ -18,6 +18,7 @@ impl Plugin for LayoutPlugin {
 
         app.add_system(perform_random_action);
         app.add_system(update_cards_from_game_state.after(perform_random_action));
+        app.add_system(reposition_cards_after_action);
     }
 }
 
@@ -156,6 +157,13 @@ impl CardStack {
                 peeping_offset,
             })
             .id()
+    }
+
+    fn card_states<'a>(&self, game: &'a ZingGame) -> &'a Vec<CardState> {
+        match self.location {
+            CardLocation::PlayerHand => &game.state().players[self.index].hand,
+            CardLocation::Stack => &game.state().stacks[self.index].cards,
+        }
     }
 }
 
@@ -345,10 +353,7 @@ fn spawn_cards_for_game_state(
     let game = &game_state.game;
 
     for (stack_id, stack) in query_stacks.iter() {
-        let card_states = match stack.location {
-            CardLocation::PlayerHand => &game.state().players[stack.index].hand,
-            CardLocation::Stack => &game.state().stacks[stack.index].cards,
-        };
+        let card_states = stack.card_states(game);
 
         let card_entities: Vec<_> = card_states
             .iter()
@@ -363,6 +368,9 @@ fn spawn_cards_for_game_state(
 
     game_state.last_synced_history_len = game.history().len();
 }
+
+#[derive(Component)]
+struct StackRepositioning;
 
 fn update_cards_from_game_state(
     mut commands: Commands,
@@ -403,11 +411,27 @@ fn update_cards_from_game_state(
             .collect();
         commands
             .entity(source_parent)
-            .remove_children(&source_cards);
+            .remove_children(&source_cards)
+            .insert(StackRepositioning);
         commands
             .entity(target_parent)
-            .insert_children(*action.dest_card_indices.first().unwrap(), &source_cards);
+            .insert_children(*action.dest_card_indices.first().unwrap(), &source_cards)
+            .insert(StackRepositioning);
 
         game_state.last_synced_history_len += 1;
+    }
+}
+
+fn reposition_cards_after_action(
+    game_state: Res<GameState>,
+    query_stacks: Query<(Entity, &Children, &CardStack)>,
+    mut query_transform: Query<&mut Transform>,
+) {
+    let game = &game_state.game;
+
+    for (_, children, stack) in &query_stacks {
+        for (pos, card) in card_offsets_for_stack(stack.card_states(game), stack, true).zip(children) {
+            query_transform.get_mut(*card).unwrap().translation = pos;
+        }
     }
 }
