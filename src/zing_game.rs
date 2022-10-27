@@ -65,6 +65,10 @@ impl ZingGame {
             .all(|player| player.hand.is_empty())
     }
 
+    pub fn history(&self) -> &Vec<CardAction> {
+        &self.history
+    }
+
     pub fn card_points(card: &Card) -> u32 {
         match card.rank {
             Rank::Jack | Rank::Queen | Rank::King | Rank::Ace => 1,

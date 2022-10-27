@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use bevy::{prelude::*, render::camera::ScalingMode};
 use bevy_svg::prelude::*;
 use zing_rs::zing_ai::{RandomPlayer, ZingAI};
@@ -13,6 +15,8 @@ impl Plugin for LayoutPlugin {
 
         app.add_startup_system(setup_random_game);
         app.add_startup_system_to_stage(StartupStage::PostStartup, show_game_state);
+
+        app.add_system(perform_random_action);
     }
 }
 
@@ -253,7 +257,10 @@ pub fn setup_card_stacks(mut commands: Commands) {
 }
 
 #[derive(Component)]
-struct GameState(ZingGame);
+struct GameState {
+    game: ZingGame,
+    auto_play_timer: Timer,
+}
 
 fn setup_random_game(mut commands: Commands) {
     let table = Table {
@@ -266,14 +273,29 @@ fn setup_random_game(mut commands: Commands) {
             },
         ],
     };
-    let mut game = ZingGame::new_from_table(table, 1);
-    let players = [RandomPlayer::new(0), RandomPlayer::new(1)];
+    let game = ZingGame::new_from_table(table, 1);
 
-    for _i in 0..19 {
-        players[game.current_player()].auto_play(&mut game);
+    commands.insert_resource(GameState {
+        game,
+        auto_play_timer: Timer::new(Duration::from_secs(3), true),
+    });
+}
+
+fn perform_random_action(mut game_state: ResMut<GameState>, time: Res<Time>) {
+    let timer = &mut game_state.auto_play_timer;
+    timer.tick(time.delta());
+
+    if timer.just_finished() {
+        let game = &mut game_state.game;
+    
+        let player = RandomPlayer::new(game.current_player());
+        player.auto_play(game);
+        println!("history has {} steps", game.history().len());
+
+        if game.finished() {
+            game_state.auto_play_timer.pause();
+        }
     }
-
-    commands.insert_resource(GameState(game));
 }
 
 fn show_game_state(
@@ -284,7 +306,7 @@ fn show_game_state(
 ) {
     info!("assuming game state is set up, looking for stacks...");
 
-    let game = &game_state.0;
+    let game = &game_state.game;
 
     for (stack_id, stack) in query_stacks.iter() {
         let (card_states, card_offset) = match stack.location {
