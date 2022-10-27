@@ -14,9 +14,10 @@ impl Plugin for LayoutPlugin {
         app.add_startup_system(setup_card_stacks);
 
         app.add_startup_system(setup_random_game);
-        app.add_startup_system_to_stage(StartupStage::PostStartup, show_game_state);
+        app.add_startup_system_to_stage(StartupStage::PostStartup, spawn_cards_for_game_state);
 
         app.add_system(perform_random_action);
+        app.add_system(update_cards_from_game_state.after(perform_random_action));
     }
 }
 
@@ -260,6 +261,7 @@ pub fn setup_card_stacks(mut commands: Commands) {
 struct GameState {
     game: ZingGame,
     auto_play_timer: Timer,
+    last_synced_history_len: usize,
 }
 
 fn setup_random_game(mut commands: Commands) {
@@ -278,6 +280,7 @@ fn setup_random_game(mut commands: Commands) {
     commands.insert_resource(GameState {
         game,
         auto_play_timer: Timer::new(Duration::from_secs(3), true),
+        last_synced_history_len: 0,
     });
 }
 
@@ -287,7 +290,7 @@ fn perform_random_action(mut game_state: ResMut<GameState>, time: Res<Time>) {
 
     if timer.just_finished() {
         let game = &mut game_state.game;
-    
+
         let player = RandomPlayer::new(game.current_player());
         player.auto_play(game);
         println!("history has {} steps", game.history().len());
@@ -298,9 +301,9 @@ fn perform_random_action(mut game_state: ResMut<GameState>, time: Res<Time>) {
     }
 }
 
-fn show_game_state(
+fn spawn_cards_for_game_state(
     mut commands: Commands,
-    game_state: Res<GameState>,
+    mut game_state: ResMut<GameState>,
     query_stacks: Query<(Entity, &CardStack)>,
     asset_server: Res<AssetServer>,
 ) {
@@ -349,4 +352,25 @@ fn show_game_state(
 
         commands.entity(stack_id).push_children(&card_entities);
     }
+
+    game_state.last_synced_history_len = game.history().len();
+}
+
+fn update_cards_from_game_state(
+    mut commands: Commands,
+    mut game_state: ResMut<GameState>,
+    query_stacks: Query<(Entity, &CardStack)>,
+) {
+    let game = &game_state.game;
+
+    if game_state.last_synced_history_len < game.history().len() {
+        println!(
+            "performing {}-{}={} card actions",
+            game.history().len(),
+            game_state.last_synced_history_len,
+            game.history().len() - game_state.last_synced_history_len
+        );
+    }
+
+    game_state.last_synced_history_len = game.history().len();
 }
