@@ -309,7 +309,7 @@ fn perform_random_action(mut game_state: ResMut<GameState>, time: Res<Time>) {
 }
 
 fn card_offsets_for_stack<'a>(
-    card_states: &'a Vec<CardState>,
+    card_states: &'a [CardState],
     stack: &CardStack,
     in_game: bool,
 ) -> impl Iterator<Item = Vec3> + 'a {
