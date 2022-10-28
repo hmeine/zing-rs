@@ -59,7 +59,7 @@ const ISOMETRIC_CARD_OFFSET: Vec3 = Vec3 {
 /// remaining space after subtracting three rows of cards and margins is evenly distributed:
 const VERTICAL_SPACING: f32 = (1. - 2. * MARGIN - (2. + OWN_CARD_ZOOM) * CARD_HEIGHT) / 2.;
 /// reserving some space at the right for the score stacks, the center should shift to left
-const PLAYING_CENTER_X: f32 = -0.6 * CARD_WIDTH;
+const PLAYING_CENTER_X: f32 = -0.1 * CARD_WIDTH;
 /// reserving some space at the bottom for the zoomed in own hand, the center should be above 0
 const PLAYING_CENTER_Y: f32 = (OWN_CARD_ZOOM - 1.) * CARD_HEIGHT / 2.;
 
