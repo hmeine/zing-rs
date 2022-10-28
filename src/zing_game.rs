@@ -202,6 +202,7 @@ impl ZingGame {
                     .rotate(CardRotation::FaceUp)
                     .clone(),
             );
+            // deal a single new card to table
             self.perform_and_remember_action(
                 CardAction::new()
                     .from_stack_top(&self.game_state, 0, 1)
