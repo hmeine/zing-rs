@@ -19,7 +19,7 @@ impl Plugin for LayoutPlugin {
 
         app.add_system(perform_random_action);
         app.add_system(update_cards_from_game_state.after(perform_random_action));
-        app.add_system(reposition_cards_after_action);
+        app.add_system_to_stage(CoreStage::PostUpdate, reposition_cards_after_action);
     }
 }
 
