@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use bevy::{prelude::*, render::camera::ScalingMode};
-use bevy_svg::prelude::*;
 use zing_rs::card_action::CardRotation;
 use zing_rs::zing_ai::{RandomPlayer, ZingAI};
 use zing_rs::{card_action::CardLocation, game::CardState, Back, Rank, Suit};
@@ -70,7 +69,7 @@ const PLAYING_CENTER_Y: f32 = (OWN_CARD_ZOOM - 1.) * CARD_HEIGHT / 2.;
 struct Card(CardState);
 
 impl Card {
-    fn svg_path_and_height(card_state: &CardState) -> (String, f32) {
+    fn png_path_and_height(card_state: &CardState) -> (String, f32) {
         let (basename, height) = if card_state.face_up {
             (
                 format!(
@@ -89,7 +88,7 @@ impl Card {
                         _ => card_state.card.rank_str(),
                     }
                 ),
-                332.6,
+                559.,
             )
         } else {
             (
@@ -98,10 +97,10 @@ impl Card {
                     Back::Red => "BACK-RED",
                 }
                 .into(),
-                88.,
+                559.,
             )
         };
-        (format!("vector_cards_3.2/{}.svg", basename), height)
+        (format!("vector_cards_3.2/{}.png", basename), height)
     }
 
     fn spawn_bundle(
@@ -110,13 +109,13 @@ impl Card {
         card_state: &CardState,
         translation: Vec3,
     ) -> Entity {
-        let (svg_path, svg_height) = Self::svg_path_and_height(card_state);
-        let svg = asset_server.load(&svg_path);
-        let scale = CARD_HEIGHT / svg_height;
+        let (png_path, png_height) = Self::png_path_and_height(card_state);
+        let png = asset_server.load(&png_path);
+        let scale = CARD_HEIGHT / png_height;
 
         commands
-            .spawn_bundle(Svg2dBundle {
-                svg,
+            .spawn_bundle(SpriteBundle {
+                texture: png,
                 transform: Transform {
                     translation,
                     scale: Vec3::new(scale, scale, 1.0),
@@ -181,7 +180,7 @@ pub fn setup_camera(mut commands: Commands) {
 }
 
 pub fn setup_card_stacks(mut commands: Commands) {
-    let opposite_hand_pos_y = PLAYING_CENTER_Y + VERTICAL_SPACING + 1.5 * CARD_HEIGHT;
+    let opposite_hand_pos_y = PLAYING_CENTER_Y + VERTICAL_SPACING + CARD_HEIGHT;
 
     info!("layouting card stacks");
 
@@ -198,7 +197,8 @@ pub fn setup_card_stacks(mut commands: Commands) {
         0, // FIXME: we need to know which player we are
     );
 
-    let own_hand_pos_y = PLAYING_CENTER_Y - 0.5 * CARD_HEIGHT - VERTICAL_SPACING;
+    let own_hand_pos_y =
+        PLAYING_CENTER_Y - 0.5 * CARD_HEIGHT - 0.5 * OWN_CARD_ZOOM * CARD_HEIGHT - VERTICAL_SPACING;
 
     CardStack::spawn_bundle(
         &mut commands,
@@ -219,7 +219,7 @@ pub fn setup_card_stacks(mut commands: Commands) {
         &mut commands,
         Vec3::new(
             PLAYING_CENTER_X - CARD_WIDTH * 2.3,
-            PLAYING_CENTER_Y + CARD_HEIGHT / 2.,
+            PLAYING_CENTER_Y,
             0.,
         ),
         Vec3::new(-HORIZONTAL_PEEPING, 0., 0.),
@@ -232,7 +232,7 @@ pub fn setup_card_stacks(mut commands: Commands) {
         &mut commands,
         Vec3::new(
             PLAYING_CENTER_X - CARD_WIDTH / 2.,
-            PLAYING_CENTER_Y + CARD_HEIGHT / 2.,
+            PLAYING_CENTER_Y,
             0.,
         ),
         Vec3::new(HORIZONTAL_PEEPING, 0., 0.),

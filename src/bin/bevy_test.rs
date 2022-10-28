@@ -13,7 +13,6 @@ fn main() {
             ..Default::default()
         })
         .add_plugins(DefaultPlugins)
-        .add_plugin(bevy_svg::prelude::SvgPlugin)
         //.insert_resource(game.state())
         .add_plugin(zing_layout::LayoutPlugin)
         .run();
