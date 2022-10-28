@@ -17,8 +17,10 @@ impl Plugin for LayoutPlugin {
         app.add_startup_system(setup_random_game);
         app.add_startup_system_to_stage(StartupStage::PostStartup, spawn_cards_for_game_state);
 
-        app.add_system(perform_random_action);
-        app.add_system(update_cards_from_game_state.after(perform_random_action));
+        //app.add_system(perform_random_action);
+        //app.add_system(update_cards_from_game_state.after(perform_random_action));
+        app.add_system(handle_keyboard_input);
+        app.add_system(update_cards_from_game_state.after(handle_keyboard_input));
         app.add_system_to_stage(CoreStage::PostUpdate, reposition_cards_after_action);
     }
 }
@@ -305,6 +307,28 @@ fn perform_random_action(mut game_state: ResMut<GameState>, time: Res<Time>) {
 
         if game.finished() {
             game_state.auto_play_timer.pause();
+        }
+    }
+}
+
+fn handle_keyboard_input(mut game_state: ResMut<GameState>, keyboard_input: Res<Input<KeyCode>>) {
+    let mut play_card = None;
+    if keyboard_input.just_pressed(KeyCode::Key1) {
+        play_card = Some(0);
+    } else if keyboard_input.just_pressed(KeyCode::Key2) {
+        play_card = Some(1);
+    } else if keyboard_input.just_pressed(KeyCode::Key3) {
+        play_card = Some(2);
+    } else if keyboard_input.just_pressed(KeyCode::Key4) {
+        play_card = Some(3);
+    }
+
+    if let Some(card_index) = play_card {
+        let game = &mut game_state.game;
+        let player_index = game.current_player();
+        let hand_size = game.state().players[player_index].hand.len();
+        if card_index < hand_size {
+            game.play_card(player_index, card_index);
         }
     }
 }
