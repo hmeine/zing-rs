@@ -15,6 +15,7 @@ rand = "0.8.5"
 itertools = "0.10.5"
 
 bevy = { version = "0.8", features = ["dynamic"] }
+bevy_tweening = "0.5"
 
 # Enable a small amount of optimization in debug mode
 [profile.dev]

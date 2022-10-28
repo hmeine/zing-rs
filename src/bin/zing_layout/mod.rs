@@ -1,6 +1,8 @@
 use std::time::Duration;
 
 use bevy::{prelude::*, render::camera::ScalingMode};
+use bevy_tweening::lens::TransformPositionLens;
+use bevy_tweening::{Animator, EaseFunction, Tween, TweeningPlugin, TweeningType};
 use zing_rs::card_action::CardRotation;
 use zing_rs::zing_ai::{RandomPlayer, ZingAI};
 use zing_rs::{card_action::CardLocation, game::CardState, Back, Rank, Suit};
@@ -10,6 +12,7 @@ pub struct LayoutPlugin;
 
 impl Plugin for LayoutPlugin {
     fn build(&self, app: &mut App) {
+        app.add_plugin(TweeningPlugin);
         app.add_startup_system(setup_camera);
         app.add_startup_system(setup_card_stacks);
 
@@ -211,11 +214,7 @@ pub fn setup_card_stacks(mut commands: Commands) {
 
     CardStack::spawn_bundle(
         &mut commands,
-        Vec3::new(
-            PLAYING_CENTER_X - CARD_WIDTH * 2.3,
-            PLAYING_CENTER_Y,
-            0.,
-        ),
+        Vec3::new(PLAYING_CENTER_X - CARD_WIDTH * 2.3, PLAYING_CENTER_Y, 0.),
         Vec3::new(-HORIZONTAL_PEEPING, 0., 0.),
         Vec3::ONE,
         CardLocation::Stack,
@@ -224,11 +223,7 @@ pub fn setup_card_stacks(mut commands: Commands) {
 
     CardStack::spawn_bundle(
         &mut commands,
-        Vec3::new(
-            PLAYING_CENTER_X - CARD_WIDTH / 2.,
-            PLAYING_CENTER_Y,
-            0.,
-        ),
+        Vec3::new(PLAYING_CENTER_X - CARD_WIDTH / 2., PLAYING_CENTER_Y, 0.),
         Vec3::new(HORIZONTAL_PEEPING, 0., 0.),
         Vec3::ONE,
         CardLocation::Stack,
@@ -505,7 +500,20 @@ fn reposition_cards_after_action(
         for (pos, card) in
             card_offsets_for_stack(stack.card_states(game), stack, true).zip(children)
         {
-            query_transform.get_mut(*card).unwrap().translation = pos;
+            let old_pos = &mut query_transform.get_mut(*card).unwrap().translation;
+            if old_pos.x != pos.x || old_pos.y != pos.y {
+                commands.entity(*card).insert(Animator::new(Tween::new(
+                    EaseFunction::QuadraticInOut,
+                    TweeningType::Once,
+                    Duration::from_millis(600),
+                    TransformPositionLens {
+                        start: *old_pos,
+                        end: pos,
+                    },
+                )));
+            } else {
+                old_pos.z = pos.z;
+            }
         }
 
         commands.entity(entity).remove::<StackRepositioning>();
