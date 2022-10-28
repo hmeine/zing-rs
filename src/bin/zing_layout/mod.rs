@@ -446,16 +446,27 @@ fn update_cards_from_game_state(
             commands.entity(source_parent).insert(StackRepositioning);
         }
 
+        let mut do_rotation = None;
+        let mut states_and_offsets = Vec::new();
+
         if let Some(rotation) = action.rotation {
             let face_up = match rotation {
                 CardRotation::FaceUp => true,
                 CardRotation::FaceDown => false,
             };
 
-            let mut states_and_offsets = Vec::new();
-            for entity in source_cards {
-                let (card, transform) = query_cards.get(entity).unwrap();
+            for entity in &source_cards {
+                let (card, transform) = query_cards.get(*entity).unwrap();
                 states_and_offsets.push((card.0.clone(), transform.translation));
+                if card.0.face_up != face_up {
+                    do_rotation = Some(face_up);
+                }
+            }
+        }
+
+        if let Some(face_up) = do_rotation {
+            // FIXME: this branch lets the cards disappear
+            for entity in source_cards {
                 commands.entity(entity).despawn();
             }
 
