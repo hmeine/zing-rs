@@ -317,7 +317,7 @@ fn card_offsets_for_stack<'a>(
     let card_offset = match stack.location {
         CardLocation::PlayerHand => HAND_CARD_OFFSET,
         CardLocation::Stack => ISOMETRIC_CARD_OFFSET,
-    };
+    } + Vec3::new(0., 0., 1.);
 
     let peeping_offset = if stack.location == CardLocation::Stack && stack.index == 1 && in_game {
         Vec3::ZERO
