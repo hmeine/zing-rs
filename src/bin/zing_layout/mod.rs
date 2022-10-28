@@ -69,38 +69,32 @@ const PLAYING_CENTER_Y: f32 = (OWN_CARD_ZOOM - 1.) * CARD_HEIGHT / 2.;
 struct Card(CardState);
 
 impl Card {
-    fn png_path_and_height(card_state: &CardState) -> (String, f32) {
-        let (basename, height) = if card_state.face_up {
-            (
-                format!(
-                    "{}-{}",
-                    match card_state.card.suit {
-                        Suit::Diamonds => "DIAMOND",
-                        Suit::Hearts => "HEART",
-                        Suit::Spades => "SPADE",
-                        Suit::Clubs => "CLUB",
-                    },
-                    match card_state.card.rank {
-                        Rank::Jack => "11-JACK",
-                        Rank::Queen => "12-QUEEN",
-                        Rank::King => "13-KING",
-                        Rank::Ace => "1",
-                        _ => card_state.card.rank_str(),
-                    }
-                ),
-                559.,
+    fn png_path(card_state: &CardState) -> String {
+        let basename = if card_state.face_up {
+            format!(
+                "{}-{}",
+                match card_state.card.suit {
+                    Suit::Diamonds => "DIAMOND",
+                    Suit::Hearts => "HEART",
+                    Suit::Spades => "SPADE",
+                    Suit::Clubs => "CLUB",
+                },
+                match card_state.card.rank {
+                    Rank::Jack => "11-JACK",
+                    Rank::Queen => "12-QUEEN",
+                    Rank::King => "13-KING",
+                    Rank::Ace => "1",
+                    _ => card_state.card.rank_str(),
+                }
             )
         } else {
-            (
-                match card_state.card.back {
-                    Back::Blue => "BACK-BLUE",
-                    Back::Red => "BACK-RED",
-                }
-                .into(),
-                559.,
-            )
+            match card_state.card.back {
+                Back::Blue => "BACK-BLUE",
+                Back::Red => "BACK-RED",
+            }
+            .into()
         };
-        (format!("vector_cards_3.2/{}.png", basename), height)
+        format!("vector_cards_3.2/{}.png", basename)
     }
 
     fn spawn_bundle(
@@ -109,9 +103,9 @@ impl Card {
         card_state: &CardState,
         translation: Vec3,
     ) -> Entity {
-        let (png_path, png_height) = Self::png_path_and_height(card_state);
+        let png_path = Self::png_path(card_state);
         let png = asset_server.load(&png_path);
-        let scale = CARD_HEIGHT / png_height;
+        let scale = CARD_HEIGHT / 559.;
 
         commands
             .spawn_bundle(SpriteBundle {
