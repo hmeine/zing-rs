@@ -452,7 +452,6 @@ fn update_cards_from_game_state(
         }
 
         if let Some(face_up) = do_rotation {
-            // FIXME: this branch lets the cards disappear
             for entity in source_cards {
                 commands.entity(entity).despawn();
             }
