@@ -19,10 +19,9 @@ impl Plugin for LayoutPlugin {
         app.add_startup_system(setup_random_game);
         app.add_startup_system_to_stage(StartupStage::PostStartup, spawn_cards_for_game_state);
 
-        //app.add_system(perform_random_action);
-        //app.add_system(update_cards_from_game_state.after(perform_random_action));
-        app.add_system(handle_keyboard_input);
-        app.add_system(update_cards_from_game_state.after(handle_keyboard_input));
+        //app.add_system(perform_random_action.before(update_cards_from_game_state));
+        app.add_system(handle_keyboard_input.before(update_cards_from_game_state));
+        app.add_system(update_cards_from_game_state);
         app.add_system_to_stage(CoreStage::PostUpdate, reposition_cards_after_action);
     }
 }
