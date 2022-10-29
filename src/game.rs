@@ -1,5 +1,5 @@
 use crate::table::Table;
-use crate::{Back, Card};
+use crate::Card;
 
 pub struct Player {
     pub name: String,
@@ -30,21 +30,6 @@ pub fn unicode(cards: &[CardState]) -> String {
         ' ',
     ));
     cards //.join(" ").collect()
-}
-
-pub enum CardView {
-    FaceUp(Card),
-    FaceDown(Back),
-}
-
-impl From<CardState> for CardView {
-    fn from(card_state: CardState) -> Self {
-        if card_state.face_up {
-            CardView::FaceUp(card_state.card)
-        } else {
-            CardView::FaceDown(card_state.card.back)
-        }
-    }
 }
 
 pub struct StackState {
