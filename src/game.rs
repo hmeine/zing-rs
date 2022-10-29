@@ -1,6 +1,7 @@
 use crate::table::Table;
 use crate::Card;
 
+#[derive(Clone)]
 pub struct Player {
     pub name: String,
     /// The difference between player hands and other stacks of cards is that
@@ -32,6 +33,7 @@ pub fn unicode(cards: &[CardState]) -> String {
     cards //.join(" ").collect()
 }
 
+#[derive(Clone)]
 pub struct StackState {
     pub id: String,
     pub cards: Vec<CardState>,
@@ -70,6 +72,7 @@ impl StackState {
     }
 }
 
+#[derive(Clone)]
 pub struct GameState {
     pub players: Vec<Player>,
     pub stacks: Vec<StackState>,

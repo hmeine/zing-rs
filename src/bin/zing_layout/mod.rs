@@ -261,6 +261,7 @@ struct GameState {
     game: ZingGame,
     auto_play_timer: Timer,
     last_synced_history_len: usize,
+    displayed_state: zing_rs::game::GameState,
 }
 
 fn setup_random_game(mut commands: Commands) {
@@ -275,11 +276,13 @@ fn setup_random_game(mut commands: Commands) {
         ],
     };
     let game = ZingGame::new_from_table(table, 1);
+    let initial_state = game.state().clone();
 
     commands.insert_resource(GameState {
         game,
         auto_play_timer: Timer::new(Duration::from_secs(3), true),
         last_synced_history_len: 0,
+        displayed_state: initial_state,
     });
 }
 
@@ -398,6 +401,10 @@ fn update_cards_from_game_state(
 
     if game.history().len() > game_state.last_synced_history_len {
         let action = &game.history()[game_state.last_synced_history_len].0;
+
+        action.apply(&mut game_state.displayed_state);
+
+        let (action, _) = &game_state.game.history()[game_state.last_synced_history_len];
 
         let mut source_parent = None;
         let mut target_parent = None;
