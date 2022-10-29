@@ -284,7 +284,7 @@ fn setup_random_game(mut commands: Commands) {
         auto_play_timer: Timer::new(Duration::from_millis(400), true),
         last_synced_history_len: 0,
         displayed_state: initial_state,
-        step_animation_timer: Timer::new(Duration::from_millis(1100), false),
+        step_animation_timer: Timer::new(Duration::from_millis(900), false),
     });
 }
 
