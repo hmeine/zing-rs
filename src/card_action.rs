@@ -30,6 +30,18 @@ impl CardAction {
         Default::default()
     }
 
+    fn stack(game: &GameState, location: CardLocation, index: usize) -> &Vec<CardState> {
+        match location {
+            CardLocation::PlayerHand => &game.players[index].hand,
+            CardLocation::Stack => &game.stacks[index].cards,
+        }
+    }
+
+    pub fn resulting_card_states(&self, game: &GameState) -> Vec<CardState> {
+        let stack = Self::stack(game, self.dest_location.unwrap(), self.dest_index);
+        self.dest_card_indices.iter().map(|i| stack[*i].clone()).collect()
+    }
+
     pub fn from_hand<'a>(
         &'a mut self,
         game: &GameState,
