@@ -157,10 +157,10 @@ impl CardStack {
             .id()
     }
 
-    fn card_states<'a>(&self, game: &'a ZingGame) -> &'a Vec<CardState> {
+    fn card_states<'a>(&self, game: &'a zing_rs::game::GameState) -> &'a Vec<CardState> {
         match self.location {
-            CardLocation::PlayerHand => &game.state().players[self.index].hand,
-            CardLocation::Stack => &game.state().stacks[self.index].cards,
+            CardLocation::PlayerHand => &game.players[self.index].hand,
+            CardLocation::Stack => &game.stacks[self.index].cards,
         }
     }
 }
@@ -369,7 +369,7 @@ fn spawn_cards_for_game_state(
     let game = &game_state.game;
 
     for (stack_id, stack) in query_stacks.iter() {
-        let card_states = stack.card_states(game);
+        let card_states = stack.card_states(&game_state.displayed_state);
 
         let card_entities: Vec<_> = card_states
             .iter()
@@ -400,11 +400,14 @@ fn update_cards_from_game_state(
     let game = &game_state.game;
 
     if game.history().len() > game_state.last_synced_history_len {
-        let action = &game.history()[game_state.last_synced_history_len].0;
+        {
+            // we need to clone in order to allow for the mutable borrow of displayed_state:
+            let action = game.history()[game_state.last_synced_history_len].0.clone();
 
-        action.apply(&mut game_state.displayed_state);
+            action.apply(&mut game_state.displayed_state);
+        }
 
-        let (action, _) = &game_state.game.history()[game_state.last_synced_history_len];
+        let action = &game_state.game.history()[game_state.last_synced_history_len].0;
 
         let mut source_parent = None;
         let mut target_parent = None;
@@ -502,7 +505,7 @@ fn reposition_cards_after_action(
 
     for (entity, children, stack) in &query_stacks {
         for (pos, card) in
-            card_offsets_for_stack(stack.card_states(game), stack, true).zip(children)
+            card_offsets_for_stack(stack.card_states(&game_state.displayed_state), stack, true).zip(children)
         {
             let old_pos = &mut query_transform.get_mut(*card).unwrap().translation;
             if old_pos.x != pos.x || old_pos.y != pos.y {
