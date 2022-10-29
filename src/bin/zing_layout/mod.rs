@@ -397,10 +397,7 @@ fn update_cards_from_game_state(
     let game = &game_state.game;
 
     if game.history().len() > game_state.last_synced_history_len {
-        let (action, _) = game.history()[game_state.last_synced_history_len..]
-            .iter()
-            .next()
-            .unwrap();
+        let action = &game.history()[game_state.last_synced_history_len].0;
 
         let mut source_parent = None;
         let mut target_parent = None;
