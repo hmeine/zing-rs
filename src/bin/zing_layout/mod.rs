@@ -262,6 +262,7 @@ struct GameState {
     auto_play_timer: Timer,
     last_synced_history_len: usize,
     displayed_state: zing_rs::game::GameState,
+    step_animation_timer: Timer,
 }
 
 fn setup_random_game(mut commands: Commands) {
@@ -280,9 +281,10 @@ fn setup_random_game(mut commands: Commands) {
 
     commands.insert_resource(GameState {
         game,
-        auto_play_timer: Timer::new(Duration::from_secs(3), true),
+        auto_play_timer: Timer::new(Duration::from_millis(400), true),
         last_synced_history_len: 0,
         displayed_state: initial_state,
+        step_animation_timer: Timer::new(Duration::from_millis(1100), false),
     });
 }
 
@@ -396,7 +398,13 @@ fn update_cards_from_game_state(
     query_stacks: Query<(Entity, &CardStack, &Children, &Transform)>,
     mut query_cards: Query<(&Card, &mut Transform), Without<CardStack>>,
     asset_server: Res<AssetServer>,
+    time: Res<Time>,
 ) {
+    game_state.step_animation_timer.tick(time.delta());
+    if !game_state.step_animation_timer.finished() {
+        return;
+    }
+
     let game = &game_state.game;
 
     if game.history().len() > game_state.last_synced_history_len {
@@ -492,6 +500,7 @@ fn update_cards_from_game_state(
             .insert(StackRepositioning);
 
         game_state.last_synced_history_len += 1;
+        game_state.step_animation_timer.reset();
     }
 }
 
