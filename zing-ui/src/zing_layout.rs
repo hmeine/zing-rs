@@ -3,10 +3,10 @@ use std::time::Duration;
 use bevy::{prelude::*, render::camera::ScalingMode};
 use bevy_tweening::lens::TransformPositionLens;
 use bevy_tweening::{Animator, EaseFunction, Tween, TweeningPlugin, TweeningType};
-use zing_rs::card_action::CardRotation;
-use zing_rs::zing_ai::{RandomPlayer, ZingAI};
-use zing_rs::{card_action::CardLocation, game::CardState, Back, Rank, Suit};
-use zing_rs::{table::Table, zing_game::ZingGame};
+use zing_game::card_action::CardRotation;
+use zing_game::zing_ai::{RandomPlayer, ZingAI};
+use zing_game::{card_action::CardLocation, game::CardState, Back, Rank, Suit};
+use zing_game::{table::Table, zing_game::ZingGame};
 
 pub struct LayoutPlugin;
 
@@ -157,7 +157,7 @@ impl CardStack {
             .id()
     }
 
-    fn card_states<'a>(&self, game: &'a zing_rs::game::GameState) -> &'a Vec<CardState> {
+    fn card_states<'a>(&self, game: &'a zing_game::game::GameState) -> &'a Vec<CardState> {
         match self.location {
             CardLocation::PlayerHand => &game.players[self.index].hand,
             CardLocation::Stack => &game.stacks[self.index].cards,
@@ -261,17 +261,17 @@ struct GameState {
     game: ZingGame,
     auto_play_timer: Timer,
     last_synced_history_len: usize,
-    displayed_state: zing_rs::game::GameState,
+    displayed_state: zing_game::game::GameState,
     step_animation_timer: Timer,
 }
 
 fn setup_random_game(mut commands: Commands) {
     let table = Table {
         players: vec![
-            zing_rs::table::Player {
+            zing_game::table::Player {
                 name: "Hans".into(),
             },
-            zing_rs::table::Player {
+            zing_game::table::Player {
                 name: "Darko".into(),
             },
         ],

@@ -1,6 +1,6 @@
-use zing_rs::game::unicode;
-use zing_rs::{table::Table, zing_game::ZingGame};
-use zing_rs::zing_ai::{ZingAI, RandomPlayer};
+use zing_game::game::unicode;
+use zing_game::{table::Table, zing_game::ZingGame};
+use zing_game::zing_ai::{ZingAI, RandomPlayer};
 
 fn show_state(game: &ZingGame) {
     for stack in &game.state().stacks {
@@ -28,10 +28,10 @@ fn show_state(game: &ZingGame) {
 fn main() {
     let table = Table {
         players: vec![
-            zing_rs::table::Player {
+            zing_game::table::Player {
                 name: "Hans".into(),
             },
-            zing_rs::table::Player {
+            zing_game::table::Player {
                 name: "Darko".into(),
             },
         ],
