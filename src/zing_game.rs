@@ -140,9 +140,9 @@ impl ZingGame {
         )
     }
 
-    fn perform_and_remember_action(&mut self, action: CardAction) {
+    fn perform_and_remember_action(&mut self, action: &CardAction) {
         action.apply(&mut self.game_state);
-        self.history.push(action);
+        self.history.push(action.clone());
     }
 
     pub fn play_card(&mut self, player: usize, card_index: usize) {
@@ -153,7 +153,6 @@ impl ZingGame {
                 .from_hand(&self.game_state, player, vec![card_index])
                 .to_stack_top(&self.game_state, 1)
                 .rotate(CardRotation::FaceUp)
-                .clone(),
         );
 
         self.auto_actions();
@@ -168,7 +167,6 @@ impl ZingGame {
                     .from_stack_top(&self.game_state, 0, 4)
                     .to_hand(&self.game_state, player)
                     .rotate(CardRotation::FaceUp)
-                    .clone(),
             );
         }
     }
@@ -180,7 +178,6 @@ impl ZingGame {
                 .from_stack(&self.game_state, 0, vec![0])
                 .to_stack_bottom(&self.game_state, 0)
                 .rotate(CardRotation::FaceUp)
-                .clone(),
         );
     }
 
@@ -190,7 +187,6 @@ impl ZingGame {
                 .from_stack_top(&self.game_state, 0, 4)
                 .to_stack_top(&self.game_state, 1)
                 .rotate(CardRotation::FaceUp)
-                .clone(),
         );
 
         while self.game_state.stacks[1].cards.last().unwrap().card.rank == Rank::Jack {
@@ -200,7 +196,6 @@ impl ZingGame {
                     .from_stack_top(&self.game_state, 1, 1)
                     .to_stack_bottom(&self.game_state, 0)
                     .rotate(CardRotation::FaceUp)
-                    .clone(),
             );
             // deal a single new card to table
             self.perform_and_remember_action(
@@ -208,7 +203,6 @@ impl ZingGame {
                     .from_stack_top(&self.game_state, 0, 1)
                     .to_stack_top(&self.game_state, 1)
                     .rotate(CardRotation::FaceUp)
-                    .clone(),
             );
         }
     }
@@ -239,14 +233,12 @@ impl ZingGame {
                             .from_stack_top(&self.game_state, 1, 1)
                             .to_stack_top(&self.game_state, target_score_stack)
                             .rotate(CardRotation::FaceDown)
-                            .clone(),
                     );
                     self.perform_and_remember_action(
                         CardAction::new()
                             .from_stack_top(&self.game_state, 1, 1)
                             .to_stack_bottom(&self.game_state, target_score_stack)
                             .rotate(CardRotation::FaceUp)
-                            .clone(),
                     );
                 } else {
                     self.perform_and_remember_action(
@@ -254,7 +246,6 @@ impl ZingGame {
                             .from_stack_top(&self.game_state, 1, table_stack.cards.len())
                             .to_stack_top(&self.game_state, target_score_stack)
                             .rotate(CardRotation::FaceDown)
-                            .clone(),
                     );
                 }
             }
@@ -271,7 +262,6 @@ impl ZingGame {
                         .from_stack_top(&self.game_state, 1, table_stack.cards.len())
                         .to_stack_top(&self.game_state, target_stack)
                         .rotate(CardRotation::FaceDown)
-                        .clone(),
                 );
             }
         }
@@ -291,7 +281,6 @@ impl ZingGame {
                         .from_stack_top(&self.game_state, 1, table_stack.cards.len())
                         .to_stack_top(&self.game_state, self.last_winner)
                         .rotate(CardRotation::FaceDown)
-                        .clone(),
                 );
             }
         }
