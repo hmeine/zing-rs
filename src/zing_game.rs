@@ -31,19 +31,19 @@ impl ZingGame {
         game_state.stacks.push(StackState::new("score_0".into()));
         game_state.stacks.push(StackState::new("score_1".into()));
 
-        let mut result = Self {
+        Self {
             game_state,
             first_player,
             turn: 0,
             last_winner: 999, // will always be overwritten; needs to be 0/1
             history: Vec::new(),
-        };
+        }
+    }
 
-        result.hand_out_cards();
-        result.show_bottom_card_of_dealer();
-        result.initial_cards_to_table();
-
-        result
+    pub fn setup_game(&mut self) {
+        self.hand_out_cards();
+        self.show_bottom_card_of_dealer();
+        self.initial_cards_to_table();
     }
 
     pub fn state(&self) -> &GameState {
@@ -53,11 +53,11 @@ impl ZingGame {
     pub fn turn(&self) -> usize {
         self.turn
     }
-    
+
     pub fn current_player(&self) -> usize {
         (self.first_player + self.turn) % self.state().player_count()
-    }    
-    
+    }
+
     pub fn finished(&self) -> bool {
         self.state()
             .players
@@ -152,7 +152,7 @@ impl ZingGame {
             CardAction::new()
                 .from_hand(&self.game_state, player, vec![card_index])
                 .to_stack_top(&self.game_state, 1)
-                .rotate(CardRotation::FaceUp)
+                .rotate(CardRotation::FaceUp),
         );
 
         self.auto_actions();
@@ -166,7 +166,7 @@ impl ZingGame {
                 CardAction::new()
                     .from_stack_top(&self.game_state, 0, 4)
                     .to_hand(&self.game_state, player)
-                    .rotate(CardRotation::FaceUp)
+                    .rotate(CardRotation::FaceUp),
             );
         }
     }
@@ -177,7 +177,7 @@ impl ZingGame {
             CardAction::new()
                 .from_stack(&self.game_state, 0, vec![0])
                 .to_stack_bottom(&self.game_state, 0)
-                .rotate(CardRotation::FaceUp)
+                .rotate(CardRotation::FaceUp),
         );
     }
 
@@ -186,7 +186,7 @@ impl ZingGame {
             CardAction::new()
                 .from_stack_top(&self.game_state, 0, 4)
                 .to_stack_top(&self.game_state, 1)
-                .rotate(CardRotation::FaceUp)
+                .rotate(CardRotation::FaceUp),
         );
 
         while self.game_state.stacks[1].cards.last().unwrap().card.rank == Rank::Jack {
@@ -195,14 +195,14 @@ impl ZingGame {
                 CardAction::new()
                     .from_stack_top(&self.game_state, 1, 1)
                     .to_stack_bottom(&self.game_state, 0)
-                    .rotate(CardRotation::FaceUp)
+                    .rotate(CardRotation::FaceUp),
             );
             // deal a single new card to table
             self.perform_and_remember_action(
                 CardAction::new()
                     .from_stack_top(&self.game_state, 0, 1)
                     .to_stack_top(&self.game_state, 1)
-                    .rotate(CardRotation::FaceUp)
+                    .rotate(CardRotation::FaceUp),
             );
         }
     }
@@ -232,20 +232,20 @@ impl ZingGame {
                         CardAction::new()
                             .from_stack_top(&self.game_state, 1, 1)
                             .to_stack_top(&self.game_state, target_score_stack)
-                            .rotate(CardRotation::FaceDown)
+                            .rotate(CardRotation::FaceDown),
                     );
                     self.perform_and_remember_action(
                         CardAction::new()
                             .from_stack_top(&self.game_state, 1, 1)
                             .to_stack_bottom(&self.game_state, target_score_stack)
-                            .rotate(CardRotation::FaceUp)
+                            .rotate(CardRotation::FaceUp),
                     );
                 } else {
                     self.perform_and_remember_action(
                         CardAction::new()
                             .from_stack_top(&self.game_state, 1, table_stack.cards.len())
                             .to_stack_top(&self.game_state, target_score_stack)
-                            .rotate(CardRotation::FaceDown)
+                            .rotate(CardRotation::FaceDown),
                     );
                 }
             }
@@ -261,7 +261,7 @@ impl ZingGame {
                     CardAction::new()
                         .from_stack_top(&self.game_state, 1, table_stack.cards.len())
                         .to_stack_top(&self.game_state, target_stack)
-                        .rotate(CardRotation::FaceDown)
+                        .rotate(CardRotation::FaceDown),
                 );
             }
         }
@@ -280,7 +280,7 @@ impl ZingGame {
                     CardAction::new()
                         .from_stack_top(&self.game_state, 1, table_stack.cards.len())
                         .to_stack_top(&self.game_state, self.last_winner)
-                        .rotate(CardRotation::FaceDown)
+                        .rotate(CardRotation::FaceDown),
                 );
             }
         }

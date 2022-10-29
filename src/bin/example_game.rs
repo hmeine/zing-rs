@@ -37,6 +37,8 @@ fn main() {
         ],
     };
     let mut game = ZingGame::new_from_table(table, 1);
+    game.setup_game();
+
     let players = [RandomPlayer::new(0), RandomPlayer::new(1)];
 
     while !game.finished()

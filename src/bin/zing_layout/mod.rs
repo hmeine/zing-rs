@@ -381,6 +381,8 @@ fn spawn_cards_for_game_state(
     }
 
     game_state.last_synced_history_len = game.history().len();
+
+    game_state.game.setup_game();
 }
 
 #[derive(Component)]
