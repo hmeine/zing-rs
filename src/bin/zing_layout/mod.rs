@@ -514,7 +514,7 @@ fn reposition_cards_after_action(
 
     for (entity, children, stack) in &query_stacks {
         for (pos, card) in
-            card_offsets_for_stack(stack.card_states(&game_state.displayed_state), stack, true).zip(children)
+            card_offsets_for_stack(stack.card_states(&game_state.displayed_state), stack, game.turn() > 0).zip(children)
         {
             let old_pos = &mut query_transform.get_mut(*card).unwrap().translation;
             if old_pos.x != pos.x || old_pos.y != pos.y {
