@@ -162,13 +162,16 @@ impl ZingGame {
     }
 
     pub fn hand_out_cards(&mut self) {
-        for player in 0..self.game_state.player_count() {
-            self.perform_and_remember_action(
-                CardAction::new()
-                    .from_stack_top(&self.game_state, 0, 4)
-                    .to_hand(&self.game_state, player)
-                    .rotate(CardRotation::FaceUp),
-            );
+        for j in 0..2 {
+            for i in 0..self.game_state.player_count() {
+                let player = (self.dealer+i+1) % self.game_state.player_count();
+                self.perform_and_remember_action(
+                    CardAction::new()
+                        .from_stack_top(&self.game_state, 0, 2)
+                        .to_hand(&self.game_state, player)
+                        .rotate(CardRotation::FaceUp),
+                );
+            }
         }
     }
 
