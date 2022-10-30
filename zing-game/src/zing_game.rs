@@ -162,7 +162,7 @@ impl ZingGame {
     }
 
     pub fn hand_out_cards(&mut self) {
-        for j in 0..2 {
+        for _ in 0..2 {
             for i in 0..self.game_state.player_count() {
                 let player = (self.dealer+i+1) % self.game_state.player_count();
                 self.perform_and_remember_action(
@@ -235,14 +235,14 @@ impl ZingGame {
                     self.perform_and_remember_action(
                         CardAction::new()
                             .from_stack_top(&self.game_state, 1, 1)
-                            .to_stack_top(&self.game_state, target_score_stack)
-                            .rotate(CardRotation::FaceDown),
+                            .to_stack_bottom(&self.game_state, target_score_stack)
+                            .rotate(CardRotation::FaceUp),
                     );
                     self.perform_and_remember_action(
                         CardAction::new()
                             .from_stack_top(&self.game_state, 1, 1)
-                            .to_stack_bottom(&self.game_state, target_score_stack)
-                            .rotate(CardRotation::FaceUp),
+                            .to_stack_top(&self.game_state, target_score_stack)
+                            .rotate(CardRotation::FaceDown),
                     );
                 } else {
                     self.perform_and_remember_action(
