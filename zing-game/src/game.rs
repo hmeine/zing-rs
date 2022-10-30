@@ -25,6 +25,29 @@ pub struct CardState {
     pub face_up: bool,
 }
 
+impl CardState {
+    /// face down version of this CardState, with rank/suit replaced with an
+    /// arbitrary choice (ace of clubs, currently – not guaranteed to stay like that)
+    pub fn covered(&self) -> Self {
+        Self {
+            card: Card {
+                rank: crate::Rank::Ace,
+                suit: crate::Suit::Clubs,
+                back: self.card.back,
+            },
+            face_up: false,
+        }
+    }
+
+    pub fn covered_if_face_down(&self) -> Self {
+        if self.face_up {
+            self.clone()
+        } else {
+            self.covered()
+        }
+    }
+}
+
 pub fn unicode(cards: &[CardState]) -> String {
     let cards = String::from_iter(itertools::intersperse(
         cards.iter().map(|card_state| card_state.card.unicode()),
@@ -94,6 +117,34 @@ impl GameState {
             result.players.push(Player::new(player.name.clone()));
         }
         result
+    }
+
+    pub fn new_view_for_player(&self, player_index: usize) -> Self {
+        Self {
+            players: self
+                .players
+                .iter()
+                .enumerate()
+                .map(|(i, player)| {
+                    if i == player_index {
+                        player.clone()
+                    } else {
+                        Player {
+                            name: player.name.clone(),
+                            hand: player.hand.iter().map(CardState::covered).collect(),
+                        }
+                    }
+                })
+                .collect(),
+            stacks: self
+                .stacks
+                .iter()
+                .map(|stack| StackState {
+                    id: stack.id.clone(),
+                    cards: stack.cards.iter().map(CardState::covered_if_face_down).collect(),
+                })
+                .collect(),
+        }
     }
 
     pub fn player_count(&self) -> usize {

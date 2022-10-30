@@ -3,7 +3,6 @@ use std::time::Duration;
 use bevy::{prelude::*, render::camera::ScalingMode};
 use bevy_tweening::lens::TransformPositionLens;
 use bevy_tweening::{Animator, EaseFunction, Tween, TweeningPlugin, TweeningType};
-use zing_game::card_action::CardRotation;
 use zing_game::zing_ai::{RandomPlayer, ZingAI};
 use zing_game::{card_action::CardLocation, game::CardState, Back, Rank, Suit};
 use zing_game::{table::Table, zing_game::ZingGame};
@@ -277,7 +276,7 @@ fn setup_random_game(mut commands: Commands) {
         ],
     };
     let game = ZingGame::new_from_table(table, 1);
-    let initial_state = game.state().clone();
+    let initial_state = game.state().new_view_for_player(0);
 
     commands.insert_resource(GameState {
         game,
@@ -451,39 +450,31 @@ fn update_cards_from_game_state(
             commands.entity(source_parent).insert(StackRepositioning);
         }
 
-        let mut do_rotation = None;
+        let mut do_rotation = false;
         let mut states_and_offsets = Vec::new();
 
-        if let Some(rotation) = action.rotation {
-            let face_up = match rotation {
-                CardRotation::FaceUp => true,
-                CardRotation::FaceDown => false,
-            };
-
-            for entity in &source_cards {
+        if action.rotation.is_some() {
+            for (entity, card_state) in source_cards.iter().zip(&action.resulting_card_states) {
                 let (card, transform) = query_cards.get(*entity).unwrap();
-                states_and_offsets.push((card.0.clone(), transform.translation));
-                if card.0.face_up != face_up {
-                    do_rotation = Some(face_up);
+                states_and_offsets.push((card_state.clone(), transform.translation));
+                if card.0.face_up != card_state.face_up {
+                    do_rotation = true;
                 }
             }
         }
 
-        if let Some(face_up) = do_rotation {
+        if do_rotation {
             for entity in source_cards {
                 commands.entity(entity).despawn();
             }
 
             source_cards = states_and_offsets
                 .iter()
-                .map(|(old_state, old_pos)| {
+                .map(|(new_state, old_pos)| {
                     Card::spawn_bundle(
                         &mut commands,
                         &asset_server,
-                        &CardState {
-                            face_up,
-                            ..*old_state
-                        },
+                        new_state,
                         *old_pos + stack_offset,
                     )
                 })
