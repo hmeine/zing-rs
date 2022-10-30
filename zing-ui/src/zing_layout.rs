@@ -4,8 +4,10 @@ use bevy::{prelude::*, render::camera::ScalingMode};
 use bevy_tweening::lens::TransformPositionLens;
 use bevy_tweening::{Animator, EaseFunction, Tween, TweeningPlugin, TweeningType};
 use zing_game::zing_ai::{RandomPlayer, ZingAI};
-use zing_game::{card_action::CardLocation, game::CardState, Back, Rank, Suit};
+use zing_game::{card_action::CardLocation, game::CardState};
 use zing_game::{table::Table, zing_game::ZingGame};
+use crate::card_sprite::CardSprite;
+use crate::constants::*;
 
 pub struct LayoutPlugin;
 
@@ -28,106 +30,7 @@ impl Plugin for LayoutPlugin {
     }
 }
 
-/// margin at top / bottom of screen (relative to full screen height)
-const MARGIN: f32 = 0.05;
-/// vertical base size of all cards (relative to full screen height)
-const CARD_HEIGHT: f32 = 0.23;
-/// horizontal base size of all cards
-const CARD_WIDTH: f32 = CARD_HEIGHT / 1.4;
-/// horizontal offset for making card value visible
-const HORIZONTAL_PEEPING: f32 = CARD_WIDTH * 0.166;
-/// vertical offset for making card value visible
-const VERTICAL_PEEPING: f32 = CARD_HEIGHT * 0.2;
-/// horizontal offset for spreading out cards on player hands
-const HAND_CARD_OFFSET_X: f32 = CARD_WIDTH * 1.14;
-/// full width of four spread out cards on hand
-const FULL_HAND_WIDTH: f32 = CARD_WIDTH + 3. * HAND_CARD_OFFSET_X;
-/// additional scale factor > 1 for cards representing own player hand
-const OWN_CARD_ZOOM: f32 = 1.15;
-/// horizontal offset between (own) player hand and (own) score stack
-const SCORE_STACK_SPACING: f32 = MARGIN;
-
-/// offset for spreading out cards on player hands
-const HAND_CARD_OFFSET: Vec3 = Vec3 {
-    x: HAND_CARD_OFFSET_X,
-    y: 0.,
-    z: 0.,
-};
-/// offset for visualizing stacks of cards
-const ISOMETRIC_CARD_OFFSET: Vec3 = Vec3 {
-    x: CARD_WIDTH / 300.,
-    y: CARD_WIDTH / 250.,
-    z: 0.,
-};
-
-/// remaining space after subtracting three rows of cards and margins is evenly distributed:
-const VERTICAL_SPACING: f32 = (1. - 2. * MARGIN - (2. + OWN_CARD_ZOOM) * CARD_HEIGHT) / 2.;
-/// reserving some space at the right for the score stacks, the center should shift to left
-const PLAYING_CENTER_X: f32 = -0.1 * CARD_WIDTH;
-/// reserving some space at the bottom for the zoomed in own hand, the center should be above 0
-const PLAYING_CENTER_Y: f32 = (OWN_CARD_ZOOM - 1.) * CARD_HEIGHT / 2.;
-
-const ANIMATION_MILLIS: u64 = 500;
-const STEP_DURATION_MILLIS: u64 = 700;
-
 // TODO: we need to consider having four players
-
-#[derive(Component)]
-struct Card(CardState);
-
-impl Card {
-    fn png_path(card_state: &CardState) -> String {
-        let basename = if card_state.face_up {
-            format!(
-                "{}-{}",
-                match card_state.card.suit {
-                    Suit::Diamonds => "DIAMOND",
-                    Suit::Hearts => "HEART",
-                    Suit::Spades => "SPADE",
-                    Suit::Clubs => "CLUB",
-                },
-                match card_state.card.rank {
-                    Rank::Jack => "11-JACK",
-                    Rank::Queen => "12-QUEEN",
-                    Rank::King => "13-KING",
-                    Rank::Ace => "1",
-                    _ => card_state.card.rank_str(),
-                }
-            )
-        } else {
-            match card_state.card.back {
-                Back::Blue => "BACK-BLUE",
-                Back::Red => "BACK-RED",
-            }
-            .into()
-        };
-        format!("vector_cards_3.2/{}.png", basename)
-    }
-
-    fn spawn_bundle(
-        commands: &mut Commands,
-        asset_server: &Res<AssetServer>,
-        card_state: &CardState,
-        translation: Vec3,
-    ) -> Entity {
-        let png_path = Self::png_path(card_state);
-        let png = asset_server.load(&png_path);
-        let scale = CARD_HEIGHT / 559.;
-
-        commands
-            .spawn_bundle(SpriteBundle {
-                texture: png,
-                transform: Transform {
-                    translation,
-                    scale: Vec3::new(scale, scale, 1.0),
-                    ..Default::default()
-                },
-                ..Default::default()
-            })
-            .insert(Self(card_state.clone()))
-            .id()
-    }
-}
 
 #[derive(Component)]
 struct CardStack {
@@ -386,7 +289,7 @@ fn spawn_cards_for_initial_game_state(
             .iter()
             .zip(card_offsets_for_stack(card_states, stack, false))
             .map(|(card_state, card_offset)| {
-                Card::spawn_bundle(&mut commands, &asset_server, card_state, card_offset)
+                CardSprite::spawn_bundle(&mut commands, &asset_server, card_state, card_offset)
             })
             .collect();
 
@@ -403,7 +306,7 @@ fn update_cards_from_action(
     mut commands: Commands,
     mut game_state: ResMut<GameState>,
     query_stacks: Query<(Entity, &CardStack, &Children, &Transform)>,
-    mut query_cards: Query<(&Card, &mut Transform), Without<CardStack>>,
+    mut query_cards: Query<(&CardSprite, &mut Transform), Without<CardStack>>,
     asset_server: Res<AssetServer>,
     time: Res<Time>,
 ) {
@@ -476,7 +379,7 @@ fn update_cards_from_action(
             source_cards = states_and_offsets
                 .iter()
                 .map(|(new_state, old_pos)| {
-                    Card::spawn_bundle(
+                    CardSprite::spawn_bundle(
                         &mut commands,
                         &asset_server,
                         new_state,
