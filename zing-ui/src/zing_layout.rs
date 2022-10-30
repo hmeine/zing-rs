@@ -3,7 +3,6 @@ use std::time::Duration;
 use bevy::{prelude::*, render::camera::ScalingMode};
 use bevy_tweening::lens::TransformPositionLens;
 use bevy_tweening::{Animator, EaseFunction, Tween, TweeningPlugin, TweeningType};
-use zing_game::zing_ai::{RandomPlayer, ZingAI};
 use zing_game::{card_action::CardLocation, game::CardState};
 use zing_game::{table::Table, zing_game::ZingGame};
 use crate::card_sprite::CardSprite;
@@ -168,7 +167,6 @@ fn setup_card_stacks(mut commands: Commands, game_state: Res<GameState>) {
 struct GameState {
     game: ZingGame,
     we_are_player: usize,
-    auto_play_timer: Timer,
     last_synced_history_len: usize,
     displayed_state: zing_game::game::GameState,
     step_animation_timer: Timer,
@@ -193,27 +191,10 @@ fn setup_random_game(mut commands: Commands) {
     commands.insert_resource(GameState {
         game,
         we_are_player,
-        auto_play_timer: Timer::new(Duration::from_millis(400), true),
         last_synced_history_len: initial_history_len,
         displayed_state: initial_state,
         step_animation_timer: Timer::new(Duration::from_millis(STEP_DURATION_MILLIS), false),
     });
-}
-
-fn perform_random_action(mut game_state: ResMut<GameState>, time: Res<Time>) {
-    let timer = &mut game_state.auto_play_timer;
-    timer.tick(time.delta());
-
-    if timer.just_finished() {
-        let game = &mut game_state.game;
-
-        let player = RandomPlayer::new(game.current_player());
-        player.auto_play(game);
-
-        if game.finished() {
-            game_state.auto_play_timer.pause();
-        }
-    }
 }
 
 fn handle_keyboard_input(mut game_state: ResMut<GameState>, keyboard_input: Res<Input<KeyCode>>) {
