@@ -16,11 +16,11 @@ impl Plugin for LayoutPlugin {
         app.add_startup_system(setup_card_stacks);
 
         app.add_startup_system(setup_random_game);
-        app.add_startup_system_to_stage(StartupStage::PostStartup, spawn_cards_for_game_state);
+        app.add_startup_system_to_stage(StartupStage::PostStartup, spawn_cards_for_initial_game_state);
 
         //app.add_system(perform_random_action.before(update_cards_from_game_state));
-        app.add_system(handle_keyboard_input.before(update_cards_from_game_state));
-        app.add_system(update_cards_from_game_state);
+        app.add_system(handle_keyboard_input.before(update_cards_from_action));
+        app.add_system(update_cards_from_action);
         app.add_system_to_stage(CoreStage::PostUpdate, reposition_cards_after_action);
     }
 }
@@ -276,12 +276,13 @@ fn setup_random_game(mut commands: Commands) {
         ],
     };
     let game = ZingGame::new_from_table(table, 1);
-    let initial_state = game.state().new_view_for_player(0);
+    let initial_state = game.state().new_view_for_player(1);
+    let initial_history_len = game.history().len();
 
     commands.insert_resource(GameState {
         game,
         auto_play_timer: Timer::new(Duration::from_millis(400), true),
-        last_synced_history_len: 0,
+        last_synced_history_len: initial_history_len,
         displayed_state: initial_state,
         step_animation_timer: Timer::new(Duration::from_millis(900), false),
     });
@@ -304,6 +305,10 @@ fn perform_random_action(mut game_state: ResMut<GameState>, time: Res<Time>) {
 }
 
 fn handle_keyboard_input(mut game_state: ResMut<GameState>, keyboard_input: Res<Input<KeyCode>>) {
+    if !game_state.step_animation_timer.finished() {
+        return;
+    }
+
     let mut play_card = None;
     if keyboard_input.just_pressed(KeyCode::Key1) {
         play_card = Some(0);
@@ -359,22 +364,18 @@ fn card_offsets_for_stack<'a>(
         })
 }
 
-fn spawn_cards_for_game_state(
+fn spawn_cards_for_initial_game_state(
     mut commands: Commands,
     mut game_state: ResMut<GameState>,
     query_stacks: Query<(Entity, &CardStack)>,
     asset_server: Res<AssetServer>,
 ) {
-    info!("assuming game state is set up, looking for stacks...");
-
-    let game = &game_state.game;
-
     for (stack_id, stack) in query_stacks.iter() {
         let card_states = stack.card_states(&game_state.displayed_state);
 
         let card_entities: Vec<_> = card_states
             .iter()
-            .zip(card_offsets_for_stack(card_states, stack, game.turn() > 0))
+            .zip(card_offsets_for_stack(card_states, stack, false))
             .map(|(card_state, card_offset)| {
                 Card::spawn_bundle(&mut commands, &asset_server, card_state, card_offset)
             })
@@ -383,15 +384,13 @@ fn spawn_cards_for_game_state(
         commands.entity(stack_id).push_children(&card_entities);
     }
 
-    game_state.last_synced_history_len = game.history().len();
-
     game_state.game.setup_game();
 }
 
 #[derive(Component)]
 struct StackRepositioning;
 
-fn update_cards_from_game_state(
+fn update_cards_from_action(
     mut commands: Commands,
     mut game_state: ResMut<GameState>,
     query_stacks: Query<(Entity, &CardStack, &Children, &Transform)>,
@@ -407,14 +406,10 @@ fn update_cards_from_game_state(
     let game = &game_state.game;
 
     if game.history().len() > game_state.last_synced_history_len {
-        {
-            // we need to clone in order to allow for the mutable borrow of displayed_state:
-            let action = game.history()[game_state.last_synced_history_len].clone();
+        // we need to clone in order to allow for the mutable borrow of displayed_state:
+        let action = game.history()[game_state.last_synced_history_len].new_view_for_player(1);
 
-            action.apply(&mut game_state.displayed_state);
-        }
-
-        let action = &game_state.game.history()[game_state.last_synced_history_len];
+        action.apply(&mut game_state.displayed_state);
 
         let mut source_parent = None;
         let mut target_parent = None;

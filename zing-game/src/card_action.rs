@@ -32,6 +32,22 @@ impl CardAction {
         Default::default()
     }
 
+    pub fn new_view_for_player(&self, player_index: usize) -> Self {
+        match self.dest_location.expect("destination not set up") {
+            CardLocation::PlayerHand => if self.dest_index != player_index {
+                CardAction {
+                    resulting_card_states: self.resulting_card_states.iter().map(
+                        CardState::covered
+                    ).collect(),
+                    ..self.clone()
+                }
+            } else {
+                self.clone()
+            },
+            CardLocation::Stack => self.clone(),
+        }
+    }
+
     fn stack_mut(
         game: &mut GameState,
         location: CardLocation,
