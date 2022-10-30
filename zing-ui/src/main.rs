@@ -27,6 +27,7 @@ fn main() {
             title: "Zing".to_string(),
             width: 1200.,
             height: 900.,
+            fit_canvas_to_parent: true,
             ..Default::default()
         })
         .insert_resource(GameState::new(ZingGame::new_from_table(table, 0), 0))
