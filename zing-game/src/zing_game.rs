@@ -14,7 +14,7 @@ pub struct ZingGame {
     first_player: usize,
     turn: usize, // number of cards actively played
     last_winner: usize,
-    history: Vec<(CardAction, Vec<CardState>)>,
+    history: Vec<CardAction>,
 }
 
 impl ZingGame {
@@ -65,7 +65,7 @@ impl ZingGame {
             .all(|player| player.hand.is_empty())
     }
 
-    pub fn history(&self) -> &Vec<(CardAction, Vec<CardState>)> {
+    pub fn history(&self) -> &Vec<CardAction> {
         &self.history
     }
 
@@ -141,8 +141,9 @@ impl ZingGame {
     }
 
     fn perform_and_remember_action(&mut self, action: &CardAction) {
-        action.apply(&mut self.game_state);
-        self.history.push((action.clone(), action.resulting_card_states(&self.game_state)));
+        let mut action = action.clone();
+        action.apply_and_remember_cards(&mut self.game_state);
+        self.history.push(action);
     }
 
     pub fn play_card(&mut self, player: usize, card_index: usize) {

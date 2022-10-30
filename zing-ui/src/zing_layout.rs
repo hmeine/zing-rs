@@ -410,12 +410,12 @@ fn update_cards_from_game_state(
     if game.history().len() > game_state.last_synced_history_len {
         {
             // we need to clone in order to allow for the mutable borrow of displayed_state:
-            let action = game.history()[game_state.last_synced_history_len].0.clone();
+            let action = game.history()[game_state.last_synced_history_len].clone();
 
             action.apply(&mut game_state.displayed_state);
         }
 
-        let action = &game_state.game.history()[game_state.last_synced_history_len].0;
+        let action = &game_state.game.history()[game_state.last_synced_history_len];
 
         let mut source_parent = None;
         let mut target_parent = None;
@@ -513,8 +513,12 @@ fn reposition_cards_after_action(
     let game = &game_state.game;
 
     for (entity, children, stack) in &query_stacks {
-        for (pos, card) in
-            card_offsets_for_stack(stack.card_states(&game_state.displayed_state), stack, game.turn() > 0).zip(children)
+        for (pos, card) in card_offsets_for_stack(
+            stack.card_states(&game_state.displayed_state),
+            stack,
+            game.turn() > 0,
+        )
+        .zip(children)
         {
             let old_pos = &mut query_transform.get_mut(*card).unwrap().translation;
             if old_pos.x != pos.x || old_pos.y != pos.y {

@@ -23,6 +23,8 @@ pub struct CardAction {
     pub dest_card_indices: Vec<usize>,
 
     pub rotation: Option<CardRotation>,
+
+    pub resulting_card_states: Vec<CardState>,
 }
 
 impl CardAction {
@@ -35,11 +37,6 @@ impl CardAction {
             CardLocation::PlayerHand => &game.players[index].hand,
             CardLocation::Stack => &game.stacks[index].cards,
         }
-    }
-
-    pub fn resulting_card_states(&self, game: &GameState) -> Vec<CardState> {
-        let stack = Self::stack(game, self.dest_location.unwrap(), self.dest_index);
-        self.dest_card_indices.iter().map(|i| stack[*i].clone()).collect()
     }
 
     pub fn from_hand<'a>(
@@ -119,10 +116,12 @@ impl CardAction {
         self
     }
 
-    pub fn apply(&self, game: &mut GameState) {
-        assert_eq!(self.source_card_indices.len(), self.dest_card_indices.len());
+    pub fn apply_and_remember_cards(&mut self, game: &mut GameState) {
+        self.resulting_card_states = self.apply(game);
+    }
 
-        //dbg!(self);
+    pub fn apply(&self, game: &mut GameState) -> Vec<CardState> {
+        assert_eq!(self.source_card_indices.len(), self.dest_card_indices.len());
 
         let source_cards: Vec<CardState> = {
             let source_stack = match self.source_location {
@@ -131,18 +130,21 @@ impl CardAction {
                 None => panic!("CardAction source not set up"),
             };
 
-            let rotated_cards = self
-                .source_card_indices
-                .iter()
-                .map(|source_index| CardState {
-                    card: source_stack[*source_index].card,
-                    face_up: match self.rotation {
-                        None => source_stack[*source_index].face_up,
-                        Some(CardRotation::FaceDown) => false,
-                        Some(CardRotation::FaceUp) => true,
-                    },
-                })
-                .collect();
+            let rotated_cards = if self.resulting_card_states.len() > 0 {
+                self.resulting_card_states.clone()
+            } else {
+                self.source_card_indices
+                    .iter()
+                    .map(|source_index| CardState {
+                        card: source_stack[*source_index].card,
+                        face_up: match self.rotation {
+                            None => source_stack[*source_index].face_up,
+                            Some(CardRotation::FaceDown) => false,
+                            Some(CardRotation::FaceUp) => true,
+                        },
+                    })
+                    .collect()
+            };
 
             let mut remove_indices = self.source_card_indices.clone();
             remove_indices.sort_unstable();
@@ -160,8 +162,10 @@ impl CardAction {
             None => panic!("CardAction destination not set up"),
         };
 
-        for (dest_index, card_state) in self.dest_card_indices.iter().zip(source_cards) {
-            dest_stack.insert(*dest_index, card_state);
+        for (dest_index, card_state) in self.dest_card_indices.iter().zip(&source_cards) {
+            dest_stack.insert(*dest_index, card_state.clone());
         }
+
+        source_cards
     }
 }
