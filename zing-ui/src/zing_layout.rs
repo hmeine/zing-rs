@@ -12,11 +12,14 @@ pub struct LayoutPlugin;
 impl Plugin for LayoutPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(TweeningPlugin);
+        app.add_startup_system_to_stage(StartupStage::PreStartup, setup_random_game);
         app.add_startup_system(setup_camera);
         app.add_startup_system(setup_card_stacks);
 
-        app.add_startup_system(setup_random_game);
-        app.add_startup_system_to_stage(StartupStage::PostStartup, spawn_cards_for_initial_game_state);
+        app.add_startup_system_to_stage(
+            StartupStage::PostStartup,
+            spawn_cards_for_initial_game_state,
+        );
 
         //app.add_system(perform_random_action.before(update_cards_from_game_state));
         app.add_system(handle_keyboard_input.before(update_cards_from_action));
@@ -164,7 +167,7 @@ impl CardStack {
     }
 }
 
-pub fn setup_camera(mut commands: Commands) {
+fn setup_camera(mut commands: Commands) {
     commands.spawn_bundle(Camera2dBundle {
         projection: OrthographicProjection {
             scaling_mode: ScalingMode::FixedVertical(1.0),
@@ -174,7 +177,7 @@ pub fn setup_camera(mut commands: Commands) {
     });
 }
 
-pub fn setup_card_stacks(mut commands: Commands) {
+fn setup_card_stacks(mut commands: Commands, game_state: Res<GameState>) {
     let opposite_hand_pos_y = PLAYING_CENTER_Y + VERTICAL_SPACING + CARD_HEIGHT;
 
     info!("layouting card stacks");
@@ -189,7 +192,7 @@ pub fn setup_card_stacks(mut commands: Commands) {
         Vec3::ZERO,
         Vec3::ONE,
         CardLocation::PlayerHand,
-        0, // FIXME: we need to know which player we are
+        1 - game_state.we_are_player,
     );
 
     let own_hand_pos_y =
@@ -205,7 +208,7 @@ pub fn setup_card_stacks(mut commands: Commands) {
         Vec3::ZERO,
         Vec3::splat(OWN_CARD_ZOOM),
         CardLocation::PlayerHand,
-        1, // FIXME: we need to know which player we are
+        game_state.we_are_player,
     );
 
     // TODO: we need to know if we have two or four players
@@ -238,7 +241,7 @@ pub fn setup_card_stacks(mut commands: Commands) {
         Vec3::new(0., -VERTICAL_PEEPING, 0.),
         Vec3::ONE,
         CardLocation::Stack,
-        2, // "score_0"
+        2 + ((game_state.we_are_player + 1) % 2),
     );
 
     CardStack::spawn_bundle(
@@ -251,13 +254,14 @@ pub fn setup_card_stacks(mut commands: Commands) {
         Vec3::new(0., VERTICAL_PEEPING, 0.),
         Vec3::ONE,
         CardLocation::Stack,
-        3, // "score_1"
+        2 + game_state.we_are_player % 2,
     );
 }
 
 #[derive(Component)]
 struct GameState {
     game: ZingGame,
+    we_are_player: usize,
     auto_play_timer: Timer,
     last_synced_history_len: usize,
     displayed_state: zing_game::game::GameState,
@@ -275,12 +279,14 @@ fn setup_random_game(mut commands: Commands) {
             },
         ],
     };
-    let game = ZingGame::new_from_table(table, 1);
-    let initial_state = game.state().new_view_for_player(1);
+    let game = ZingGame::new_from_table(table, 0);
+    let we_are_player = 0;
+    let initial_state = game.state().new_view_for_player(we_are_player);
     let initial_history_len = game.history().len();
 
     commands.insert_resource(GameState {
         game,
+        we_are_player,
         auto_play_timer: Timer::new(Duration::from_millis(400), true),
         last_synced_history_len: initial_history_len,
         displayed_state: initial_state,
@@ -407,7 +413,8 @@ fn update_cards_from_action(
 
     if game.history().len() > game_state.last_synced_history_len {
         // we need to clone in order to allow for the mutable borrow of displayed_state:
-        let action = game.history()[game_state.last_synced_history_len].new_view_for_player(1);
+        let action = game.history()[game_state.last_synced_history_len]
+            .new_view_for_player(game_state.we_are_player);
 
         action.apply(&mut game_state.displayed_state);
 
