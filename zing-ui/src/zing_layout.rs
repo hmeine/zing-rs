@@ -67,6 +67,9 @@ const PLAYING_CENTER_X: f32 = -0.1 * CARD_WIDTH;
 /// reserving some space at the bottom for the zoomed in own hand, the center should be above 0
 const PLAYING_CENTER_Y: f32 = (OWN_CARD_ZOOM - 1.) * CARD_HEIGHT / 2.;
 
+const ANIMATION_MILLIS: u64 = 500;
+const STEP_DURATION_MILLIS: u64 = 700;
+
 // TODO: we need to consider having four players
 
 #[derive(Component)]
@@ -290,7 +293,7 @@ fn setup_random_game(mut commands: Commands) {
         auto_play_timer: Timer::new(Duration::from_millis(400), true),
         last_synced_history_len: initial_history_len,
         displayed_state: initial_state,
-        step_animation_timer: Timer::new(Duration::from_millis(900), false),
+        step_animation_timer: Timer::new(Duration::from_millis(STEP_DURATION_MILLIS), false),
     });
 }
 
@@ -518,7 +521,7 @@ fn reposition_cards_after_action(
                 commands.entity(*card).insert(Animator::new(Tween::new(
                     EaseFunction::QuadraticInOut,
                     TweeningType::Once,
-                    Duration::from_millis(600),
+                    Duration::from_millis(ANIMATION_MILLIS),
                     TransformPositionLens {
                         start: *old_pos,
                         end: pos,
