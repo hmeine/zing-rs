@@ -10,5 +10,5 @@ rand = "0.8.5"
 itertools = "0.10.5"
 zing_game = { path = "../zing-game" }
 
-bevy = { version = "0.8", features = ["dynamic"] }
+bevy = { version = "0.8" }
 bevy_tweening = "0.5"
