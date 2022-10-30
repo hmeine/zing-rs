@@ -32,10 +32,14 @@ impl CardAction {
         Default::default()
     }
 
-    fn stack(game: &GameState, location: CardLocation, index: usize) -> &Vec<CardState> {
+    fn stack_mut(
+        game: &mut GameState,
+        location: CardLocation,
+        index: usize,
+    ) -> &mut Vec<CardState> {
         match location {
-            CardLocation::PlayerHand => &game.players[index].hand,
-            CardLocation::Stack => &game.stacks[index].cards,
+            CardLocation::PlayerHand => &mut game.players[index].hand,
+            CardLocation::Stack => &mut game.stacks[index].cards,
         }
     }
 
@@ -124,11 +128,11 @@ impl CardAction {
         assert_eq!(self.source_card_indices.len(), self.dest_card_indices.len());
 
         let source_cards: Vec<CardState> = {
-            let source_stack = match self.source_location {
-                Some(CardLocation::PlayerHand) => &mut game.players[self.source_index].hand,
-                Some(CardLocation::Stack) => &mut game.stacks[self.source_index].cards,
-                None => panic!("CardAction source not set up"),
-            };
+            let source_stack = Self::stack_mut(
+                game,
+                self.source_location.expect("CardAction source not set up"),
+                self.source_index,
+            );
 
             let rotated_cards = if self.resulting_card_states.len() > 0 {
                 self.resulting_card_states.clone()
@@ -155,12 +159,12 @@ impl CardAction {
             rotated_cards
         };
 
-        let dest_stack = match self.dest_location {
-            Some(CardLocation::PlayerHand) => &mut game.players[self.dest_index].hand,
-            Some(CardLocation::Stack) => &mut game.stacks[self.dest_index].cards,
-            // if we were to return an error, we would have to check before removing the cards:
-            None => panic!("CardAction destination not set up"),
-        };
+        let dest_stack = Self::stack_mut(
+            game,
+            self.dest_location
+                .expect("CardAction destination not set up"),
+            self.dest_index,
+        );
 
         for (dest_index, card_state) in self.dest_card_indices.iter().zip(&source_cards) {
             dest_stack.insert(*dest_index, card_state.clone());
