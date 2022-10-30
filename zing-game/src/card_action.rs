@@ -150,7 +150,7 @@ impl CardAction {
                 self.source_index,
             );
 
-            let rotated_cards = if self.resulting_card_states.len() > 0 {
+            let rotated_cards = if !self.resulting_card_states.is_empty() {
                 self.resulting_card_states.clone()
             } else {
                 self.source_card_indices
