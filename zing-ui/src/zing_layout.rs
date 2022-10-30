@@ -2,18 +2,16 @@ use std::time::Duration;
 
 use bevy::{prelude::*, render::camera::ScalingMode};
 use bevy_tweening::lens::TransformPositionLens;
-use bevy_tweening::{Animator, EaseFunction, Tween, TweeningPlugin, TweeningType};
+use bevy_tweening::{Animator, EaseFunction, Tween, TweeningType};
 use zing_game::{card_action::CardLocation, game::CardState};
 use crate::card_sprite::CardSprite;
 use crate::constants::*;
-use crate::game_state::{setup_random_game, GameState, handle_keyboard_input};
+use crate::game_state::{GameState, handle_keyboard_input};
 
 pub struct LayoutPlugin;
 
 impl Plugin for LayoutPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(TweeningPlugin);
-        app.add_startup_system_to_stage(StartupStage::PreStartup, setup_random_game);
         app.add_startup_system(setup_camera);
         app.add_startup_system(setup_card_stacks);
 
@@ -22,7 +20,6 @@ impl Plugin for LayoutPlugin {
             spawn_cards_for_initial_game_state,
         );
 
-        //app.add_system(perform_random_action.before(update_cards_from_game_state));
         app.add_system(handle_keyboard_input.before(update_cards_from_action));
         app.add_system(update_cards_from_action);
         app.add_system_to_stage(CoreStage::PostUpdate, reposition_cards_after_action);
