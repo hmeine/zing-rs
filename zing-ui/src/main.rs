@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 mod constants;
 mod card_sprite;
+mod game_state;
 mod zing_layout;
 
 fn main() {
