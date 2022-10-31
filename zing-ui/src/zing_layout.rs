@@ -176,10 +176,13 @@ fn card_offsets_for_stack<'a>(
         stack.peeping_offset
     };
 
-    let total_peeping: i8 = card_states
+    let mut total_peeping: i8 = card_states
         .iter()
         .map(|cs| if cs.face_up { 1 } else { 0 })
         .sum();
+    if let Some(CardState { face_up: true, .. }) = card_states.last() {
+        total_peeping -= 1;
+    }
     let mut peeping_offset = (0i8..).map(move |i| f32::from(total_peeping - i) * peeping_offset);
 
     (0i8..)
