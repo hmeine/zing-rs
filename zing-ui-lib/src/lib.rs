@@ -8,6 +8,7 @@ mod card_sprite;
 mod constants;
 mod game_logic;
 mod zing_layout;
+mod debug;
 
 #[cfg_attr(target_family = "wasm", wasm_bindgen)]
 pub fn start_remote_game(login_id: String, table_id: String, base_url: String) {
@@ -31,5 +32,6 @@ pub fn start_remote_game(login_id: String, table_id: String, base_url: String) {
             login_id,
             table_id,
         })
+        .add_plugins(debug::DebugPlugin)
         .run();
 }
