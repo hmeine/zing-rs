@@ -1,10 +1,12 @@
 use zing_game::game::unicode;
+use zing_game::zing_ai::{RandomPlayer, ZingAI};
 use zing_game::{table::Table, zing_game::ZingGame};
-use zing_game::zing_ai::{ZingAI, RandomPlayer};
 
 fn show_state(game: &ZingGame) {
     for stack in &game.state().stacks {
-        if stack.cards.len() > 8 {
+        if stack.cards.is_empty() {
+            continue;
+        } else if stack.cards.len() > 8 {
             println!("{}: {} cards", stack.id, stack.cards.len());
         } else {
             println!("{}: {}", stack.id, unicode(&stack.cards));
@@ -41,8 +43,7 @@ fn main() {
 
     let players = [RandomPlayer::new(0), RandomPlayer::new(1)];
 
-    while !game.finished()
-    {
+    while !game.finished() {
         show_state(&game);
 
         players[game.current_player()].auto_play(&mut game);
