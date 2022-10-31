@@ -257,7 +257,7 @@ impl ZingGame {
 
         let table_stack = &self.game_state.stacks[1];
         if let Some(top_card) = table_stack.cards.last() {
-            if top_card.card.rank == Rank::Jack {
+            if top_card.card.rank == Rank::Jack && !table_stack.cards.is_empty() {
                 let target_stack = 2 + self.current_player() % 2;
                 self.last_winner = target_stack;
 
