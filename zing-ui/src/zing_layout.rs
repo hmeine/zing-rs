@@ -1,12 +1,12 @@
 use std::time::Duration;
 
+use crate::card_sprite::CardSprite;
+use crate::constants::*;
+use crate::game_state::{handle_keyboard_input, GamePhase, GameState};
 use bevy::{prelude::*, render::camera::ScalingMode};
 use bevy_tweening::lens::TransformPositionLens;
 use bevy_tweening::{Animator, EaseFunction, Tween, TweeningType};
 use zing_game::{card_action::CardLocation, game::CardState};
-use crate::card_sprite::CardSprite;
-use crate::constants::*;
-use crate::game_state::{GameState, handle_keyboard_input, GamePhase};
 
 pub struct LayoutPlugin;
 
@@ -163,14 +163,17 @@ fn setup_card_stacks(mut commands: Commands, game_state: Res<GameState>) {
 fn card_offsets_for_stack<'a>(
     card_states: &'a [CardState],
     stack: &CardStack,
-    in_game: bool,
+    phase: GamePhase,
 ) -> impl Iterator<Item = Vec3> + 'a {
     let card_offset = match stack.location {
         CardLocation::PlayerHand => HAND_CARD_OFFSET,
         CardLocation::Stack => ISOMETRIC_CARD_OFFSET,
     } + Vec3::new(0., 0., 1.);
 
-    let peeping_offset = if stack.location == CardLocation::Stack && stack.index == 1 && in_game {
+    let peeping_offset = if stack.location == CardLocation::Stack
+        && stack.index == 1
+        && phase == GamePhase::InGame
+    {
         Vec3::ZERO
     } else {
         stack.peeping_offset
@@ -208,7 +211,7 @@ fn spawn_cards_for_initial_game_state(
 
         let card_entities: Vec<_> = card_states
             .iter()
-            .zip(card_offsets_for_stack(card_states, stack, false))
+            .zip(card_offsets_for_stack(card_states, stack, game_state.phase))
             .map(|(card_state, card_offset)| {
                 CardSprite::spawn_bundle(&mut commands, &asset_server, card_state, card_offset)
             })
@@ -325,7 +328,7 @@ fn reposition_cards_after_action(
         for (pos, card) in card_offsets_for_stack(
             stack.card_states(&game_state.displayed_state),
             stack,
-            game_state.phase == GamePhase::InGame,
+            game_state.phase,
         )
         .zip(children)
         {

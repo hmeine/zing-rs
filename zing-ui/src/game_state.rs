@@ -14,7 +14,7 @@ pub struct GameState {
     pub step_animation_timer: Timer,
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub enum GamePhase {
     Initial,
     Prepared,
