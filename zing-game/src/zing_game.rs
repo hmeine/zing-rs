@@ -31,6 +31,13 @@ impl ZingGame {
         game_state.stacks.push(StackState::new("score_0".into()));
         game_state.stacks.push(StackState::new("score_1".into()));
 
+        game_state
+            .stacks
+            .push(StackState::new("open_counting_0".into()));
+        game_state
+            .stacks
+            .push(StackState::new("open_counting_1".into()));
+
         Self {
             game_state,
             dealer,
@@ -99,17 +106,18 @@ impl ZingGame {
     }
 
     pub fn total_card_points(&self) -> (u32, u32) {
-        self.game_state.stacks[2..4]
+        let (score0, score1, open0, open1) = self.game_state.stacks[2..6]
             .iter()
             .map(|score_stack| {
                 score_stack
                     .cards
                     .iter()
                     .map(|card_state| Self::card_points(&card_state.card))
-                    .sum()
+                    .sum::<u32>()
             })
             .collect_tuple()
-            .unwrap()
+            .unwrap();
+        (score0 + open0, score1 + open1)
     }
 
     pub fn total_zing_points(&self) -> (u32, u32) {
@@ -121,8 +129,12 @@ impl ZingGame {
     }
 
     pub fn card_count_points(&self) -> (u32, u32) {
-        let len0 = self.game_state.stacks[2].cards.len();
-        let len1 = self.game_state.stacks[3].cards.len();
+        let card_counts: Vec<_> = self.game_state.stacks[2..6]
+            .iter()
+            .map(|stack| stack.cards.len())
+            .collect();
+        let len0 = card_counts[0] + card_counts[2];
+        let len1 = card_counts[1] + card_counts[3];
         match len0.cmp(&len1) {
             Ordering::Equal => (0, 0),
             Ordering::Greater => (3, 0),
@@ -164,7 +176,7 @@ impl ZingGame {
     pub fn hand_out_cards(&mut self) {
         for _ in 0..2 {
             for i in 0..self.game_state.player_count() {
-                let player = (self.dealer+i+1) % self.game_state.player_count();
+                let player = (self.dealer + i + 1) % self.game_state.player_count();
                 self.perform_and_remember_action(
                     CardAction::new()
                         .from_stack_top(&self.game_state, 0, 2)
@@ -286,6 +298,25 @@ impl ZingGame {
                         .to_stack_top(&self.game_state, self.last_winner)
                         .rotate(CardRotation::FaceDown),
                 );
+
+                for score_index in 0..2 {
+                    let score_stack = &self.state().stacks[2 + score_index].cards;
+                    self.perform_and_remember_action(
+                        CardAction::new()
+                            .from_stack(
+                                &self.game_state,
+                                2 + score_index,
+                                score_stack
+                                    .iter()
+                                    .enumerate()
+                                    .filter(|(_, cs)| !cs.face_up)
+                                    .map(|(i, _)| i)
+                                    .collect(),
+                            )
+                            .to_stack_top(&self.game_state, 4 + score_index)
+                            .rotate(CardRotation::FaceUp),
+                    );
+                }
             }
         }
     }
