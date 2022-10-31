@@ -6,7 +6,7 @@ use bevy_tweening::{Animator, EaseFunction, Tween, TweeningType};
 use zing_game::{card_action::CardLocation, game::CardState};
 use crate::card_sprite::CardSprite;
 use crate::constants::*;
-use crate::game_state::{GameState, handle_keyboard_input};
+use crate::game_state::{GameState, handle_keyboard_input, GamePhase};
 
 pub struct LayoutPlugin;
 
@@ -199,7 +199,7 @@ fn card_offsets_for_stack<'a>(
 
 fn spawn_cards_for_initial_game_state(
     mut commands: Commands,
-    mut game_state: ResMut<GameState>,
+    game_state: Res<GameState>,
     query_stacks: Query<(Entity, &CardStack)>,
     asset_server: Res<AssetServer>,
 ) {
@@ -216,8 +216,6 @@ fn spawn_cards_for_initial_game_state(
 
         commands.entity(stack_id).push_children(&card_entities);
     }
-
-    game_state.game.setup_game();
 }
 
 #[derive(Component)]
@@ -236,13 +234,7 @@ fn update_cards_from_action(
         return;
     }
 
-    let game = &game_state.game;
-
-    if game.history().len() > game_state.last_synced_history_len {
-        // we need to clone in order to allow for the mutable borrow of displayed_state:
-        let action = game.history()[game_state.last_synced_history_len]
-            .new_view_for_player(game_state.we_are_player);
-
+    if let Some(action) = game_state.get_next_action() {
         action.apply(&mut game_state.displayed_state);
 
         let mut source_parent = None;
@@ -319,7 +311,6 @@ fn update_cards_from_action(
             .insert_children(*action.dest_card_indices.first().unwrap(), &source_cards)
             .insert(StackRepositioning);
 
-        game_state.last_synced_history_len += 1;
         game_state.step_animation_timer.reset();
     }
 }
@@ -330,13 +321,11 @@ fn reposition_cards_after_action(
     query_stacks: Query<(Entity, &Children, &CardStack), With<StackRepositioning>>,
     mut query_transform: Query<&mut Transform>,
 ) {
-    let game = &game_state.game;
-
     for (entity, children, stack) in &query_stacks {
         for (pos, card) in card_offsets_for_stack(
             stack.card_states(&game_state.displayed_state),
             stack,
-            game.turn() > 0,
+            game_state.phase == GamePhase::InGame,
         )
         .zip(children)
         {
