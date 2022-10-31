@@ -6,6 +6,7 @@ use crate::game_state::{handle_keyboard_input, GamePhase, GameState};
 use bevy::{prelude::*, render::camera::ScalingMode};
 use bevy_tweening::lens::TransformPositionLens;
 use bevy_tweening::{Animator, EaseFunction, Tween, TweeningType};
+use zing_game::zing_game::ZingGame;
 use zing_game::{card_action::CardLocation, game::CardState};
 
 pub struct LayoutPlugin;
@@ -33,6 +34,7 @@ struct CardStack {
     location: CardLocation,
     index: usize,
     peeping_offset: Vec3,
+    score_offset: Vec3,
 }
 
 impl CardStack {
@@ -40,6 +42,7 @@ impl CardStack {
         commands: &mut Commands,
         top_left_position: Vec3,
         peeping_offset: Vec3,
+        score_offset: Vec3,
         scale: Vec3,
         location: CardLocation,
         index: usize,
@@ -57,6 +60,7 @@ impl CardStack {
                 location,
                 index,
                 peeping_offset,
+                score_offset,
             })
             .id()
     }
@@ -92,6 +96,7 @@ fn setup_card_stacks(mut commands: Commands, game_state: Res<GameState>) {
             0.,
         ),
         Vec3::ZERO,
+        Vec3::ZERO,
         Vec3::ONE,
         CardLocation::PlayerHand,
         1 - game_state.we_are_player,
@@ -108,6 +113,7 @@ fn setup_card_stacks(mut commands: Commands, game_state: Res<GameState>) {
             0.,
         ),
         Vec3::ZERO,
+        Vec3::ZERO,
         Vec3::splat(OWN_CARD_ZOOM),
         CardLocation::PlayerHand,
         game_state.we_are_player,
@@ -119,6 +125,7 @@ fn setup_card_stacks(mut commands: Commands, game_state: Res<GameState>) {
         &mut commands,
         Vec3::new(PLAYING_CENTER_X - CARD_WIDTH * 2.3, PLAYING_CENTER_Y, 0.),
         Vec3::new(-HORIZONTAL_PEEPING, 0., 0.),
+        Vec3::ZERO,
         Vec3::ONE,
         CardLocation::Stack,
         0, // "stock"
@@ -128,6 +135,7 @@ fn setup_card_stacks(mut commands: Commands, game_state: Res<GameState>) {
         &mut commands,
         Vec3::new(PLAYING_CENTER_X - CARD_WIDTH / 2., PLAYING_CENTER_Y, 0.),
         Vec3::new(HORIZONTAL_PEEPING, 0., 0.),
+        Vec3::ZERO,
         Vec3::ONE,
         CardLocation::Stack,
         1, // "table"
@@ -141,6 +149,7 @@ fn setup_card_stacks(mut commands: Commands, game_state: Res<GameState>) {
             0.,
         ),
         Vec3::new(0., -VERTICAL_PEEPING, 0.),
+        Vec3::ZERO,
         Vec3::ONE,
         CardLocation::Stack,
         2 + ((game_state.we_are_player + 1) % 2),
@@ -154,9 +163,38 @@ fn setup_card_stacks(mut commands: Commands, game_state: Res<GameState>) {
             0.,
         ),
         Vec3::new(0., VERTICAL_PEEPING, 0.),
+        Vec3::ZERO,
         Vec3::ONE,
         CardLocation::Stack,
         2 + game_state.we_are_player % 2,
+    );
+
+    CardStack::spawn_bundle(
+        &mut commands,
+        Vec3::new(
+            PLAYING_CENTER_X + FULL_HAND_WIDTH * OWN_CARD_ZOOM / 2.,
+            opposite_hand_pos_y - 2. * VERTICAL_PEEPING,
+            0.,
+        ),
+        Vec3::new(-HORIZONTAL_PEEPING, 0., 0.),
+        Vec3::new(0., VERTICAL_PEEPING, 0.),
+        Vec3::ONE,
+        CardLocation::Stack,
+        4 + ((game_state.we_are_player + 1) % 2),
+    );
+
+    CardStack::spawn_bundle(
+        &mut commands,
+        Vec3::new(
+            PLAYING_CENTER_X + FULL_HAND_WIDTH * OWN_CARD_ZOOM / 2.,
+            own_hand_pos_y,
+            0.,
+        ),
+        Vec3::new(-HORIZONTAL_PEEPING, 0., 0.),
+        Vec3::new(0., VERTICAL_PEEPING, 0.),
+        Vec3::ONE,
+        CardLocation::Stack,
+        4 + game_state.we_are_player % 2,
     );
 }
 
@@ -167,7 +205,13 @@ fn card_offsets_for_stack<'a>(
 ) -> impl Iterator<Item = Vec3> + 'a {
     let card_offset = match stack.location {
         CardLocation::PlayerHand => HAND_CARD_OFFSET,
-        CardLocation::Stack => ISOMETRIC_CARD_OFFSET,
+        CardLocation::Stack => {
+            if stack.index < 4 {
+                ISOMETRIC_CARD_OFFSET
+            } else {
+                Vec3::ZERO
+            }
+        }
     } + Vec3::new(0., 0., 1.);
 
     let peeping_offset = if stack.location == CardLocation::Stack
@@ -178,6 +222,7 @@ fn card_offsets_for_stack<'a>(
     } else {
         stack.peeping_offset
     };
+    let score_offset = stack.score_offset;
 
     let mut total_peeping: i8 = card_states
         .iter()
@@ -197,6 +242,7 @@ fn card_offsets_for_stack<'a>(
                 } else {
                     Vec3::ZERO
                 }
+                + score_offset * (ZingGame::card_points(&card_state.card) as f32)
         })
 }
 
