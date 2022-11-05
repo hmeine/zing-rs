@@ -4,7 +4,12 @@ use std::{
 };
 
 use async_trait::async_trait;
-use axum::{extract::{Query, FromRequest, RequestParts}, routing::get, Extension, Json, Router, http};
+use axum::{
+    extract::{FromRequest, Query, RequestParts},
+    http,
+    routing::get,
+    Extension, Json, Router,
+};
 use rand::distributions::{Alphanumeric, DistString};
 use serde::Deserialize;
 use tower_cookies::{Cookie, CookieManagerLayer, Cookies};
@@ -38,6 +43,7 @@ async fn main() {
     let app = Router::new()
         .route("/login", get(login))
         .route("/logout", get(logout))
+        .route("/create_table", get(create_table))
         .layer(Extension(state))
         .layer(CookieManagerLayer::new());
 
@@ -92,10 +98,34 @@ where
 
         let login_id = cookies
             .get(USERNAME_COOKIE)
-            .ok_or((http::StatusCode::UNAUTHORIZED, "login first (id cookie missing)"))?
-            .value().to_string();
+            .ok_or((
+                http::StatusCode::UNAUTHORIZED,
+                "login first (id cookie missing)",
+            ))?
+            .value()
+            .to_string();
 
         Ok(LoginID(login_id))
     }
 }
+
+async fn create_table(
+    login_id: LoginID,
+    Extension(state): Extension<Arc<Mutex<State>>>,
+) -> Result<(), (http::StatusCode, &'static str)> {
+    let mut state = state.lock().unwrap();
+    let table_id = random_id();
+
+    let mut user = state.users.get_mut(&login_id.0).ok_or((
+        http::StatusCode::UNAUTHORIZED,
+        "login first (bad id cookie)",
+    ))?;
+    user.tables.push(table_id.clone());
+    state.tables.insert(
+        table_id,
+        Table {
+            users: vec![login_id.0],
+        },
+    );
+    Ok(())
 }
