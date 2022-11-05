@@ -1,8 +1,13 @@
-use std::{collections::HashMap, sync::{Mutex, Arc}};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 
-use axum::{extract::Query, routing::get, Extension, Json, Router};
+use async_trait::async_trait;
+use axum::{extract::{Query, FromRequest, RequestParts}, routing::get, Extension, Json, Router, http};
 use rand::distributions::{Alphanumeric, DistString};
 use serde::Deserialize;
+use tower_cookies::{Cookie, CookieManagerLayer, Cookies};
 
 #[derive(Default)]
 struct User {
@@ -30,7 +35,11 @@ async fn main() {
     //let tables = HashMap::new();
     let state = Arc::new(Mutex::new(State::default()));
 
-    let app = Router::new().route("/", get(login)).layer(Extension(state));
+    let app = Router::new()
+        .route("/login", get(login))
+        .route("/logout", get(logout))
+        .layer(Extension(state))
+        .layer(CookieManagerLayer::new());
 
     // run it with hyper on localhost:3000
     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
@@ -44,15 +53,49 @@ struct LoginRequest {
     name: String,
 }
 
-async fn login(Query(login_request): Query<LoginRequest>, Extension(state): Extension<Arc<Mutex<State>>>) {
-    let id = random_id();
+const USERNAME_COOKIE: &str = "login_id";
+
+async fn login(
+    Query(login_request): Query<LoginRequest>,
+    Extension(state): Extension<Arc<Mutex<State>>>,
+    cookies: Cookies,
+) {
     let mut state = state.lock().unwrap();
-    println!("Logged in {} as {}", login_request.name, id);
+    let login_id = random_id();
+    println!("Logged in {} as {}", login_request.name, login_id);
     state.users.insert(
-        id,
+        login_id.clone(),
         User {
             name: login_request.name,
             ..Default::default()
         },
     );
+
+    cookies.add(Cookie::new(USERNAME_COOKIE, login_id));
+}
+
+async fn logout(cookies: Cookies) {
+    cookies.remove(Cookie::new(USERNAME_COOKIE, ""));
+}
+
+struct LoginID(String);
+
+#[async_trait]
+impl<B> FromRequest<B> for LoginID
+where
+    B: Send,
+{
+    type Rejection = (http::StatusCode, &'static str);
+
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+        let cookies = Cookies::from_request(req).await?;
+
+        let login_id = cookies
+            .get(USERNAME_COOKIE)
+            .ok_or((http::StatusCode::UNAUTHORIZED, "login first (id cookie missing)"))?
+            .value().to_string();
+
+        Ok(LoginID(login_id))
+    }
+}
 }
