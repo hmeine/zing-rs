@@ -1,0 +1,16 @@
+[package]
+name = "zing_server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+zing_game = { path = "../zing-game" }
+
+axum = { version = "0.5.17", features = ["ws"] }
+futures = "0.3"
+tokio = { version = "1", features = ["full"] }
+tower = { version = "0.4", features = ["util"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+rand = "0.8.5"
+serde = "1.0.147"
