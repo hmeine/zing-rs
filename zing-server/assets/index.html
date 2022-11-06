@@ -11,40 +11,65 @@
     />
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
     <script lang="javascript">
-      function loginkeydown(event) {
-        if (event.code == "Enter") {
-            var loginName = document.getElementById("loginName").value;
-            login(loginName);
+        function loginkeydown(event) {
+            if (event.code == "Enter") {
+                login();
+            }
         }
-      }
 
-      function login(name) {
-          axios.post('/login', {
-            name
-          })
-          .then(function (response) {
-            console.log(response);
-          })
-          .catch(function (error) {
-            console.log(error);
-          });
-      }
+        function login() {
+            var name = document.getElementById("loginName").value;
+
+            axios.post('/login', {
+                name
+            })
+            .then(function (response) {
+                console.log(response);
+            })
+            .catch(function (error) {
+                console.log(error);
+            });
+        }
+
+        function logout() {
+            axios.delete('/login')
+            .then(function (response) {
+                console.log(response);
+            })
+            .catch(function (error) {
+                console.log(error);
+            });
+        }
+
+      //      function display_login
     </script>
     <title>Zing</title>
   </head>
   <body>
     <div class="container-fluid">
-      <div class="row">
-        <div class="col">
-          <input
-            type="text"
-            class="form-control"
-            id="loginName"
-            placeholder="Name"
-            onkeydown="loginkeydown(event)"
-          />
+      <form id="loginForm" onsubmit="login(); return false;">
+        <div class="row">
+          <div class="col">
+            <input
+              type="text"
+              class="form-control"
+              id="loginName"
+              placeholder="Name"
+              onkeydown="loginkeydown(event)"
+            />
+          </div>
+          <div class="col">
+            <button type="submit" class="btn btn-primary">Login</button>
+          </div>
         </div>
-      </div>
+      </form>
+      <form id="loginForm" onsubmit="logout(); return false;">
+        <div class="row">
+          <div class="col">
+            <button type="submit" class="btn btn-primary">Logout</button>
+          </div>
+        </div>
+      </form>
     </div>
 
     <script
