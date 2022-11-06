@@ -26,7 +26,6 @@ async fn main() {
         .layer(Extension(state))
         .layer(CookieManagerLayer::new());
 
-    // run it with hyper on localhost:3000
     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
         .serve(app.into_make_service())
         .await
@@ -44,12 +43,19 @@ async fn login(
     Query(login_request): Query<LoginRequest>,
     Extension(state): Extension<Arc<Mutex<State>>>,
     cookies: Cookies,
-) {
+) -> Result<String, ErrorResponse> {
     let mut state = state.lock().unwrap();
-    let login_id = state.login(login_request.name.clone());
-    println!("Logged in {} as {}", login_request.name, login_id);
+    let user_name = login_request.name;
+    if user_name.is_empty() {
+        return Err((http::StatusCode::BAD_REQUEST, "name must not be empty"));
+    }
+    let login_id = state.login(user_name.clone());
+    println!("Logged in {} as {}", user_name, login_id);
+
+    // TODO: log out if USERNAME_COOKIE is already set (and valid)
 
     cookies.add(Cookie::new(USERNAME_COOKIE, login_id));
+    Ok(user_name)
 }
 
 async fn logout(cookies: Cookies) {
