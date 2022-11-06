@@ -22,8 +22,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(index))
-        .route("/login", post(login).get(whoami))
-        .route("/logout", post(logout))
+        .route("/login", post(login).get(whoami).delete(logout))
         .route("/table", post(create_table))
         .route("/table/:table_id", post(join_table).delete(leave_table))
         .layer(Extension(state))
