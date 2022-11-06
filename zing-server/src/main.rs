@@ -8,6 +8,7 @@ use axum::{
     routing::{get, post},
     Extension, Json, Router,
 };
+use cookie::SameSite;
 use serde::Deserialize;
 use state::{ErrorResponse, State};
 use tower_cookies::{Cookie, CookieManagerLayer, Cookies};
@@ -56,7 +57,9 @@ async fn login(
 
     // TODO: log out if USERNAME_COOKIE is already set (and valid)
 
-    cookies.add(Cookie::new(USERNAME_COOKIE, login_id));
+    let mut login_cookie = Cookie::new(USERNAME_COOKIE, login_id);
+    login_cookie.set_same_site(SameSite::Strict);
+    cookies.add(login_cookie);
     Ok(user_name)
 }
 
