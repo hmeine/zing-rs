@@ -1,7 +1,4 @@
-use std::{
-    collections::HashMap,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
 use axum::{
@@ -10,30 +7,13 @@ use axum::{
     routing::{get, post},
     Extension, Json, Router,
 };
-use rand::distributions::{Alphanumeric, DistString};
 use serde::Deserialize;
+use state::State;
 use tower_cookies::{Cookie, CookieManagerLayer, Cookies};
 
-#[derive(Default)]
-struct User {
-    name: String,
-    tables: Vec<String>,
-}
+use crate::state::User;
 
-#[derive(Default)]
-struct Table {
-    users: Vec<String>,
-}
-
-#[derive(Default)]
-struct State {
-    users: HashMap<String, User>,
-    tables: HashMap<String, Table>,
-}
-
-pub fn random_id() -> String {
-    Alphanumeric.sample_string(&mut rand::thread_rng(), 16)
-}
+mod state;
 
 #[tokio::main]
 async fn main() {
@@ -67,15 +47,8 @@ async fn login(
     cookies: Cookies,
 ) {
     let mut state = state.lock().unwrap();
-    let login_id = random_id();
+    let login_id = state.login(login_request.name.clone());
     println!("Logged in {} as {}", login_request.name, login_id);
-    state.users.insert(
-        login_id.clone(),
-        User {
-            name: login_request.name,
-            ..Default::default()
-        },
-    );
 
     cookies.add(Cookie::new(USERNAME_COOKIE, login_id));
 }
@@ -114,18 +87,5 @@ async fn create_table(
     Extension(state): Extension<Arc<Mutex<State>>>,
 ) -> Result<String, (http::StatusCode, &'static str)> {
     let mut state = state.lock().unwrap();
-    let user = state.users.get_mut(&login_id.0).ok_or((
-        http::StatusCode::UNAUTHORIZED,
-        "login first (bad id cookie)",
-    ))?;
-    
-    let table_id = random_id();
-    user.tables.push(table_id.clone());
-    state.tables.insert(
-        table_id.clone(),
-        Table {
-            users: vec![login_id.0],
-        },
-    );
-    Ok(table_id)
+    state.create_table(login_id.0)
 }
