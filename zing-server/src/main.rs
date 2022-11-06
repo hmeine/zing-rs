@@ -63,7 +63,9 @@ async fn login(
 }
 
 async fn logout(cookies: Cookies) {
-    cookies.remove(Cookie::new(USERNAME_COOKIE, ""));
+    let mut login_cookie = Cookie::new(USERNAME_COOKIE, "");
+    login_cookie.set_same_site(SameSite::Strict);
+    cookies.remove(login_cookie);
 }
 
 struct LoginID(String);
