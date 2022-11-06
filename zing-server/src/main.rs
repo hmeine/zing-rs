@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
 use axum::{
-    extract::{FromRequest, Query, RequestParts},
+    extract::{FromRequest, Query, RequestParts, Path},
     http,
     routing::{get, post},
     Extension, Json, Router,
@@ -10,8 +10,6 @@ use axum::{
 use serde::Deserialize;
 use state::State;
 use tower_cookies::{Cookie, CookieManagerLayer, Cookies};
-
-use crate::state::User;
 
 mod state;
 
@@ -24,6 +22,7 @@ async fn main() {
         .route("/login", get(login))
         .route("/logout", get(logout))
         .route("/table", post(create_table))
+        .route("/table/:table_id", post(join_table).delete(leave_table))
         .layer(Extension(state))
         .layer(CookieManagerLayer::new());
 
@@ -88,4 +87,22 @@ async fn create_table(
 ) -> Result<String, (http::StatusCode, &'static str)> {
     let mut state = state.lock().unwrap();
     state.create_table(login_id.0)
+}
+
+async fn join_table(
+    login_id: LoginID,
+    Path(table_id): Path<String>,
+    Extension(state): Extension<Arc<Mutex<State>>>,
+) -> Result<(), (http::StatusCode, &'static str)> {
+    let mut state = state.lock().unwrap();
+    state.join_table(login_id.0, table_id)
+}
+
+async fn leave_table(
+    login_id: LoginID,
+    Path(table_id): Path<String>,
+    Extension(state): Extension<Arc<Mutex<State>>>,
+) -> Result<(), (http::StatusCode, &'static str)> {
+    let mut state = state.lock().unwrap();
+    state.leave_table(login_id.0, table_id)
 }
