@@ -2,13 +2,13 @@ use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
 use axum::{
-    extract::{FromRequest, Query, RequestParts, Path},
+    extract::{FromRequest, Path, Query, RequestParts},
     http,
     routing::{get, post},
     Extension, Json, Router,
 };
 use serde::Deserialize;
-use state::State;
+use state::{ErrorResponse, State};
 use tower_cookies::{Cookie, CookieManagerLayer, Cookies};
 
 mod state;
@@ -19,8 +19,8 @@ async fn main() {
     let state = Arc::new(Mutex::new(State::default()));
 
     let app = Router::new()
-        .route("/login", get(login))
-        .route("/logout", get(logout))
+        .route("/login", post(login).get(whoami))
+        .route("/logout", post(logout))
         .route("/table", post(create_table))
         .route("/table/:table_id", post(join_table).delete(leave_table))
         .layer(Extension(state))
@@ -81,10 +81,21 @@ where
     }
 }
 
+async fn whoami(
+    Extension(state): Extension<Arc<Mutex<State>>>,
+    login_id: LoginID,
+) -> Result<String, ErrorResponse> {
+    let state = state.lock().unwrap();
+    match state.whoami(login_id.0) {
+        Some(user_name  ) => Ok(user_name),
+        None => Err((http::StatusCode::UNAUTHORIZED, "no valid login cookie")),
+    }
+}
+
 async fn create_table(
     login_id: LoginID,
     Extension(state): Extension<Arc<Mutex<State>>>,
-) -> Result<String, (http::StatusCode, &'static str)> {
+) -> Result<String, ErrorResponse> {
     let mut state = state.lock().unwrap();
     state.create_table(login_id.0)
 }
@@ -93,7 +104,7 @@ async fn join_table(
     login_id: LoginID,
     Path(table_id): Path<String>,
     Extension(state): Extension<Arc<Mutex<State>>>,
-) -> Result<(), (http::StatusCode, &'static str)> {
+) -> Result<(), ErrorResponse> {
     let mut state = state.lock().unwrap();
     state.join_table(login_id.0, table_id)
 }
@@ -102,7 +113,7 @@ async fn leave_table(
     login_id: LoginID,
     Path(table_id): Path<String>,
     Extension(state): Extension<Arc<Mutex<State>>>,
-) -> Result<(), (http::StatusCode, &'static str)> {
+) -> Result<(), ErrorResponse> {
     let mut state = state.lock().unwrap();
     state.leave_table(login_id.0, table_id)
 }

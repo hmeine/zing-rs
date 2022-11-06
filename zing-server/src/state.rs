@@ -2,6 +2,8 @@ use axum::http;
 use rand::distributions::{Alphanumeric, DistString};
 use std::collections::HashMap;
 
+pub type ErrorResponse = (http::StatusCode, &'static str);
+
 fn random_id() -> String {
     Alphanumeric.sample_string(&mut rand::thread_rng(), 16)
 }
@@ -34,6 +36,10 @@ impl State {
             },
         );
         login_id
+    }
+
+    pub fn whoami(&self, login_id: String) -> Option<String> {
+        self.users.get(&login_id).map(|user| user.name.clone())
     }
 
     pub fn create_table(
