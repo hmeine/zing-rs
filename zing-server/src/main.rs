@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use axum::{
     extract::{FromRequest, Query, RequestParts},
     http,
-    routing::get,
+    routing::{get, post},
     Extension, Json, Router,
 };
 use rand::distributions::{Alphanumeric, DistString};
@@ -43,7 +43,7 @@ async fn main() {
     let app = Router::new()
         .route("/login", get(login))
         .route("/logout", get(logout))
-        .route("/create_table", get(create_table))
+        .route("/table", post(create_table))
         .layer(Extension(state))
         .layer(CookieManagerLayer::new());
 
@@ -112,20 +112,20 @@ where
 async fn create_table(
     login_id: LoginID,
     Extension(state): Extension<Arc<Mutex<State>>>,
-) -> Result<(), (http::StatusCode, &'static str)> {
+) -> Result<String, (http::StatusCode, &'static str)> {
     let mut state = state.lock().unwrap();
-    let table_id = random_id();
-
-    let mut user = state.users.get_mut(&login_id.0).ok_or((
+    let user = state.users.get_mut(&login_id.0).ok_or((
         http::StatusCode::UNAUTHORIZED,
         "login first (bad id cookie)",
     ))?;
+    
+    let table_id = random_id();
     user.tables.push(table_id.clone());
     state.tables.insert(
-        table_id,
+        table_id.clone(),
         Table {
             users: vec![login_id.0],
         },
     );
-    Ok(())
+    Ok(table_id)
 }
