@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use axum::{
     extract::{FromRequest, Path, Query, RequestParts},
     http,
+    response::Html,
     routing::{get, post},
     Extension, Json, Router,
 };
@@ -19,6 +20,7 @@ async fn main() {
     let state = Arc::new(Mutex::new(State::default()));
 
     let app = Router::new()
+        .route("/", get(index))
         .route("/login", post(login).get(whoami))
         .route("/logout", post(logout))
         .route("/table", post(create_table))
@@ -40,7 +42,7 @@ struct LoginRequest {
 const USERNAME_COOKIE: &str = "login_id";
 
 async fn login(
-    Query(login_request): Query<LoginRequest>,
+    Json(login_request): Json<LoginRequest>,
     Extension(state): Extension<Arc<Mutex<State>>>,
     cookies: Cookies,
 ) -> Result<String, ErrorResponse> {
@@ -87,13 +89,17 @@ where
     }
 }
 
+async fn index() -> Html<&'static str> {
+    Html(std::include_str!("../assets/index.html"))
+}
+
 async fn whoami(
     Extension(state): Extension<Arc<Mutex<State>>>,
     login_id: LoginID,
 ) -> Result<String, ErrorResponse> {
     let state = state.lock().unwrap();
     match state.whoami(login_id.0) {
-        Some(user_name  ) => Ok(user_name),
+        Some(user_name) => Ok(user_name),
         None => Err((http::StatusCode::UNAUTHORIZED, "no valid login cookie")),
     }
 }
