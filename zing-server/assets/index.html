@@ -11,37 +11,42 @@
     />
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
     <script lang="javascript">
-        function loginkeydown(event) {
-            if (event.code == "Enter") {
-                login();
-            }
-        }
+      function loginkeydown(event) {
+          if (event.code == "Enter") {
+              login();
+          }
+      }
 
-        function login() {
-            var name = document.getElementById("loginName").value;
+      function login() {
+          var name = document.getElementById("loginName").value;
 
-            axios.post('/login', {
-                name
-            })
-            .then(function (response) {
-                console.log(response);
-            })
-            .catch(function (error) {
-                console.log(error);
-            });
-        }
+          axios.post('/login', {
+              name
+          })
+          .then(function (response) {
+              display_login();
+          })
+          .catch(function (error) {
+              console.log(error);
+          });
+      }
 
-        function logout() {
-            axios.delete('/login')
-            .then(function (response) {
-                console.log(response);
-            })
-            .catch(function (error) {
-                console.log(error);
-            });
-        }
+      function logout() {
+          axios.delete('/login')
+          .catch(function (error) {
+              console.log(error);
+          });
+      }
 
-      //      function display_login
+      function display_login() {
+          axios.get('/login')
+          .then(function (response) {
+              document.getElementById("logoutButton").innerHTML = "Logout " + response.data;
+          })
+          .catch(function (error) {
+              console.log(error);
+          });
+      }
     </script>
     <title>Zing</title>
   </head>
@@ -63,10 +68,12 @@
           </div>
         </div>
       </form>
-      <form id="loginForm" onsubmit="logout(); return false;">
+      <form id="logoutForm" onsubmit="logout(); return false;">
         <div class="row">
           <div class="col">
-            <button type="submit" class="btn btn-primary">Logout</button>
+            <button type="submit" class="btn btn-primary" id="logoutButton">
+              Logout
+            </button>
           </div>
         </div>
       </form>
