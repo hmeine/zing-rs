@@ -18,6 +18,8 @@ pub const FULL_HAND_WIDTH: f32 = CARD_WIDTH + 3. * HAND_CARD_OFFSET_X;
 pub const OWN_CARD_ZOOM: f32 = 1.15;
 /// horizontal offset between (own) player hand and (own) score stack
 pub const SCORE_STACK_SPACING: f32 = MARGIN;
+/// horizontal offset between (own) player hand and (own) score stack
+pub const SCORE_PEEPING: f32 = HORIZONTAL_PEEPING * 0.8;
 
 /// offset for spreading out cards on player hands
 pub const HAND_CARD_OFFSET: Vec3 = Vec3 {
