@@ -1,6 +1,7 @@
+use serde::{Deserialize, Serialize};
 use strum_macros::EnumIter;
 
-#[derive(Copy, Clone, Debug, EnumIter, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, EnumIter, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Suit {
     Diamonds,
     Hearts,
@@ -8,7 +9,7 @@ pub enum Suit {
     Clubs,
 }
 
-#[derive(Copy, Clone, Debug, EnumIter, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, EnumIter, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Rank {
     Two,
     Three,
@@ -25,13 +26,13 @@ pub enum Rank {
     Ace,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum Back {
     Red,
     Blue,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct Card {
     pub rank: Rank,
     pub suit: Suit,

@@ -1,18 +1,20 @@
+use serde::{Serialize, Deserialize};
+
 use crate::game::{CardState, GameState};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CardLocation {
     PlayerHand,
     Stack,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CardRotation {
     FaceUp,
     FaceDown,
 }
 
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct CardAction {
     pub source_location: Option<CardLocation>,
     pub source_index: usize,

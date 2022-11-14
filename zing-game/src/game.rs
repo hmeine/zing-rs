@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 use crate::table::Table;
 use crate::Card;
 
@@ -19,7 +21,7 @@ impl Player {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CardState {
     pub card: Card,
     pub face_up: bool,
