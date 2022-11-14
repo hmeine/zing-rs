@@ -35,7 +35,7 @@ impl CardSprite {
         format!("vector_cards_3.2/{}.png", basename)
     }
 
-    pub fn spawn_bundle(
+    pub fn spawn(
         commands: &mut Commands,
         asset_server: &Res<AssetServer>,
         card_state: &CardState,
@@ -46,7 +46,7 @@ impl CardSprite {
         let scale = CARD_HEIGHT / 559.;
 
         commands
-            .spawn_bundle(SpriteBundle {
+            .spawn(SpriteBundle {
                 texture: png,
                 transform: Transform {
                     translation,

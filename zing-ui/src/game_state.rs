@@ -5,6 +5,7 @@ use zing_game::{card_action::CardAction, zing_game::ZingGame};
 
 use crate::constants::STEP_DURATION_MILLIS;
 
+#[derive(Resource)]
 pub struct GameState {
     pub phase: GamePhase,
     game: ZingGame,
@@ -33,7 +34,7 @@ impl GameState {
             we_are_player,
             last_synced_history_len: initial_history_len,
             displayed_state: initial_state,
-            step_animation_timer: Timer::new(Duration::from_millis(STEP_DURATION_MILLIS), false),
+            step_animation_timer: Timer::new(Duration::from_millis(STEP_DURATION_MILLIS), TimerMode::Once),
         }
     }
 

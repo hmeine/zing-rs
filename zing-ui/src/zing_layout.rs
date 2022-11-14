@@ -38,7 +38,7 @@ struct CardStack {
 }
 
 impl CardStack {
-    fn spawn_bundle(
+    fn spawn(
         commands: &mut Commands,
         top_left_position: Vec3,
         peeping_offset: Vec3,
@@ -48,7 +48,7 @@ impl CardStack {
         index: usize,
     ) -> Entity {
         commands
-            .spawn_bundle(SpatialBundle {
+            .spawn(SpatialBundle {
                 transform: Transform {
                     translation: top_left_position,
                     scale,
@@ -74,7 +74,7 @@ impl CardStack {
 }
 
 fn setup_camera(mut commands: Commands) {
-    commands.spawn_bundle(Camera2dBundle {
+    commands.spawn(Camera2dBundle {
         projection: OrthographicProjection {
             scaling_mode: ScalingMode::FixedVertical(1.0),
             ..Default::default()
@@ -88,7 +88,7 @@ fn setup_card_stacks(mut commands: Commands, game_state: Res<GameState>) {
 
     info!("layouting card stacks");
 
-    CardStack::spawn_bundle(
+    CardStack::spawn(
         &mut commands,
         Vec3::new(
             PLAYING_CENTER_X - FULL_HAND_WIDTH / 2.,
@@ -105,7 +105,7 @@ fn setup_card_stacks(mut commands: Commands, game_state: Res<GameState>) {
     let own_hand_pos_y =
         PLAYING_CENTER_Y - 0.5 * CARD_HEIGHT - 0.5 * OWN_CARD_ZOOM * CARD_HEIGHT - VERTICAL_SPACING;
 
-    CardStack::spawn_bundle(
+    CardStack::spawn(
         &mut commands,
         Vec3::new(
             PLAYING_CENTER_X - FULL_HAND_WIDTH * OWN_CARD_ZOOM / 2.,
@@ -121,7 +121,7 @@ fn setup_card_stacks(mut commands: Commands, game_state: Res<GameState>) {
 
     // TODO: we need to know if we have two or four players
 
-    CardStack::spawn_bundle(
+    CardStack::spawn(
         &mut commands,
         Vec3::new(PLAYING_CENTER_X - CARD_WIDTH * 2.3, PLAYING_CENTER_Y, 0.),
         Vec3::new(-HORIZONTAL_PEEPING, 0., 0.),
@@ -131,7 +131,7 @@ fn setup_card_stacks(mut commands: Commands, game_state: Res<GameState>) {
         0, // "stock"
     );
 
-    CardStack::spawn_bundle(
+    CardStack::spawn(
         &mut commands,
         Vec3::new(PLAYING_CENTER_X - CARD_WIDTH / 2., PLAYING_CENTER_Y, 0.),
         Vec3::new(HORIZONTAL_PEEPING, 0., 0.),
@@ -141,7 +141,7 @@ fn setup_card_stacks(mut commands: Commands, game_state: Res<GameState>) {
         1, // "table"
     );
 
-    CardStack::spawn_bundle(
+    CardStack::spawn(
         &mut commands,
         Vec3::new(
             PLAYING_CENTER_X + FULL_HAND_WIDTH * OWN_CARD_ZOOM / 2. + SCORE_STACK_SPACING,
@@ -155,7 +155,7 @@ fn setup_card_stacks(mut commands: Commands, game_state: Res<GameState>) {
         2 + ((game_state.we_are_player + 1) % 2),
     );
 
-    CardStack::spawn_bundle(
+    CardStack::spawn(
         &mut commands,
         Vec3::new(
             PLAYING_CENTER_X + FULL_HAND_WIDTH * OWN_CARD_ZOOM / 2. + SCORE_STACK_SPACING,
@@ -169,7 +169,7 @@ fn setup_card_stacks(mut commands: Commands, game_state: Res<GameState>) {
         2 + game_state.we_are_player % 2,
     );
 
-    CardStack::spawn_bundle(
+    CardStack::spawn(
         &mut commands,
         Vec3::new(
             PLAYING_CENTER_X + FULL_HAND_WIDTH * OWN_CARD_ZOOM / 2.,
@@ -183,7 +183,7 @@ fn setup_card_stacks(mut commands: Commands, game_state: Res<GameState>) {
         4 + ((game_state.we_are_player + 1) % 2),
     );
 
-    CardStack::spawn_bundle(
+    CardStack::spawn(
         &mut commands,
         Vec3::new(
             PLAYING_CENTER_X + FULL_HAND_WIDTH * OWN_CARD_ZOOM / 2.,
@@ -259,7 +259,7 @@ fn spawn_cards_for_initial_game_state(
             .iter()
             .zip(card_offsets_for_stack(card_states, stack, game_state.phase))
             .map(|(card_state, card_offset)| {
-                CardSprite::spawn_bundle(&mut commands, &asset_server, card_state, card_offset)
+                CardSprite::spawn(&mut commands, &asset_server, card_state, card_offset)
             })
             .collect();
 
@@ -341,7 +341,7 @@ fn update_cards_from_action(
             source_cards = states_and_offsets
                 .iter()
                 .map(|(new_state, old_pos)| {
-                    CardSprite::spawn_bundle(
+                    CardSprite::spawn(
                         &mut commands,
                         &asset_server,
                         new_state,
