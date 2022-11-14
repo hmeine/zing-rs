@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
 use axum::{
-    extract::{FromRequest, Path, Query, RequestParts},
+    extract::{FromRequest, Path, RequestParts},
     http,
     response::Html,
     routing::{get, post},
