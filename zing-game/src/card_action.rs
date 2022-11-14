@@ -142,6 +142,7 @@ impl CardAction {
 
     pub fn apply(&self, game: &mut GameState) -> Vec<CardState> {
         assert_eq!(self.source_card_indices.len(), self.dest_card_indices.len());
+        assert!(!self.source_card_indices.is_empty());
 
         let source_cards: Vec<CardState> = {
             let source_stack = Self::stack_mut(

@@ -153,9 +153,11 @@ impl ZingGame {
     }
 
     fn perform_and_remember_action(&mut self, action: &CardAction) {
-        let mut action = action.clone();
-        action.apply_and_remember_cards(&mut self.game_state);
-        self.history.push(action);
+        if !action.source_card_indices.is_empty() {
+            let mut action = action.clone();
+            action.apply_and_remember_cards(&mut self.game_state);
+            self.history.push(action);
+        }
     }
 
     pub fn play_card(&mut self, player: usize, card_index: usize) {
