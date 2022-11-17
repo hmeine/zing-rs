@@ -33,8 +33,9 @@ impl ZingGamePoints {
 }
 
 impl ZingGame {
-    pub fn new_from_table(table: crate::table::Table, dealer: usize) -> Self {
-        let mut game_state = GameState::new_from_table(table);
+    pub fn new_with_player_names(names: Vec<String>, dealer: usize) -> Self {
+        let mut game_state = GameState::new_with_player_names(names);
+
         game_state.stacks.push(StackState::new_from_deck(
             "stock".into(),
             shuffled_deck(crate::Back::Blue),

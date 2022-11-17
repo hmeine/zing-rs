@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-use crate::table::Table;
 use crate::Card;
 
 #[derive(Clone)]
@@ -110,13 +109,13 @@ pub enum CardGameError {
 impl GameState {
     /// Initialize a game with the players of the given `Table`.  No card stacks
     /// are initialized.
-    pub fn new_from_table(table: Table) -> Self {
+    pub fn new_with_player_names(names: Vec<String>) -> Self {
         let mut result = Self {
             players: Vec::new(),
             stacks: Vec::new(),
         };
-        for player in table.players {
-            result.players.push(Player::new(player.name.clone()));
+        for name in names {
+            result.players.push(Player::new(name));
         }
         result
     }
