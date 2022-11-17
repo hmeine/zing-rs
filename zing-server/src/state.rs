@@ -1,4 +1,5 @@
 use axum::http;
+use chrono::prelude::*;
 use rand::distributions::{Alphanumeric, DistString};
 use std::collections::HashMap;
 use zing_game::zing_game::{ZingGame, ZingGamePoints};
@@ -16,6 +17,7 @@ struct User {
 }
 
 struct Table {
+    created_at: DateTime<Utc>,
     users: Vec<String>,
     game_results: Vec<ZingGamePoints>,
     game: Option<ZingGame>,
@@ -65,6 +67,7 @@ impl State {
         self.tables.insert(
             table_id.clone(),
             Table {
+                created_at: Utc::now(),
                 users: vec![login_id],
                 game_results: Vec::new(),
                 game: None,
