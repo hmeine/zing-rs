@@ -18,7 +18,7 @@ struct User {
 
 struct Table {
     created_at: DateTime<Utc>,
-    users: Vec<String>,
+    login_ids: Vec<String>,
     game_results: Vec<ZingGamePoints>,
     game: Option<ZingGame>,
 }
@@ -68,7 +68,7 @@ impl State {
             table_id.clone(),
             Table {
                 created_at: Utc::now(),
-                users: vec![login_id],
+                login_ids: vec![login_id],
                 game_results: Vec::new(),
                 game: None,
             },
@@ -104,7 +104,7 @@ impl State {
         }
 
         user.tables.push(table_id.clone());
-        table.users.push(login_id);
+        table.login_ids.push(login_id);
 
         Ok(())
     }
@@ -137,14 +137,14 @@ impl State {
         }
 
         let user_index_in_table = table
-            .users
+            .login_ids
             .iter()
             .position(|id| *id == login_id)
             .expect("inconsistent state");
 
         user.tables.remove(table_index_in_user);
-        table.users.remove(user_index_in_table);
-        if table.users.is_empty() {
+        table.login_ids.remove(user_index_in_table);
+        if table.login_ids.is_empty() {
             self.tables.remove(&table_id);
         }
 
