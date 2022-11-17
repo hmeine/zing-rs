@@ -1,6 +1,7 @@
 use axum::http;
 use rand::distributions::{Alphanumeric, DistString};
 use std::collections::HashMap;
+use zing_game::zing_game::{ZingGame, ZingGamePoints};
 
 pub type ErrorResponse = (http::StatusCode, &'static str);
 
@@ -14,9 +15,16 @@ struct User {
     tables: Vec<String>,
 }
 
-#[derive(Default)]
 struct Table {
     users: Vec<String>,
+    game_results: Vec<ZingGamePoints>,
+    game: Option<ZingGame>,
+}
+
+impl Table {
+    pub fn games_have_started(&self) -> bool {
+        self.game.is_some() || !self.game_results.is_empty()
+    }
 }
 
 #[derive(Default)]
@@ -58,6 +66,8 @@ impl State {
             table_id.clone(),
             Table {
                 users: vec![login_id],
+                game_results: Vec::new(),
+                game: None,
             },
         );
 
@@ -81,6 +91,13 @@ impl State {
 
         if user.tables.contains(&table_id) {
             return Err((http::StatusCode::CONFLICT, "trying to join table again"));
+        }
+
+        if table.games_have_started() {
+            return Err((
+                http::StatusCode::CONFLICT,
+                "cannot join a table after games have started",
+            ));
         }
 
         user.tables.push(table_id.clone());
@@ -108,6 +125,14 @@ impl State {
             http::StatusCode::UNAUTHORIZED,
             "trying to leave table before joining",
         ))?;
+
+        if table.games_have_started() {
+            return Err((
+                http::StatusCode::CONFLICT,
+                "cannot leave a table after games have started",
+            ));
+        }
+
         let user_index_in_table = table
             .users
             .iter()
