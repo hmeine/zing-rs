@@ -51,7 +51,7 @@ fn main() {
 
     show_state(&game);
 
-    let scores = game.total_points();
+    let scores = game.points().total_points();
     //println!(game.game_state.player[0].name)
     println!("Scores: {} vs. {}", scores.0, scores.1);
 }

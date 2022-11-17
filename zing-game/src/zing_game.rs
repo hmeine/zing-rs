@@ -17,6 +17,21 @@ pub struct ZingGame {
     history: Vec<CardAction>,
 }
 
+pub struct ZingGamePoints {
+    pub card_points: (u32, u32),
+    pub card_count_points: (u32, u32),
+    pub zing_points: (u32, u32),
+}
+
+impl ZingGamePoints {
+    pub fn total_points(&self) -> (u32, u32) {
+        (
+            self.card_points.0 + self.card_count_points.0 + self.zing_points.0,
+            self.card_points.1 + self.card_count_points.1 + self.zing_points.1,
+        )
+    }
+}
+
 impl ZingGame {
     pub fn new_from_table(table: crate::table::Table, dealer: usize) -> Self {
         let mut game_state = GameState::new_from_table(table);
@@ -97,7 +112,7 @@ impl ZingGame {
         }
     }
 
-    pub fn zing_points(card_state: &CardState) -> u32 {
+    fn zing_points(card_state: &CardState) -> u32 {
         match (card_state.face_up, card_state.card.rank) {
             (true, Rank::Jack) => 20,
             (true, _) => 10,
@@ -105,7 +120,7 @@ impl ZingGame {
         }
     }
 
-    pub fn total_card_points(&self) -> (u32, u32) {
+    fn total_card_points(&self) -> (u32, u32) {
         let (score0, score1, open0, open1) = self.game_state.stacks[2..6]
             .iter()
             .map(|score_stack| {
@@ -120,7 +135,7 @@ impl ZingGame {
         (score0 + open0, score1 + open1)
     }
 
-    pub fn total_zing_points(&self) -> (u32, u32) {
+    fn total_zing_points(&self) -> (u32, u32) {
         self.game_state.stacks[2..4]
             .iter()
             .map(|score_stack| score_stack.cards.iter().map(Self::zing_points).sum())
@@ -128,7 +143,7 @@ impl ZingGame {
             .unwrap()
     }
 
-    pub fn card_count_points(&self) -> (u32, u32) {
+    fn card_count_points(&self) -> (u32, u32) {
         let card_counts: Vec<_> = self.game_state.stacks[2..6]
             .iter()
             .map(|stack| stack.cards.len())
@@ -142,14 +157,12 @@ impl ZingGame {
         }
     }
 
-    pub fn total_points(&self) -> (u32, u32) {
-        let card_points = self.total_card_points();
-        let zing_points = self.total_zing_points();
-        let card_count_points = self.card_count_points();
-        (
-            card_points.0 + card_count_points.0 + zing_points.0,
-            card_points.1 + card_count_points.1 + zing_points.1,
-        )
+    pub fn points(&self) -> ZingGamePoints {
+        ZingGamePoints {
+            card_points: self.total_card_points(),
+            card_count_points: self.card_count_points(),
+            zing_points: self.total_zing_points(),
+        }
     }
 
     fn perform_and_remember_action(&mut self, action: &CardAction) {
