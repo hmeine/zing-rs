@@ -28,7 +28,7 @@ async fn main() {
         .route("/login", post(login).get(whoami).delete(logout))
         .route("/table", post(create_table).get(list_tables))
         .route("/table/:table_id", post(join_table).delete(leave_table))
-        .route("/table/:table_id/game", post(start_game))
+        .route("/table/:table_id/game", post(start_game).delete(finish_game))
         .route("/table/:table_id/game/play", post(play_card))
         //.route("/table/:table_id/game/ws", get(ws_handler))
         .layer(Extension(state))
@@ -155,6 +155,15 @@ async fn start_game(
 ) -> Result<(), ErrorResponse> {
     let mut state = state.lock().unwrap();
     state.start_game(login_id.0, table_id)
+}
+
+async fn finish_game(
+    login_id: LoginID,
+    Path(table_id): Path<String>,
+    Extension(state): Extension<Arc<Mutex<State>>>,
+) -> Result<(), ErrorResponse> {
+    let mut state = state.lock().unwrap();
+    state.finish_game(login_id.0, table_id)
 }
 
 #[derive(Deserialize)]

@@ -68,6 +68,19 @@ impl Table {
         self.game.as_mut().unwrap().setup_game();
         Ok(())
     }
+
+    pub fn finish_game(&mut self) -> Result<(), ErrorResponse> {
+        let game = self
+            .game
+            .as_ref()
+            .ok_or((http::StatusCode::CONFLICT, "no active game"))?;
+        if !game.finished() {
+            return Err((http::StatusCode::CONFLICT, "game still running"));
+        }
+        self.game_results.push(game.points());
+        self.game = None;
+        Ok(())
+    }
 }
 
 #[derive(Default)]
@@ -223,6 +236,25 @@ impl State {
                 .map(|login_id| self.users.get(login_id).unwrap().name.clone())
                 .collect(),
         )
+    }
+
+    pub fn finish_game(&mut self, login_id: String, table_id: String) -> Result<(), ErrorResponse> {
+        self.users.get(&login_id).ok_or((
+            http::StatusCode::UNAUTHORIZED,
+            "user not found (bad id cookie)",
+        ))?;
+
+        let table = self
+            .tables
+            .get_mut(&table_id)
+            .ok_or((http::StatusCode::NOT_FOUND, "table id not found"))?;
+
+        table.user_index(&login_id).ok_or((
+            http::StatusCode::NOT_FOUND,
+            "user has not joined table at which game should start",
+        ))?;
+
+        table.finish_game()
     }
 
     pub fn play_card(
