@@ -231,7 +231,7 @@ impl State {
     }
 
     pub fn start_game(&mut self, login_id: String, table_id: String) -> Result<(), ErrorResponse> {
-        let user = self.users.get(&login_id).ok_or((
+        self.users.get(&login_id).ok_or((
             http::StatusCode::UNAUTHORIZED,
             "user not found (bad id cookie)",
         ))?;
