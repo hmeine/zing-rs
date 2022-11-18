@@ -34,8 +34,8 @@ pub struct Table {
     #[serde(serialize_with = "serialize_datetime_as_iso8601")]
     created_at: DateTime<Utc>,
     login_ids: Vec<String>,
-    //#[serde(skip)]
-    //connections: Vec<Option<SplitSink<WebSocket, Message>>>,
+    #[serde(skip)]
+    connections: Vec<Option<SplitSink<WebSocket, Message>>>,
     game_results: Vec<ZingGamePoints>,
     #[serde(skip)]
     game: Option<ZingGame>,
@@ -104,6 +104,28 @@ impl Table {
         self.game = None;
         Ok(())
     }
+
+    pub fn connection_opened(
+        &mut self,
+        login_id: &str,
+        connection: SplitSink<WebSocket, Message>,
+    ) -> Result<(), ErrorResponse> {
+        let user_index = self.user_index(login_id).ok_or((
+            http::StatusCode::NOT_FOUND,
+            "connecting user has not joined table",
+        ))?;
+        self.connections[user_index] = Some(connection);
+        Ok(())
+    }
+
+    pub fn connection_closed(&mut self, login_id: &str) -> Result<(), ErrorResponse> {
+        let user_index = self.user_index(login_id).ok_or((
+            http::StatusCode::NOT_FOUND,
+            "disconnecting user had not joined table",
+        ))?;
+        self.connections[user_index] = None;
+        Ok(())
+    }
 }
 
 #[derive(Default)]
@@ -154,6 +176,7 @@ impl ZingState {
             Table {
                 created_at: Utc::now(),
                 login_ids: vec![login_id],
+                connections: Vec::new(),
                 game_results: Vec::new(),
                 game: None,
             },

@@ -30,7 +30,7 @@ async fn main() {
         .route("/table/:table_id", post(join_table).delete(leave_table))
         .route("/table/:table_id/game", post(start_game).get(game_status).delete(finish_game))
         .route("/table/:table_id/game/play", post(play_card))
-        //.route("/table/:table_id/game/ws", get(ws_handler))
+        .route("/table/:table_id/game/ws", get(ws_handler)) // /game/ws or just /ws?
         .with_state(state)
         .layer(CookieManagerLayer::new());
 
@@ -188,4 +188,63 @@ async fn play_card(
 ) -> Result<(), ErrorResponse> {
     let mut state = state.lock().unwrap();
     state.play_card(login_id.0, table_id, game_action.card_index)
+}
+
+async fn ws_handler(
+    login_id: LoginID,
+    Path(table_id): Path<String>,
+    State(state): State<Arc<Mutex<ZingState>>>,
+    ws: WebSocketUpgrade,
+) -> impl IntoResponse {
+    ws.on_upgrade(|socket| handle_socket(socket, login_id, table_id, state))
+}
+
+async fn handle_socket(
+    mut socket: WebSocket,
+    login_id: LoginID,
+    table_id: String,
+    state: Arc<Mutex<ZingState>>,
+) {
+    //    let (mut sender, mut receiver) = socket.split();
+    //
+    //    tokio::spawn(write(sender));
+    //    tokio::spawn(read(receiver));
+
+    if let Some(msg) = socket.recv().await {
+        if let Ok(msg) = msg {
+            match msg {
+                Message::Text(t) => {
+                    println!("client sent str: {:?}", t);
+                }
+                Message::Binary(_) => {
+                    println!("client sent binary data");
+                }
+                Message::Ping(_) => {
+                    println!("socket ping");
+                }
+                Message::Pong(_) => {
+                    println!("socket pong");
+                }
+                Message::Close(_) => {
+                    println!("client disconnected");
+                    return;
+                }
+            }
+        } else {
+            println!("client disconnected");
+            return;
+        }
+    }
+
+    loop {
+        if socket
+            .send(Message::Text(String::from("Hi!")))
+            .await
+            .is_err()
+        {
+            println!("client disconnected");
+            return;
+        }
+        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+    }
 }
