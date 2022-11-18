@@ -25,6 +25,7 @@ async fn main() {
         .route("/login", post(login).get(whoami).delete(logout))
         .route("/table", post(create_table))
         .route("/table/:table_id", post(join_table).delete(leave_table))
+        .route("/table/:table_id/game", post(start_game))
         .layer(Extension(state))
         .layer(CookieManagerLayer::new());
 
@@ -132,4 +133,13 @@ async fn leave_table(
 ) -> Result<(), ErrorResponse> {
     let mut state = state.lock().unwrap();
     state.leave_table(login_id.0, table_id)
+}
+
+async fn start_game(
+    login_id: LoginID,
+    Path(table_id): Path<String>,
+    Extension(state): Extension<Arc<Mutex<State>>>,
+) -> Result<(), ErrorResponse> {
+    let mut state = state.lock().unwrap();
+    state.start_game(login_id.0, table_id)
 }

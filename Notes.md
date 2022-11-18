@@ -60,3 +60,19 @@ The winning stacks should be at the bottom right (for one self) or at the top
 left (two player mode enemy).  In four player mode, the position of the latter
 should be closer to the side and also rotated (the opposite player is your
 friend).
+
+Server State
+------------
+
+For multi-player games, there's the zing-server which needs to hold state for an
+arbitrary number of clients.  Each client should log in with a user name and get
+a login ID as cookie.  Each user may open or join an arbitrary number of tables
+
+Invariants:
+
+- Every table should have at least one user at it; as soon as the last user
+  leaves the table, it should be removed.
+- Every user may create as many tables as desired, but no more than one table at
+  which no other users have joined.
+- A game can be started at tables with exactly two or exactly four players.
+- After a game has been started, players can no longer leave or join the table.
