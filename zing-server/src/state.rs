@@ -31,8 +31,8 @@ pub struct Table {
     #[serde(serialize_with = "serialize_datetime_as_iso8601")]
     created_at: DateTime<Utc>,
     login_ids: Vec<String>,
-    #[serde(skip)]
-    connections: Vec<Option<SplitSink<WebSocket, Message>>>,
+    //#[serde(skip)]
+    //connections: Vec<Option<SplitSink<WebSocket, Message>>>,
     game_results: Vec<ZingGamePoints>,
     #[serde(skip)]
     game: Option<ZingGame>,
@@ -65,6 +65,7 @@ impl Table {
 
         let dealer = self.game_results.len() % names.len();
         self.game = Some(ZingGame::new_with_player_names(names, dealer));
+        self.game.as_mut().unwrap().setup_game();
         Ok(())
     }
 }
@@ -222,5 +223,35 @@ impl State {
                 .map(|login_id| self.users.get(login_id).unwrap().name.clone())
                 .collect(),
         )
+    }
+
+    pub fn play_card(
+        &mut self,
+        login_id: String,
+        table_id: String,
+        card_index: usize,
+    ) -> Result<(), ErrorResponse> {
+        self.users.get(&login_id).ok_or((
+            http::StatusCode::UNAUTHORIZED,
+            "user not found (bad id cookie)",
+        ))?;
+
+        let table = self
+            .tables
+            .get_mut(&table_id)
+            .ok_or((http::StatusCode::NOT_FOUND, "table id not found"))?;
+
+        let player = table.user_index(&login_id).ok_or((
+            http::StatusCode::NOT_FOUND,
+            "user has not joined table at which game should start",
+        ))?;
+
+        let game = table
+            .game
+            .as_mut()
+            .ok_or((http::StatusCode::CONFLICT, "game not started yet"))?;
+
+        game.play_card(player, card_index)
+            .map_err(|msg| (http::StatusCode::CONFLICT, msg))
     }
 }

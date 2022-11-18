@@ -176,8 +176,14 @@ impl ZingGame {
         }
     }
 
-    pub fn play_card(&mut self, player: usize, card_index: usize) {
-        assert!(player == self.current_player());
+    pub fn play_card(&mut self, player: usize, card_index: usize) -> Result<(), &'static str> {
+        if player != self.current_player() {
+            return Err("not player's turn");
+        }
+
+        if card_index >= self.game_state.players[player].hand.len() {
+            return Err("invalid card index (exceeds player's hand)");
+        }
 
         self.perform_and_remember_action(
             CardAction::new()
@@ -189,6 +195,7 @@ impl ZingGame {
         self.auto_actions();
 
         self.turn += 1;
+        Ok(())
     }
 
     pub fn hand_out_cards(&mut self) {
