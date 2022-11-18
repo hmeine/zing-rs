@@ -5,7 +5,7 @@ use crate::constants::*;
 use crate::game_state::{handle_keyboard_input, GamePhase, GameState};
 use bevy::{prelude::*, render::camera::ScalingMode};
 use bevy_tweening::lens::TransformPositionLens;
-use bevy_tweening::{Animator, EaseFunction, Tween, TweeningType};
+use bevy_tweening::{Animator, EaseFunction, Tween};
 use zing_game::zing_game::ZingGame;
 use zing_game::{card_action::CardLocation, game::CardState};
 
@@ -382,7 +382,6 @@ fn reposition_cards_after_action(
             if old_pos.x != pos.x || old_pos.y != pos.y {
                 commands.entity(*card).insert(Animator::new(Tween::new(
                     EaseFunction::QuadraticInOut,
-                    TweeningType::Once,
                     Duration::from_millis(ANIMATION_MILLIS),
                     TransformPositionLens {
                         start: *old_pos,
