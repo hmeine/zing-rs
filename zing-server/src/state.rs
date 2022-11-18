@@ -49,6 +49,12 @@ where
     serializer.serialize_str(&s)
 }
 
+#[derive(Serialize)]
+pub struct GameStatus {
+    active: bool,
+    ended: bool,
+}
+
 impl Table {
     pub fn games_have_started(&self) -> bool {
         self.game.is_some() || !self.game_results.is_empty()
@@ -67,6 +73,13 @@ impl Table {
         self.game = Some(ZingGame::new_with_player_names(names, dealer));
         self.game.as_mut().unwrap().setup_game();
         Ok(())
+    }
+
+    pub fn game_status(&self) -> GameStatus {
+        GameStatus {
+            active: self.game.is_some(),
+            ended: self.game.as_ref().map_or(false, |game| game.finished()),
+        }
     }
 
     pub fn finish_game(&mut self) -> Result<(), ErrorResponse> {
@@ -236,6 +249,25 @@ impl State {
                 .map(|login_id| self.users.get(login_id).unwrap().name.clone())
                 .collect(),
         )
+    }
+
+    pub fn game_status(&self, login_id: String, table_id: String) -> Result<Json<GameStatus>, ErrorResponse> {
+        self.users.get(&login_id).ok_or((
+            http::StatusCode::UNAUTHORIZED,
+            "user not found (bad id cookie)",
+        ))?;
+
+        let table = self
+            .tables
+            .get(&table_id)
+            .ok_or((http::StatusCode::NOT_FOUND, "table id not found"))?;
+
+        table.user_index(&login_id).ok_or((
+            http::StatusCode::NOT_FOUND,
+            "user has not joined table",
+        ))?;
+
+        Ok(Json(table.game_status()))
     }
 
     pub fn finish_game(&mut self, login_id: String, table_id: String) -> Result<(), ErrorResponse> {

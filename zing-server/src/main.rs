@@ -13,7 +13,7 @@ use axum::{
 };
 use cookie::SameSite;
 use serde::Deserialize;
-use state::{ErrorResponse, State};
+use state::{ErrorResponse, State, GameStatus};
 use tower_cookies::{Cookie, CookieManagerLayer, Cookies};
 
 mod state;
@@ -28,7 +28,7 @@ async fn main() {
         .route("/login", post(login).get(whoami).delete(logout))
         .route("/table", post(create_table).get(list_tables))
         .route("/table/:table_id", post(join_table).delete(leave_table))
-        .route("/table/:table_id/game", post(start_game).delete(finish_game))
+        .route("/table/:table_id/game", post(start_game).get(game_status).delete(finish_game))
         .route("/table/:table_id/game/play", post(play_card))
         //.route("/table/:table_id/game/ws", get(ws_handler))
         .layer(Extension(state))
@@ -155,6 +155,15 @@ async fn start_game(
 ) -> Result<(), ErrorResponse> {
     let mut state = state.lock().unwrap();
     state.start_game(login_id.0, table_id)
+}
+
+async fn game_status(
+    login_id: LoginID,
+    Path(table_id): Path<String>,
+    Extension(state): Extension<Arc<Mutex<State>>>,
+) -> Result<Json<GameStatus>, ErrorResponse> {
+    let state = state.lock().unwrap();
+    state.game_status(login_id.0, table_id)
 }
 
 async fn finish_game(
