@@ -12,7 +12,7 @@ use futures::stream::SplitSink;
 use rand::distributions::{Alphanumeric, DistString};
 use serde::{Serialize, Serializer};
 use std::collections::HashMap;
-use zing_game::zing_game::{ZingGame, ZingGamePoints};
+use zing_game::{zing_game::{ZingGame, ZingGamePoints}, game::GameState};
 
 pub type ErrorResponse = (http::StatusCode, &'static str);
 
@@ -53,6 +53,7 @@ where
 pub struct GameStatus {
     active: bool,
     ended: bool,
+    state: Option<GameState>,
 }
 
 impl Table {
@@ -75,10 +76,13 @@ impl Table {
         Ok(())
     }
 
-    pub fn game_status(&self) -> GameStatus {
+    pub fn game_status(&self, login_id: &str) -> GameStatus {
+        let player_index = self.user_index(login_id).unwrap();
+
         GameStatus {
             active: self.game.is_some(),
             ended: self.game.as_ref().map_or(false, |game| game.finished()),
+            state: self.game.as_ref().map(|game| game.state().new_view_for_player(player_index)),
         }
     }
 
@@ -267,7 +271,7 @@ impl State {
             "user has not joined table",
         ))?;
 
-        Ok(Json(table.game_status()))
+        Ok(Json(table.game_status(&login_id)))
     }
 
     pub fn finish_game(&mut self, login_id: String, table_id: String) -> Result<(), ErrorResponse> {

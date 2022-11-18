@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::Card;
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Player {
     pub name: String,
     /// The difference between player hands and other stacks of cards is that
@@ -57,7 +57,7 @@ pub fn unicode(cards: &[CardState]) -> String {
     cards //.join(" ").collect()
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct StackState {
     pub id: String,
     pub cards: Vec<CardState>,
@@ -96,7 +96,7 @@ impl StackState {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct GameState {
     pub players: Vec<Player>,
     pub stacks: Vec<StackState>,
