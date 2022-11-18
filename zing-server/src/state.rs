@@ -1,6 +1,16 @@
-use axum::http;
+use axum::{
+    extract::ws::{Message, WebSocket},
+    http::{
+        self,
+        header::{self, HeaderName},
+    },
+    response::IntoResponse,
+    Json,
+};
 use chrono::prelude::*;
+use futures::stream::SplitSink;
 use rand::distributions::{Alphanumeric, DistString};
+use serde::{Serialize, Serializer};
 use std::collections::HashMap;
 use zing_game::zing_game::{ZingGame, ZingGamePoints};
 
@@ -16,11 +26,27 @@ struct User {
     tables: Vec<String>,
 }
 
-struct Table {
+#[derive(Serialize)]
+pub struct Table {
+    #[serde(serialize_with = "serialize_datetime_as_iso8601")]
     created_at: DateTime<Utc>,
     login_ids: Vec<String>,
+    #[serde(skip)]
+    connections: Vec<Option<SplitSink<WebSocket, Message>>>,
     game_results: Vec<ZingGamePoints>,
+    #[serde(skip)]
     game: Option<ZingGame>,
+}
+
+fn serialize_datetime_as_iso8601<S>(
+    datetime: &DateTime<Utc>,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let s = format!("{}", datetime.format("%+"));
+    serializer.serialize_str(&s)
 }
 
 impl Table {
@@ -86,6 +112,25 @@ impl State {
         );
 
         Ok(table_id)
+    }
+
+    pub fn list_tables(&self, login_id: String) -> Result<impl IntoResponse, ErrorResponse> {
+        let user = self.users.get(&login_id).ok_or((
+            http::StatusCode::UNAUTHORIZED,
+            "user not found (bad id cookie)",
+        ))?;
+
+        Ok((
+            [(header::CONTENT_TYPE, "application/json")],
+            serde_json::to_string(
+                &user
+                    .tables
+                    .iter()
+                    .map(|table_id| (table_id, self.tables.get(table_id).unwrap()))
+                    .collect::<HashMap<_, _>>(),
+            )
+            .unwrap(),
+        ))
     }
 
     pub fn join_table(&mut self, login_id: String, table_id: String) -> Result<(), ErrorResponse> {

@@ -2,9 +2,12 @@ use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
 use axum::{
-    extract::{FromRequest, Path, RequestParts},
+    extract::{
+        ws::{Message, WebSocket},
+        FromRequest, Path, RequestParts, WebSocketUpgrade,
+    },
     http,
-    response::Html,
+    response::{Html, IntoResponse},
     routing::{get, post},
     Extension, Json, Router,
 };
@@ -23,9 +26,10 @@ async fn main() {
     let app = Router::new()
         .route("/", get(index))
         .route("/login", post(login).get(whoami).delete(logout))
-        .route("/table", post(create_table))
+        .route("/table", post(create_table).get(list_tables))
         .route("/table/:table_id", post(join_table).delete(leave_table))
         .route("/table/:table_id/game", post(start_game))
+        .route("/table/:table_id/game/ws", get(ws_handler))
         .layer(Extension(state))
         .layer(CookieManagerLayer::new());
 
@@ -115,6 +119,14 @@ async fn create_table(
 ) -> Result<String, ErrorResponse> {
     let mut state = state.lock().unwrap();
     state.create_table(login_id.0)
+}
+
+async fn list_tables(
+    login_id: LoginID,
+    Extension(state): Extension<Arc<Mutex<State>>>,
+) -> Result<impl IntoResponse, ErrorResponse> {
+    let state = state.lock().unwrap();
+    state.list_tables(login_id.0)
 }
 
 async fn join_table(

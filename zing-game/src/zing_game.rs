@@ -1,6 +1,7 @@
 use std::cmp::Ordering;
 
 use itertools::Itertools;
+use serde::Serialize;
 
 use crate::{
     card_action::{CardAction, CardLocation, CardRotation},
@@ -17,6 +18,7 @@ pub struct ZingGame {
     history: Vec<CardAction>,
 }
 
+#[derive(Serialize)]
 pub struct ZingGamePoints {
     pub card_points: (u32, u32),
     pub card_count_points: (u32, u32),
