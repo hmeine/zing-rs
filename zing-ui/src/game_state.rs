@@ -91,9 +91,7 @@ pub fn handle_keyboard_input(
     if let Some(card_index) = play_card {
         let game = &mut game_state.game;
         let player_index = game.current_player();
-        let hand_size = game.state().players[player_index].hand.len();
-        if card_index < hand_size {
-            game.play_card(player_index, card_index);
-        }
+        // ignore possible failure from too high card indices:
+        let _ = game.play_card(player_index, card_index);
     }
 }

@@ -20,7 +20,7 @@ impl ZingAI for RandomPlayer {
         game.play_card(
             self.player_index,
             thread_rng().gen_range(0..game.state().players[self.player_index].hand.len()),
-        );
+        ).expect("auto_play() assumes that it's our turn and selects a valid card index");
         
     }
 }
