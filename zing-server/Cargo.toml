@@ -6,13 +6,13 @@ edition = "2021"
 [dependencies]
 zing_game = { path = "../zing-game" }
 
-axum = { version = "0.5.17", features = ["ws"] }
+axum = { version = "0.6.1", features = ["ws"] }
 chrono = "0.4.23"
 futures = "0.3"
 tokio = { version = "1", features = ["full"] }
 tower = { version = "0.4", features = ["util"] }
 async-trait = "0.1"
-tower-cookies = "0.7.0"
+tower-cookies = "0.8.0"
 cookie = "0.16.1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

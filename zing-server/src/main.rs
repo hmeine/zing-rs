@@ -4,16 +4,16 @@ use async_trait::async_trait;
 use axum::{
     extract::{
         ws::{Message, WebSocket},
-        FromRequest, Path, RequestParts, WebSocketUpgrade,
+        Path, State, WebSocketUpgrade, FromRequestParts,
     },
-    http,
+    http::{self, request::Parts},
     response::{Html, IntoResponse},
     routing::{get, post},
-    Extension, Json, Router,
+    Json, Router,
 };
 use cookie::SameSite;
 use serde::Deserialize;
-use state::{ErrorResponse, State, GameStatus};
+use state::{ErrorResponse, ZingState, GameStatus};
 use tower_cookies::{Cookie, CookieManagerLayer, Cookies};
 
 mod state;
@@ -21,7 +21,7 @@ mod state;
 #[tokio::main]
 async fn main() {
     //let tables = HashMap::new();
-    let state = Arc::new(Mutex::new(State::default()));
+    let state = Arc::new(Mutex::new(ZingState::default()));
 
     let app = Router::new()
         .route("/", get(index))
@@ -31,7 +31,7 @@ async fn main() {
         .route("/table/:table_id/game", post(start_game).get(game_status).delete(finish_game))
         .route("/table/:table_id/game/play", post(play_card))
         //.route("/table/:table_id/game/ws", get(ws_handler))
-        .layer(Extension(state))
+        .with_state(state)
         .layer(CookieManagerLayer::new());
 
     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
@@ -48,9 +48,9 @@ struct LoginRequest {
 const USERNAME_COOKIE: &str = "login_id";
 
 async fn login(
-    Json(login_request): Json<LoginRequest>,
-    Extension(state): Extension<Arc<Mutex<State>>>,
+    State(state): State<Arc<Mutex<ZingState>>>,
     cookies: Cookies,
+    Json(login_request): Json<LoginRequest>,
 ) -> Result<String, ErrorResponse> {
     let mut state = state.lock().unwrap();
     let user_name = login_request.name;
@@ -77,14 +77,14 @@ async fn logout(cookies: Cookies) {
 struct LoginID(String);
 
 #[async_trait]
-impl<B> FromRequest<B> for LoginID
+impl<S> FromRequestParts<S> for LoginID
 where
-    B: Send,
+    S: Send + Sync,
 {
     type Rejection = (http::StatusCode, &'static str);
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let cookies = Cookies::from_request(req).await?;
+    async fn from_request_parts(req: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        let cookies = Cookies::from_request_parts(req, state).await?;
 
         let login_id = cookies
             .get(USERNAME_COOKIE)
@@ -104,7 +104,7 @@ async fn index() -> Html<&'static str> {
 }
 
 async fn whoami(
-    Extension(state): Extension<Arc<Mutex<State>>>,
+    State(state): State<Arc<Mutex<ZingState>>>,
     login_id: LoginID,
 ) -> Result<String, ErrorResponse> {
     let state = state.lock().unwrap();
@@ -116,7 +116,7 @@ async fn whoami(
 
 async fn create_table(
     login_id: LoginID,
-    Extension(state): Extension<Arc<Mutex<State>>>,
+    State(state): State<Arc<Mutex<ZingState>>>,
 ) -> Result<String, ErrorResponse> {
     let mut state = state.lock().unwrap();
     state.create_table(login_id.0)
@@ -124,7 +124,7 @@ async fn create_table(
 
 async fn list_tables(
     login_id: LoginID,
-    Extension(state): Extension<Arc<Mutex<State>>>,
+    State(state): State<Arc<Mutex<ZingState>>>,
 ) -> Result<impl IntoResponse, ErrorResponse> {
     let state = state.lock().unwrap();
     state.list_tables(login_id.0)
@@ -133,7 +133,7 @@ async fn list_tables(
 async fn join_table(
     login_id: LoginID,
     Path(table_id): Path<String>,
-    Extension(state): Extension<Arc<Mutex<State>>>,
+    State(state): State<Arc<Mutex<ZingState>>>,
 ) -> Result<(), ErrorResponse> {
     let mut state = state.lock().unwrap();
     state.join_table(login_id.0, table_id)
@@ -142,7 +142,7 @@ async fn join_table(
 async fn leave_table(
     login_id: LoginID,
     Path(table_id): Path<String>,
-    Extension(state): Extension<Arc<Mutex<State>>>,
+    State(state): State<Arc<Mutex<ZingState>>>,
 ) -> Result<(), ErrorResponse> {
     let mut state = state.lock().unwrap();
     state.leave_table(login_id.0, table_id)
@@ -151,7 +151,7 @@ async fn leave_table(
 async fn start_game(
     login_id: LoginID,
     Path(table_id): Path<String>,
-    Extension(state): Extension<Arc<Mutex<State>>>,
+    State(state): State<Arc<Mutex<ZingState>>>,
 ) -> Result<(), ErrorResponse> {
     let mut state = state.lock().unwrap();
     state.start_game(login_id.0, table_id)
@@ -160,7 +160,7 @@ async fn start_game(
 async fn game_status(
     login_id: LoginID,
     Path(table_id): Path<String>,
-    Extension(state): Extension<Arc<Mutex<State>>>,
+    State(state): State<Arc<Mutex<ZingState>>>,
 ) -> Result<Json<GameStatus>, ErrorResponse> {
     let state = state.lock().unwrap();
     state.game_status(login_id.0, table_id)
@@ -169,7 +169,7 @@ async fn game_status(
 async fn finish_game(
     login_id: LoginID,
     Path(table_id): Path<String>,
-    Extension(state): Extension<Arc<Mutex<State>>>,
+    State(state): State<Arc<Mutex<ZingState>>>,
 ) -> Result<(), ErrorResponse> {
     let mut state = state.lock().unwrap();
     state.finish_game(login_id.0, table_id)
@@ -183,7 +183,7 @@ struct GameAction {
 async fn play_card(
     login_id: LoginID,
     Path(table_id): Path<String>,
-    Extension(state): Extension<Arc<Mutex<State>>>,
+    State(state): State<Arc<Mutex<ZingState>>>,
     Json(game_action): Json<GameAction>,
 ) -> Result<(), ErrorResponse> {
     let mut state = state.lock().unwrap();

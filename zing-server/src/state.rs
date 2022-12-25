@@ -101,12 +101,12 @@ impl Table {
 }
 
 #[derive(Default)]
-pub struct State {
+pub struct ZingState {
     users: HashMap<String, User>,
     tables: HashMap<String, Table>,
 }
 
-impl State {
+impl ZingState {
     pub fn login(&mut self, user_name: String) -> String {
         let login_id = random_id();
         self.users.insert(
