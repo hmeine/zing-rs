@@ -66,9 +66,9 @@ Server State
 
 For multi-player games, there's the zing-server which needs to hold state for an
 arbitrary number of clients.  Each client should log in with a user name and get
-a login ID as cookie.  Each user may open or join an arbitrary number of tables
+a login ID as cookie.  Each user may open or join an arbitrary number of tables.
 
-Invariants:
+Invariants / rules:
 
 - Every table should have at least one user at it; as soon as the last user
   leaves the table, it should be removed.
