@@ -12,7 +12,10 @@ use futures::stream::SplitSink;
 use rand::distributions::{Alphanumeric, DistString};
 use serde::{Serialize, Serializer};
 use std::collections::HashMap;
-use zing_game::{zing_game::{ZingGame, ZingGamePoints}, game::GameState};
+use zing_game::{
+    game::GameState,
+    zing_game::{ZingGame, ZingGamePoints},
+};
 
 pub type ErrorResponse = (http::StatusCode, &'static str);
 
@@ -21,7 +24,7 @@ fn random_id() -> String {
 }
 
 #[derive(Default)]
-struct User {
+pub struct User {
     name: String,
     tables: Vec<String>,
 }
@@ -82,7 +85,10 @@ impl Table {
         GameStatus {
             active: self.game.is_some(),
             ended: self.game.as_ref().map_or(false, |game| game.finished()),
-            state: self.game.as_ref().map(|game| game.state().new_view_for_player(player_index)),
+            state: self
+                .game
+                .as_ref()
+                .map(|game| game.state().new_view_for_player(player_index)),
         }
     }
 
@@ -119,19 +125,30 @@ impl ZingState {
         login_id
     }
 
+    pub fn get_user(&self, login_id: &str) -> Result<&User, ErrorResponse> {
+        self.users.get(login_id).ok_or((
+            http::StatusCode::UNAUTHORIZED,
+            "user not found (bad id cookie)",
+        ))
+    }
+
+    pub fn get_user_mut(&mut self, login_id: &str) -> Result<&mut User, ErrorResponse> {
+        self.users.get_mut(login_id).ok_or((
+            http::StatusCode::UNAUTHORIZED,
+            "user not found (bad id cookie)",
+        ))
+    }
+
     pub fn whoami(&self, login_id: String) -> Option<String> {
         self.users.get(&login_id).map(|user| user.name.clone())
     }
 
     pub fn create_table(&mut self, login_id: String) -> Result<String, ErrorResponse> {
-        let user = self.users.get_mut(&login_id).ok_or((
-            http::StatusCode::UNAUTHORIZED,
-            "user not found (bad id cookie)",
-        ))?;
-
         let table_id = random_id();
 
+        let user = self.get_user_mut(&login_id)?;
         user.tables.push(table_id.clone());
+
         self.tables.insert(
             table_id.clone(),
             Table {
@@ -146,10 +163,7 @@ impl ZingState {
     }
 
     pub fn list_tables(&self, login_id: String) -> Result<impl IntoResponse, ErrorResponse> {
-        let user = self.users.get(&login_id).ok_or((
-            http::StatusCode::UNAUTHORIZED,
-            "user not found (bad id cookie)",
-        ))?;
+        let user = self.get_user(&login_id)?;
 
         Ok((
             [(header::CONTENT_TYPE, "application/json")],
@@ -165,19 +179,15 @@ impl ZingState {
     }
 
     pub fn join_table(&mut self, login_id: String, table_id: String) -> Result<(), ErrorResponse> {
-        let user = self.users.get_mut(&login_id).ok_or((
-            http::StatusCode::UNAUTHORIZED,
-            "user not found (bad id cookie)",
-        ))?;
+        let user = self.get_user(&login_id)?;
+        if user.tables.contains(&table_id) {
+            return Err((http::StatusCode::CONFLICT, "trying to join table again"));
+        }
 
         let table = self
             .tables
             .get_mut(&table_id)
             .ok_or((http::StatusCode::NOT_FOUND, "table id not found"))?;
-
-        if user.tables.contains(&table_id) {
-            return Err((http::StatusCode::CONFLICT, "trying to join table again"));
-        }
 
         if table.games_have_started() {
             return Err((
@@ -186,27 +196,24 @@ impl ZingState {
             ));
         }
 
-        user.tables.push(table_id.clone());
-        table.login_ids.push(login_id);
+        table.login_ids.push(login_id.clone());
+        self.get_user_mut(&login_id)?.tables.push(table_id);
 
         Ok(())
     }
 
     pub fn leave_table(&mut self, login_id: String, table_id: String) -> Result<(), ErrorResponse> {
-        let user = self.users.get_mut(&login_id).ok_or((
+        let user = self.get_user(&login_id)?;
+
+        let table_index_in_user = user.tables.iter().position(|id| *id == table_id).ok_or((
             http::StatusCode::UNAUTHORIZED,
-            "user not found (bad id cookie)",
+            "trying to leave table before joining",
         ))?;
 
         let table = self
             .tables
             .get_mut(&table_id)
             .ok_or((http::StatusCode::NOT_FOUND, "table id not found"))?;
-
-        let table_index_in_user = user.tables.iter().position(|id| *id == table_id).ok_or((
-            http::StatusCode::UNAUTHORIZED,
-            "trying to leave table before joining",
-        ))?;
 
         if table.games_have_started() {
             return Err((
@@ -221,20 +228,19 @@ impl ZingState {
             .position(|id| *id == login_id)
             .expect("inconsistent state");
 
-        user.tables.remove(table_index_in_user);
         table.login_ids.remove(user_index_in_table);
         if table.login_ids.is_empty() {
             self.tables.remove(&table_id);
         }
+        self.get_user_mut(&login_id)?
+            .tables
+            .remove(table_index_in_user);
 
         Ok(())
     }
 
     pub fn start_game(&mut self, login_id: String, table_id: String) -> Result<(), ErrorResponse> {
-        self.users.get(&login_id).ok_or((
-            http::StatusCode::UNAUTHORIZED,
-            "user not found (bad id cookie)",
-        ))?;
+        self.get_user(&login_id)?;
 
         let table = self
             .tables
@@ -255,30 +261,27 @@ impl ZingState {
         )
     }
 
-    pub fn game_status(&self, login_id: String, table_id: String) -> Result<Json<GameStatus>, ErrorResponse> {
-        self.users.get(&login_id).ok_or((
-            http::StatusCode::UNAUTHORIZED,
-            "user not found (bad id cookie)",
-        ))?;
+    pub fn game_status(
+        &self,
+        login_id: String,
+        table_id: String,
+    ) -> Result<Json<GameStatus>, ErrorResponse> {
+        self.get_user(&login_id)?;
 
         let table = self
             .tables
             .get(&table_id)
             .ok_or((http::StatusCode::NOT_FOUND, "table id not found"))?;
 
-        table.user_index(&login_id).ok_or((
-            http::StatusCode::NOT_FOUND,
-            "user has not joined table",
-        ))?;
+        table
+            .user_index(&login_id)
+            .ok_or((http::StatusCode::NOT_FOUND, "user has not joined table"))?;
 
         Ok(Json(table.game_status(&login_id)))
     }
 
     pub fn finish_game(&mut self, login_id: String, table_id: String) -> Result<(), ErrorResponse> {
-        self.users.get(&login_id).ok_or((
-            http::StatusCode::UNAUTHORIZED,
-            "user not found (bad id cookie)",
-        ))?;
+        self.get_user(&login_id)?;
 
         let table = self
             .tables
@@ -299,10 +302,7 @@ impl ZingState {
         table_id: String,
         card_index: usize,
     ) -> Result<(), ErrorResponse> {
-        self.users.get(&login_id).ok_or((
-            http::StatusCode::UNAUTHORIZED,
-            "user not found (bad id cookie)",
-        ))?;
+        self.get_user(&login_id)?;
 
         let table = self
             .tables
