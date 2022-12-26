@@ -1,14 +1,10 @@
 use axum::{
-    extract::ws::{Message, WebSocket},
-    http::{
-        self,
-        header::{self, HeaderName},
-    },
+    extract::ws::WebSocket,
+    http::{self, header},
     response::IntoResponse,
     Json,
 };
 use chrono::prelude::*;
-use futures::stream::SplitSink;
 use rand::distributions::{Alphanumeric, DistString};
 use serde::{Serialize, Serializer};
 use std::collections::HashMap;
@@ -35,7 +31,7 @@ pub struct Table {
     created_at: DateTime<Utc>,
     login_ids: Vec<String>,
     #[serde(skip)]
-    connections: Vec<Option<SplitSink<WebSocket, Message>>>,
+    connections: Vec<Option<WebSocket>>,
     game_results: Vec<ZingGamePoints>,
     #[serde(skip)]
     game: Option<ZingGame>,
@@ -105,17 +101,8 @@ impl Table {
         Ok(())
     }
 
-    pub fn connection_opened(
-        &mut self,
-        login_id: &str,
-        connection: SplitSink<WebSocket, Message>,
-    ) -> Result<(), ErrorResponse> {
-        let user_index = self.user_index(login_id).ok_or((
-            http::StatusCode::NOT_FOUND,
-            "connecting user has not joined table",
-        ))?;
+    pub fn connection_opened(&mut self, user_index: usize, connection: WebSocket) {
         self.connections[user_index] = Some(connection);
-        Ok(())
     }
 
     pub fn connection_closed(&mut self, login_id: &str) -> Result<(), ErrorResponse> {
@@ -319,6 +306,48 @@ impl ZingState {
 
         table.finish_game()
     }
+
+    pub fn check_user_can_connect(
+        &self,
+        login_id: &str,
+        table_id: &str,
+    ) -> Result<bool, ErrorResponse> {
+        self.get_user(&login_id)?;
+
+        let table = self
+            .tables
+            .get(table_id)
+            .ok_or((http::StatusCode::NOT_FOUND, "table id not found"))?;
+
+        let user_index = table.user_index(login_id).ok_or((
+            http::StatusCode::NOT_FOUND,
+            "connecting user has not joined table",
+        ))?;
+
+        Ok(true)
+    }
+
+    pub fn add_user_connection(&mut self, login_id: String, table_id: String, socket: WebSocket) {
+        // it would be nice if we could socket.close() if the following expression is false:
+        self.tables.get_mut(&table_id).map_or(false, |table| {
+            table.user_index(&login_id).map_or(false, |user_index| {
+                table.connection_opened(user_index, socket);
+                true
+            })
+        });
+    }
+
+    //    loop {
+    //        if socket
+    //            .send(Message::Text(String::from("Hi!")))
+    //            .await
+    //            .is_err()
+    //        {
+    //            println!("client disconnected");
+    //            return;
+    //        }
+    //        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+    //    }
 
     pub fn play_card(
         &mut self,

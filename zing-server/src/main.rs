@@ -2,10 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
 use axum::{
-    extract::{
-        ws::{Message, WebSocket},
-        Path, State, WebSocketUpgrade, FromRequestParts,
-    },
+    extract::{ws::WebSocket, FromRequestParts, Path, State, WebSocketUpgrade},
     http::{self, request::Parts},
     response::{Html, IntoResponse},
     routing::{get, post},
@@ -13,7 +10,7 @@ use axum::{
 };
 use cookie::SameSite;
 use serde::Deserialize;
-use state::{ErrorResponse, ZingState, GameStatus};
+use state::{ErrorResponse, GameStatus, ZingState};
 use tower_cookies::{Cookie, CookieManagerLayer, Cookies};
 
 mod state;
@@ -28,7 +25,10 @@ async fn main() {
         .route("/login", post(login).get(whoami).delete(logout))
         .route("/table", post(create_table).get(list_tables))
         .route("/table/:table_id", post(join_table).delete(leave_table))
-        .route("/table/:table_id/game", post(start_game).get(game_status).delete(finish_game))
+        .route(
+            "/table/:table_id/game",
+            post(start_game).get(game_status).delete(finish_game),
+        )
         .route("/table/:table_id/game/play", post(play_card))
         .route("/table/:table_id/game/ws", get(ws_handler)) // /game/ws or just /ws?
         .with_state(state)
@@ -57,7 +57,7 @@ async fn login(
     if user_name.is_empty() {
         return Err((http::StatusCode::BAD_REQUEST, "name must not be empty"));
     }
-    let login_id = state.login(user_name.clone());
+    let login_id = state.login(&user_name);
     println!("Logged in {} as {}", user_name, login_id);
 
     // TODO: log out if USERNAME_COOKIE is already set (and valid)
@@ -195,56 +195,21 @@ async fn ws_handler(
     Path(table_id): Path<String>,
     State(state): State<Arc<Mutex<ZingState>>>,
     ws: WebSocketUpgrade,
-) -> impl IntoResponse {
-    ws.on_upgrade(|socket| handle_socket(socket, login_id, table_id, state))
+) -> Result<impl IntoResponse, ErrorResponse> {
+    state
+        .lock()
+        .unwrap()
+        .check_user_can_connect(&login_id.0, &table_id)?;
+
+    Ok(ws.on_upgrade(move |socket| add_user_connection(state, login_id.0, table_id, socket)))
 }
 
-async fn handle_socket(
-    mut socket: WebSocket,
-    login_id: LoginID,
-    table_id: String,
+async fn add_user_connection(
     state: Arc<Mutex<ZingState>>,
+    login_id: String,
+    table_id: String,
+    socket: WebSocket,
 ) {
-    //    let (mut sender, mut receiver) = socket.split();
-    //
-    //    tokio::spawn(write(sender));
-    //    tokio::spawn(read(receiver));
-
-    if let Some(msg) = socket.recv().await {
-        if let Ok(msg) = msg {
-            match msg {
-                Message::Text(t) => {
-                    println!("client sent str: {:?}", t);
-                }
-                Message::Binary(_) => {
-                    println!("client sent binary data");
-                }
-                Message::Ping(_) => {
-                    println!("socket ping");
-                }
-                Message::Pong(_) => {
-                    println!("socket pong");
-                }
-                Message::Close(_) => {
-                    println!("client disconnected");
-                    return;
-                }
-            }
-        } else {
-            println!("client disconnected");
-            return;
-        }
-    }
-
-    loop {
-        if socket
-            .send(Message::Text(String::from("Hi!")))
-            .await
-            .is_err()
-        {
-            println!("client disconnected");
-            return;
-        }
-        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-    }
+    let mut state = state.lock().unwrap();
+    state.add_user_connection(login_id, table_id, socket)
 }
