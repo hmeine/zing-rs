@@ -299,7 +299,7 @@ impl ZingState {
             .get_mut(table_id)
             .ok_or((http::StatusCode::NOT_FOUND, "table id not found"))?;
 
-        table.user_index(&login_id).ok_or((
+        table.user_index(login_id).ok_or((
             http::StatusCode::NOT_FOUND,
             "user has not joined table at which game should start",
         ))?;
@@ -312,14 +312,14 @@ impl ZingState {
         login_id: &str,
         table_id: &str,
     ) -> Result<bool, ErrorResponse> {
-        self.get_user(&login_id)?;
+        self.get_user(login_id)?;
 
         let table = self
             .tables
             .get(table_id)
             .ok_or((http::StatusCode::NOT_FOUND, "table id not found"))?;
 
-        let user_index = table.user_index(login_id).ok_or((
+        table.user_index(login_id).ok_or((
             http::StatusCode::NOT_FOUND,
             "connecting user has not joined table",
         ))?;
@@ -355,14 +355,14 @@ impl ZingState {
         table_id: &str,
         card_index: usize,
     ) -> Result<(), ErrorResponse> {
-        self.get_user(&login_id)?;
+        self.get_user(login_id)?;
 
         let table = self
             .tables
             .get_mut(table_id)
             .ok_or((http::StatusCode::NOT_FOUND, "table id not found"))?;
 
-        let player = table.user_index(&login_id).ok_or((
+        let player = table.user_index(login_id).ok_or((
             http::StatusCode::NOT_FOUND,
             "user has not joined table at which game should start",
         ))?;

@@ -94,6 +94,7 @@ impl ZingGame {
         &self.history
     }
 
+    #[allow(clippy::bool_to_int_with_if)]
     pub fn card_points(card: &Card) -> u32 {
         match card.rank {
             Rank::Jack | Rank::Queen | Rank::King | Rank::Ace => 1,

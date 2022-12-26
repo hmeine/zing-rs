@@ -42,7 +42,7 @@ impl CardSprite {
         translation: Vec3,
     ) -> Entity {
         let png_path = Self::png_path(card_state);
-        let png = asset_server.load(&png_path);
+        let png = asset_server.load(png_path);
         let scale = CARD_HEIGHT / 559.;
 
         commands

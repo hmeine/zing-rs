@@ -226,7 +226,7 @@ fn card_offsets_for_stack<'a>(
 
     let mut total_peeping: i8 = card_states
         .iter()
-        .map(|cs| if cs.face_up { 1 } else { 0 })
+        .map(|cs| i8::from(cs.face_up))
         .sum();
     if let Some(CardState { face_up: true, .. }) = card_states.last() {
         total_peeping -= 1;
