@@ -135,12 +135,12 @@ pub struct ZingState {
 }
 
 impl ZingState {
-    pub fn login(&mut self, user_name: String) -> String {
+    pub fn login(&mut self, user_name: &str) -> String {
         let login_id = random_id();
         self.users.insert(
             login_id.clone(),
             User {
-                name: user_name,
+                name: user_name.to_owned(),
                 ..Default::default()
             },
         );
@@ -161,21 +161,21 @@ impl ZingState {
         ))
     }
 
-    pub fn whoami(&self, login_id: String) -> Option<String> {
-        self.users.get(&login_id).map(|user| user.name.clone())
+    pub fn whoami(&self, login_id: &str) -> Option<String> {
+        self.users.get(login_id).map(|user| user.name.clone())
     }
 
-    pub fn create_table(&mut self, login_id: String) -> Result<String, ErrorResponse> {
+    pub fn create_table(&mut self, login_id: &str) -> Result<String, ErrorResponse> {
         let table_id = random_id();
 
-        let user = self.get_user_mut(&login_id)?;
+        let user = self.get_user_mut(login_id)?;
         user.tables.push(table_id.clone());
 
         self.tables.insert(
             table_id.clone(),
             Table {
                 created_at: Utc::now(),
-                login_ids: vec![login_id],
+                login_ids: vec![login_id.to_owned()],
                 connections: Vec::new(),
                 game_results: Vec::new(),
                 game: None,
@@ -185,8 +185,8 @@ impl ZingState {
         Ok(table_id)
     }
 
-    pub fn list_tables(&self, login_id: String) -> Result<impl IntoResponse, ErrorResponse> {
-        let user = self.get_user(&login_id)?;
+    pub fn list_tables(&self, login_id: &str) -> Result<impl IntoResponse, ErrorResponse> {
+        let user = self.get_user(login_id)?;
 
         Ok((
             [(header::CONTENT_TYPE, "application/json")],
@@ -201,8 +201,9 @@ impl ZingState {
         ))
     }
 
-    pub fn join_table(&mut self, login_id: String, table_id: String) -> Result<(), ErrorResponse> {
-        let user = self.get_user(&login_id)?;
+    pub fn join_table(&mut self, login_id: &str, table_id: &str) -> Result<(), ErrorResponse> {
+        let user = self.get_user(login_id)?;
+        let table_id = table_id.to_owned();
         if user.tables.contains(&table_id) {
             return Err((http::StatusCode::CONFLICT, "trying to join table again"));
         }
@@ -219,14 +220,14 @@ impl ZingState {
             ));
         }
 
-        table.login_ids.push(login_id.clone());
-        self.get_user_mut(&login_id)?.tables.push(table_id);
+        table.login_ids.push(login_id.to_owned());
+        self.get_user_mut(login_id)?.tables.push(table_id);
 
         Ok(())
     }
 
-    pub fn leave_table(&mut self, login_id: String, table_id: String) -> Result<(), ErrorResponse> {
-        let user = self.get_user(&login_id)?;
+    pub fn leave_table(&mut self, login_id: &str, table_id: &str) -> Result<(), ErrorResponse> {
+        let user = self.get_user(login_id)?;
 
         let table_index_in_user = user.tables.iter().position(|id| *id == table_id).ok_or((
             http::StatusCode::UNAUTHORIZED,
@@ -235,7 +236,7 @@ impl ZingState {
 
         let table = self
             .tables
-            .get_mut(&table_id)
+            .get_mut(table_id)
             .ok_or((http::StatusCode::NOT_FOUND, "table id not found"))?;
 
         if table.games_have_started() {
@@ -253,24 +254,24 @@ impl ZingState {
 
         table.login_ids.remove(user_index_in_table);
         if table.login_ids.is_empty() {
-            self.tables.remove(&table_id);
+            self.tables.remove(table_id);
         }
-        self.get_user_mut(&login_id)?
+        self.get_user_mut(login_id)?
             .tables
             .remove(table_index_in_user);
 
         Ok(())
     }
 
-    pub fn start_game(&mut self, login_id: String, table_id: String) -> Result<(), ErrorResponse> {
-        self.get_user(&login_id)?;
+    pub fn start_game(&mut self, login_id: &str, table_id: &str) -> Result<(), ErrorResponse> {
+        self.get_user(login_id)?;
 
         let table = self
             .tables
-            .get_mut(&table_id)
+            .get_mut(table_id)
             .ok_or((http::StatusCode::NOT_FOUND, "table id not found"))?;
 
-        table.user_index(&login_id).ok_or((
+        table.user_index(login_id).ok_or((
             http::StatusCode::NOT_FOUND,
             "user has not joined table at which game should start",
         ))?;
@@ -286,29 +287,29 @@ impl ZingState {
 
     pub fn game_status(
         &self,
-        login_id: String,
-        table_id: String,
+        login_id: &str,
+        table_id: &str,
     ) -> Result<Json<GameStatus>, ErrorResponse> {
-        self.get_user(&login_id)?;
+        self.get_user(login_id)?;
 
         let table = self
             .tables
-            .get(&table_id)
+            .get(table_id)
             .ok_or((http::StatusCode::NOT_FOUND, "table id not found"))?;
 
         table
-            .user_index(&login_id)
+            .user_index(login_id)
             .ok_or((http::StatusCode::NOT_FOUND, "user has not joined table"))?;
 
-        Ok(Json(table.game_status(&login_id)))
+        Ok(Json(table.game_status(login_id)))
     }
 
-    pub fn finish_game(&mut self, login_id: String, table_id: String) -> Result<(), ErrorResponse> {
-        self.get_user(&login_id)?;
+    pub fn finish_game(&mut self, login_id: &str, table_id: &str) -> Result<(), ErrorResponse> {
+        self.get_user(login_id)?;
 
         let table = self
             .tables
-            .get_mut(&table_id)
+            .get_mut(table_id)
             .ok_or((http::StatusCode::NOT_FOUND, "table id not found"))?;
 
         table.user_index(&login_id).ok_or((
@@ -321,15 +322,15 @@ impl ZingState {
 
     pub fn play_card(
         &mut self,
-        login_id: String,
-        table_id: String,
+        login_id: &str,
+        table_id: &str,
         card_index: usize,
     ) -> Result<(), ErrorResponse> {
         self.get_user(&login_id)?;
 
         let table = self
             .tables
-            .get_mut(&table_id)
+            .get_mut(table_id)
             .ok_or((http::StatusCode::NOT_FOUND, "table id not found"))?;
 
         let player = table.user_index(&login_id).ok_or((

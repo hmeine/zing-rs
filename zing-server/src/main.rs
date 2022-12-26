@@ -108,7 +108,7 @@ async fn whoami(
     login_id: LoginID,
 ) -> Result<String, ErrorResponse> {
     let state = state.lock().unwrap();
-    match state.whoami(login_id.0) {
+    match state.whoami(&login_id.0) {
         Some(user_name) => Ok(user_name),
         None => Err((http::StatusCode::UNAUTHORIZED, "no valid login cookie")),
     }
@@ -119,7 +119,7 @@ async fn create_table(
     State(state): State<Arc<Mutex<ZingState>>>,
 ) -> Result<String, ErrorResponse> {
     let mut state = state.lock().unwrap();
-    state.create_table(login_id.0)
+    state.create_table(&login_id.0)
 }
 
 async fn list_tables(
@@ -127,7 +127,7 @@ async fn list_tables(
     State(state): State<Arc<Mutex<ZingState>>>,
 ) -> Result<impl IntoResponse, ErrorResponse> {
     let state = state.lock().unwrap();
-    state.list_tables(login_id.0)
+    state.list_tables(&login_id.0)
 }
 
 async fn join_table(
@@ -136,7 +136,7 @@ async fn join_table(
     State(state): State<Arc<Mutex<ZingState>>>,
 ) -> Result<(), ErrorResponse> {
     let mut state = state.lock().unwrap();
-    state.join_table(login_id.0, table_id)
+    state.join_table(&login_id.0, &table_id)
 }
 
 async fn leave_table(
@@ -145,7 +145,7 @@ async fn leave_table(
     State(state): State<Arc<Mutex<ZingState>>>,
 ) -> Result<(), ErrorResponse> {
     let mut state = state.lock().unwrap();
-    state.leave_table(login_id.0, table_id)
+    state.leave_table(&login_id.0, &table_id)
 }
 
 async fn start_game(
@@ -154,7 +154,7 @@ async fn start_game(
     State(state): State<Arc<Mutex<ZingState>>>,
 ) -> Result<(), ErrorResponse> {
     let mut state = state.lock().unwrap();
-    state.start_game(login_id.0, table_id)
+    state.start_game(&login_id.0, &table_id)
 }
 
 async fn game_status(
@@ -163,7 +163,7 @@ async fn game_status(
     State(state): State<Arc<Mutex<ZingState>>>,
 ) -> Result<Json<GameStatus>, ErrorResponse> {
     let state = state.lock().unwrap();
-    state.game_status(login_id.0, table_id)
+    state.game_status(&login_id.0, &table_id)
 }
 
 async fn finish_game(
@@ -172,7 +172,7 @@ async fn finish_game(
     State(state): State<Arc<Mutex<ZingState>>>,
 ) -> Result<(), ErrorResponse> {
     let mut state = state.lock().unwrap();
-    state.finish_game(login_id.0, table_id)
+    state.finish_game(&login_id.0, &table_id)
 }
 
 #[derive(Deserialize)]
@@ -187,7 +187,7 @@ async fn play_card(
     Json(game_action): Json<GameAction>,
 ) -> Result<(), ErrorResponse> {
     let mut state = state.lock().unwrap();
-    state.play_card(login_id.0, table_id, game_action.card_index)
+    state.play_card(&login_id.0, &table_id, game_action.card_index)
 }
 
 async fn ws_handler(
