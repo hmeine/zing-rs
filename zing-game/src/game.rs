@@ -1,3 +1,4 @@
+use bevy_reflect::Reflect;
 use serde::{Deserialize, Serialize};
 
 use crate::Card;
@@ -23,7 +24,7 @@ impl Player {
 
 /// Represents a single card (without position) with front and back side and
 /// whether it is face up or face down.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Reflect)]
 pub struct CardState {
     pub card: Card,
     pub face_up: bool,

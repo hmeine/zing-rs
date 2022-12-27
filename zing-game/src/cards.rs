@@ -1,7 +1,8 @@
+use bevy_reflect::Reflect;
 use serde::{Deserialize, Serialize};
 use strum_macros::EnumIter;
 
-#[derive(Copy, Clone, Debug, EnumIter, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, EnumIter, PartialEq, Eq, Serialize, Deserialize, Reflect)]
 pub enum Suit {
     Diamonds,
     Hearts,
@@ -9,7 +10,7 @@ pub enum Suit {
     Clubs,
 }
 
-#[derive(Copy, Clone, Debug, EnumIter, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, EnumIter, PartialEq, Eq, Serialize, Deserialize, Reflect)]
 pub enum Rank {
     Two,
     Three,
@@ -26,13 +27,13 @@ pub enum Rank {
     Ace,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Reflect)]
 pub enum Back {
     Red,
     Blue,
 }
 
-#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, Reflect)]
 pub struct Card {
     pub rank: Rank,
     pub suit: Suit,

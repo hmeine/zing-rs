@@ -12,3 +12,4 @@ strum_macros = "0.25.2"
 rand = "0.8.5"
 itertools = "0.11.0"
 serde = { version = "1.0.188", features = ["derive"] }
+bevy_reflect = "0.11.2"

@@ -1,14 +1,15 @@
+use bevy_reflect::Reflect;
 use serde::{Deserialize, Serialize};
 
 use crate::game::{CardState, GameState};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Reflect)]
 pub enum CardLocation {
     PlayerHand,
     Stack,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Reflect)]
 pub enum CardRotation {
     FaceUp,
     FaceDown,
