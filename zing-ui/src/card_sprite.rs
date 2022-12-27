@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use zing_game::{game::CardState, Suit, Rank, Back};
+use zing_game::{game::CardState, Back, Rank, Suit};
 
 use crate::constants::CARD_HEIGHT;
 

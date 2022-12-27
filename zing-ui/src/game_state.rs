@@ -34,7 +34,10 @@ impl GameState {
             we_are_player,
             last_synced_history_len: initial_history_len,
             displayed_state: initial_state,
-            step_animation_timer: Timer::new(Duration::from_millis(STEP_DURATION_MILLIS), TimerMode::Once),
+            step_animation_timer: Timer::new(
+                Duration::from_millis(STEP_DURATION_MILLIS),
+                TimerMode::Once,
+            ),
         }
     }
 
@@ -43,18 +46,18 @@ impl GameState {
             GamePhase::Initial => {
                 self.game.setup_game();
                 self.phase = GamePhase::Prepared;
-            },
+            }
             GamePhase::Prepared => {
                 if self.game.turn() > 0 {
                     self.phase = GamePhase::InGame;
                 }
-            },
+            }
             GamePhase::InGame => {
                 if self.game.finished() {
                     self.phase = GamePhase::Finished;
                 }
-            },
-            GamePhase::Finished => {},
+            }
+            GamePhase::Finished => {}
         }
 
         if self.game.history().len() > self.last_synced_history_len {

@@ -41,7 +41,7 @@ pub struct Card {
 
 impl Card {
     pub fn new(rank: Rank, suit: Suit, back: Back) -> Self {
-        Self{rank, suit, back}
+        Self { rank, suit, back }
     }
 
     pub fn rank_str(&self) -> &'static str {
@@ -59,9 +59,9 @@ impl Card {
             Rank::Queen => "Q",
             Rank::King => "K",
             Rank::Ace => "A",
-        }    
-    }    
-    
+        }
+    }
+
     fn suit_str(&self) -> &'static str {
         match self.suit {
             Suit::Diamonds => "♦",
@@ -90,20 +90,21 @@ impl Card {
             Rank::Jack => 11,
             Rank::Queen => 13,
             Rank::King => 14,
-        }    
-    }    
+        }
+    }
 
     pub fn unicode(&self) -> char {
-        char::from_u32(match self.suit {
-            Suit::Diamonds => 0x1f0c0u32,
-            Suit::Hearts => 0x1f0b0u32,
-            Suit::Clubs => 0x1f0a0u32,
-            Suit::Spades => 0x1f0d0u32,
-        } + u32::from(self.rank_unicode_offset()))
+        char::from_u32(
+            match self.suit {
+                Suit::Diamonds => 0x1f0c0u32,
+                Suit::Hearts => 0x1f0b0u32,
+                Suit::Clubs => 0x1f0a0u32,
+                Suit::Spades => 0x1f0d0u32,
+            } + u32::from(self.rank_unicode_offset()),
+        )
         .unwrap()
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -117,7 +118,11 @@ mod tests {
 
     #[test]
     fn test_card_unicode() {
-        let card = Card{ rank: super::Rank::King, suit: super::Suit::Hearts, back: super::Back::Blue };
+        let card = Card {
+            rank: super::Rank::King,
+            suit: super::Suit::Hearts,
+            back: super::Back::Blue,
+        };
         assert_eq!(card.unicode(), '🂾');
     }
 }

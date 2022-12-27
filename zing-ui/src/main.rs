@@ -23,7 +23,8 @@ fn main() {
                 height: 900.,
                 fit_canvas_to_parent: true,
                 ..Default::default()
-            }, ..Default::default()
+            },
+            ..Default::default()
         }))
         .add_plugin(TweeningPlugin)
         .add_plugin(zing_layout::LayoutPlugin)

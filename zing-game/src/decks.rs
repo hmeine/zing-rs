@@ -1,8 +1,8 @@
-use rand::thread_rng;
 use rand::seq::SliceRandom;
+use rand::thread_rng;
 use strum::IntoEnumIterator;
 
-use crate::cards::{Back, Card, Suit, Rank};
+use crate::cards::{Back, Card, Rank, Suit};
 
 pub fn deck(backs: Back) -> Vec<Card> {
     let mut result = Vec::new();
@@ -14,13 +14,11 @@ pub fn deck(backs: Back) -> Vec<Card> {
     result
 }
 
-
 pub fn shuffled_deck(backs: Back) -> Vec<Card> {
     let mut result = deck(backs);
     result.shuffle(&mut thread_rng());
     result
 }
-
 
 #[cfg(test)]
 mod tests {

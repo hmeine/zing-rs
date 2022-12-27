@@ -1,5 +1,5 @@
-use rand::{thread_rng, Rng};
 use crate::zing_game::ZingGame;
+use rand::{thread_rng, Rng};
 
 pub trait ZingAI {
     fn auto_play(&self, game: &mut ZingGame);
@@ -20,7 +20,7 @@ impl ZingAI for RandomPlayer {
         game.play_card(
             self.player_index,
             thread_rng().gen_range(0..game.state().players[self.player_index].hand.len()),
-        ).expect("auto_play() assumes that it's our turn and selects a valid card index");
-        
+        )
+        .expect("auto_play() assumes that it's our turn and selects a valid card index");
     }
 }

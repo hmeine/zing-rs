@@ -142,7 +142,11 @@ impl GameState {
                 .iter()
                 .map(|stack| StackState {
                     id: stack.id.clone(),
-                    cards: stack.cards.iter().map(CardState::covered_if_face_down).collect(),
+                    cards: stack
+                        .cards
+                        .iter()
+                        .map(CardState::covered_if_face_down)
+                        .collect(),
                 })
                 .collect(),
         }
