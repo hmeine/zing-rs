@@ -99,7 +99,7 @@ fn setup_card_stacks(mut commands: Commands, game_state: Res<GameState>) {
         Vec3::ZERO,
         Vec3::ONE,
         CardLocation::PlayerHand,
-        1 - game_state.we_are_player,
+        1 - game_state.we_are_player, // opponent's hand
     );
 
     let own_hand_pos_y =
@@ -116,7 +116,7 @@ fn setup_card_stacks(mut commands: Commands, game_state: Res<GameState>) {
         Vec3::ZERO,
         Vec3::splat(OWN_CARD_ZOOM),
         CardLocation::PlayerHand,
-        game_state.we_are_player,
+        game_state.we_are_player, // own hand
     );
 
     // TODO: we need to know if we have two or four players
@@ -152,7 +152,7 @@ fn setup_card_stacks(mut commands: Commands, game_state: Res<GameState>) {
         Vec3::ZERO,
         Vec3::ONE,
         CardLocation::Stack,
-        2 + ((game_state.we_are_player + 1) % 2),
+        2 + ((game_state.we_are_player + 1) % 2), // opponent's winning stack
     );
 
     CardStack::spawn(
@@ -166,7 +166,7 @@ fn setup_card_stacks(mut commands: Commands, game_state: Res<GameState>) {
         Vec3::ZERO,
         Vec3::ONE,
         CardLocation::Stack,
-        2 + game_state.we_are_player % 2,
+        2 + game_state.we_are_player % 2, // own winning stack
     );
 
     CardStack::spawn(
@@ -180,7 +180,7 @@ fn setup_card_stacks(mut commands: Commands, game_state: Res<GameState>) {
         Vec3::new(0., VERTICAL_PEEPING, 0.),
         Vec3::ONE,
         CardLocation::Stack,
-        4 + ((game_state.we_are_player + 1) % 2),
+        4 + ((game_state.we_are_player + 1) % 2), // opponent's score stack
     );
 
     CardStack::spawn(
@@ -194,7 +194,7 @@ fn setup_card_stacks(mut commands: Commands, game_state: Res<GameState>) {
         Vec3::new(0., VERTICAL_PEEPING, 0.),
         Vec3::ONE,
         CardLocation::Stack,
-        4 + game_state.we_are_player % 2,
+        4 + game_state.we_are_player % 2, // own score stack
     );
 }
 
@@ -273,7 +273,8 @@ struct StackRepositioning;
 fn update_cards_from_action(
     mut commands: Commands,
     mut game_state: ResMut<GameState>,
-    query_stacks: Query<(Entity, &CardStack, &Children, &Transform)>,
+    query_stacks: Query<(Entity, &CardStack, &Transform)>,
+    query_children: Query<&Children>,
     mut query_cards: Query<(&CardSprite, &mut Transform), Without<CardStack>>,
     asset_server: Res<AssetServer>,
     time: Res<Time>,
@@ -289,23 +290,25 @@ fn update_cards_from_action(
         let mut source_parent = None;
         let mut target_parent = None;
 
-        for (parent, card_stack, children, transform) in &query_stacks {
+        for (parent, card_stack, transform) in &query_stacks {
             if action.source_location.unwrap() == card_stack.location
                 && action.source_index == card_stack.index
             {
-                source_parent = Some((parent, children, transform));
+                source_parent = Some((parent, transform));
             }
             if action.dest_location.unwrap() == card_stack.location
                 && action.dest_index == card_stack.index
             {
-                target_parent = Some((parent, children, transform));
+                target_parent = Some((parent, transform));
             }
         }
 
         // determine translation offset between the source and destination stacks
-        let (source_parent, source_children, source_transform) = source_parent.unwrap();
-        let (target_parent, _target_children, target_transform) = target_parent.unwrap();
+        let (source_parent, source_transform) = source_parent.unwrap();
+        let (target_parent, target_transform) = target_parent.unwrap();
         let stack_offset = source_transform.translation - target_transform.translation;
+
+        let source_children: Vec<_> = query_children.iter_descendants(source_parent).collect();
 
         let mut source_cards: Vec<_> = action
             .source_card_indices
