@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
 use axum::{
-    extract::{ws::WebSocket, FromRequestParts, Path, State, WebSocketUpgrade},
+    extract::{FromRequestParts, Path, State, WebSocketUpgrade},
     http::{self, request::Parts},
     response::{Html, IntoResponse},
     routing::{get, post},
@@ -12,12 +12,13 @@ use cookie::SameSite;
 use serde::Deserialize;
 use state::{ErrorResponse, GameStatus, ZingState};
 use tower_cookies::{Cookie, CookieManagerLayer, Cookies};
+use ws_notifications::NotificationSenderHandle;
 
 mod state;
+mod ws_notifications;
 
 #[tokio::main]
 async fn main() {
-    //let tables = HashMap::new();
     let state = Arc::new(Mutex::new(ZingState::default()));
 
     let app = Router::new()
@@ -201,15 +202,20 @@ async fn ws_handler(
         .unwrap()
         .check_user_can_connect(&login_id.0, &table_id)?;
 
-    Ok(ws.on_upgrade(move |socket| add_user_connection(state, login_id.0, table_id, socket)))
+    Ok(ws.on_upgrade(move |socket| {
+        let sender = NotificationSenderHandle::new(socket);
+
+        add_user_connection(state, login_id.0, table_id, sender)
+    }))
 }
 
 async fn add_user_connection(
     state: Arc<Mutex<ZingState>>,
     login_id: String,
     table_id: String,
-    socket: WebSocket,
+    sender: NotificationSenderHandle,
 ) {
     let mut state = state.lock().unwrap();
-    state.add_user_connection(login_id, table_id, socket)
+
+    state.add_user_connection(login_id, table_id, sender)
 }

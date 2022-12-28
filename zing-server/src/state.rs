@@ -1,5 +1,4 @@
 use axum::{
-    extract::ws::WebSocket,
     http::{self, header},
     response::IntoResponse,
     Json,
@@ -7,11 +6,14 @@ use axum::{
 use chrono::prelude::*;
 use rand::distributions::{Alphanumeric, DistString};
 use serde::{Serialize, Serializer};
+use serde_json;
 use std::collections::HashMap;
 use zing_game::{
     game::GameState,
     zing_game::{ZingGame, ZingGamePoints},
 };
+
+use crate::ws_notifications::NotificationSenderHandle;
 
 pub type ErrorResponse = (http::StatusCode, &'static str);
 
@@ -31,7 +33,7 @@ pub struct Table {
     created_at: DateTime<Utc>,
     login_ids: Vec<String>,
     #[serde(skip)]
-    connections: Vec<Option<WebSocket>>,
+    connections: Vec<Option<NotificationSenderHandle>>,
     game_results: Vec<ZingGamePoints>,
     #[serde(skip)]
     game: Option<ZingGame>,
@@ -71,6 +73,16 @@ impl Table {
 
         let dealer = self.game_results.len() % names.len();
         self.game = Some(ZingGame::new_with_player_names(names, dealer));
+        for player_index in 0..self.login_ids.len() {
+            if self.connections[player_index].is_some() {
+                let msg = serde_json::to_string(&self.game_status(&self.login_ids[player_index]))
+                    .unwrap();
+                self.connections[player_index]
+                    .as_mut()
+                    .unwrap()
+                    .send(msg);
+            }
+        }
         self.game.as_mut().unwrap().setup_game();
         Ok(())
     }
@@ -101,8 +113,8 @@ impl Table {
         Ok(())
     }
 
-    pub fn connection_opened(&mut self, user_index: usize, connection: WebSocket) {
-        self.connections[user_index] = Some(connection);
+    pub fn connection_opened(&mut self, user_index: usize, sender: NotificationSenderHandle) {
+        self.connections[user_index] = Some(sender);
     }
 
     pub fn connection_closed(&mut self, login_id: &str) -> Result<(), ErrorResponse> {
@@ -163,7 +175,7 @@ impl ZingState {
             Table {
                 created_at: Utc::now(),
                 login_ids: vec![login_id.to_owned()],
-                connections: Vec::new(),
+                connections: vec![None],
                 game_results: Vec::new(),
                 game: None,
             },
@@ -208,6 +220,7 @@ impl ZingState {
         }
 
         table.login_ids.push(login_id.to_owned());
+        table.connections.push(None);
         self.get_user_mut(login_id)?.tables.push(table_id);
 
         Ok(())
@@ -240,6 +253,7 @@ impl ZingState {
             .expect("inconsistent state");
 
         table.login_ids.remove(user_index_in_table);
+        table.connections.remove(user_index_in_table);
         if table.login_ids.is_empty() {
             self.tables.remove(table_id);
         }
@@ -250,7 +264,11 @@ impl ZingState {
         Ok(())
     }
 
-    pub fn start_game(&mut self, login_id: &str, table_id: &str) -> Result<(), ErrorResponse> {
+    pub fn start_game(
+        &mut self,
+        login_id: &str,
+        table_id: &str,
+    ) -> Result<(), ErrorResponse> {
         self.get_user(login_id)?;
 
         let table = self
@@ -263,13 +281,14 @@ impl ZingState {
             "user has not joined table at which game should start",
         ))?;
 
-        table.start_game(
-            table
-                .login_ids
-                .iter()
-                .map(|login_id| self.users.get(login_id).unwrap().name.clone())
-                .collect(),
-        )
+        table
+            .start_game(
+                table
+                    .login_ids
+                    .iter()
+                    .map(|login_id| self.users.get(login_id).unwrap().name.clone())
+                    .collect(),
+            )
     }
 
     pub fn game_status(
@@ -327,11 +346,16 @@ impl ZingState {
         Ok(true)
     }
 
-    pub fn add_user_connection(&mut self, login_id: String, table_id: String, socket: WebSocket) {
+    pub fn add_user_connection(
+        &mut self,
+        login_id: String,
+        table_id: String,
+        sender: NotificationSenderHandle,
+    ) {
         // it would be nice if we could socket.close() if the following expression is false:
         self.tables.get_mut(&table_id).map_or(false, |table| {
             table.user_index(&login_id).map_or(false, |user_index| {
-                table.connection_opened(user_index, socket);
+                table.connection_opened(user_index, sender);
                 true
             })
         });
