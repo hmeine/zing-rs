@@ -6,7 +6,6 @@ use axum::{
 use chrono::prelude::*;
 use rand::distributions::{Alphanumeric, DistString};
 use serde::{Serialize, Serializer};
-use serde_json;
 use std::collections::HashMap;
 use zing_game::{
     game::GameState,
@@ -77,10 +76,14 @@ impl Table {
             if self.connections[player_index].is_some() {
                 let msg = serde_json::to_string(&self.game_status(&self.login_ids[player_index]))
                     .unwrap();
-                self.connections[player_index]
+                if self.connections[player_index]
                     .as_mut()
                     .unwrap()
-                    .send(msg);
+                    .send(msg)
+                    .is_err()
+                {
+                    self.connections[player_index] = None;
+                };
             }
         }
         self.game.as_mut().unwrap().setup_game();
@@ -115,15 +118,6 @@ impl Table {
 
     pub fn connection_opened(&mut self, user_index: usize, sender: NotificationSenderHandle) {
         self.connections[user_index] = Some(sender);
-    }
-
-    pub fn connection_closed(&mut self, login_id: &str) -> Result<(), ErrorResponse> {
-        let user_index = self.user_index(login_id).ok_or((
-            http::StatusCode::NOT_FOUND,
-            "disconnecting user had not joined table",
-        ))?;
-        self.connections[user_index] = None;
-        Ok(())
     }
 }
 
@@ -264,11 +258,7 @@ impl ZingState {
         Ok(())
     }
 
-    pub fn start_game(
-        &mut self,
-        login_id: &str,
-        table_id: &str,
-    ) -> Result<(), ErrorResponse> {
+    pub fn start_game(&mut self, login_id: &str, table_id: &str) -> Result<(), ErrorResponse> {
         self.get_user(login_id)?;
 
         let table = self
@@ -281,14 +271,13 @@ impl ZingState {
             "user has not joined table at which game should start",
         ))?;
 
-        table
-            .start_game(
-                table
-                    .login_ids
-                    .iter()
-                    .map(|login_id| self.users.get(login_id).unwrap().name.clone())
-                    .collect(),
-            )
+        table.start_game(
+            table
+                .login_ids
+                .iter()
+                .map(|login_id| self.users.get(login_id).unwrap().name.clone())
+                .collect(),
+        )
     }
 
     pub fn game_status(
