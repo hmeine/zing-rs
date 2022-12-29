@@ -51,7 +51,7 @@ echo "list tables (should be empty)"
 test `player1 :3000/table | jq length` -eq 0
 echo "create table"
 TABLE=`player1 POST :3000/table`
-echo "list tables (should be empty)"
+echo "list tables (should now list new table)"
 test `player1 :3000/table | jq length` -eq 1
 
 #echo "creating multiple tables without others should be forbidden:"
@@ -60,6 +60,7 @@ test `player1 :3000/table | jq length` -eq 1
 
 echo "try to join own table"
 player1_expect_error "already at table" POST :3000/table/${TABLE}
+echo "list tables (should still list a single table)"
 test `player1 :3000/table | jq length` -eq 1
 
 echo "log in second player"
