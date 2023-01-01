@@ -43,7 +43,7 @@
 
       function login() {
         axios
-          .post("http://localhost:3000/login", {
+          .post("/login", {
             name: loginname.value,
           })
           .then(function (response) {
@@ -57,12 +57,17 @@
 
       function logout() {
         axios
-          .delete("http://localhost:3000/login")
+          .delete("/login")
           .then(function (response) {
             username.value = "";
           })
           .catch(function (error) {
-            console.log(error);
+            if (error.response.status == 401) {
+              // illegal login cookie -> just clear username
+              username.value = "";
+            } else {
+              console.log(error);
+            }
           });
         return false;
       }
@@ -81,13 +86,16 @@
 
         mounted() {
           axios
-            .get("http://localhost:3000/login")
+            .get("/login")
             .then((response) => {
               username.value = response.data;
               loginname.value = response.data;
             })
             .catch(function (error) {
-              console.log(error);
+              // we do not have to log "not logged in" errors
+              if (error.response.status != 401) {
+                console.log(error);
+              }
             });
         },
       });
