@@ -4,85 +4,96 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css"
+      href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900"
       rel="stylesheet"
-      integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"
-      crossorigin="anonymous"
+      type="text/css"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/quasar@2.11.3/dist/quasar.prod.css"
+      rel="stylesheet"
+      type="text/css"
     />
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
-    <script lang="javascript">
-      function loginkeydown(event) {
-          if (event.code == "Enter") {
-              login();
-          }
-      }
+    <title>Zing</title>
+  </head>
+
+  <body>
+    <div id="q-app">
+      <q-form autofocus="true" @submit="login" v-if="!loggedin">
+        <q-input label="Name" v-model="loginname"></q-input>
+        <q-btn color="primary" label="Login" type="submit"></q-btn>
+      </q-form>
+      <q-form autofocus="true" @submit="logout" v-else>
+        <q-btn color="primary" :label="logoutCaption" type="submit"></q-btn>
+      </q-form>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/quasar@2.11.3/dist/quasar.umd.prod.js"></script>
+
+    <script>
+      const { ref, computed, createApp } = Vue;
+
+      const loginname = ref("");
+      const username = ref("");
+
+      const loggedin = computed(() => username.value.length > 0);
+
+      const logoutCaption = computed(() => "Logout '" + username.value + "'");
 
       function login() {
-          var name = document.getElementById("loginName").value;
-
-          axios.post('/login', {
-              name
+        axios
+          .post("http://localhost:3000/login", {
+            name: loginname.value,
           })
           .then(function (response) {
-              display_login();
+            username.value = loginname.value;
           })
           .catch(function (error) {
-              console.log(error);
+            console.log(error);
           });
+        return false;
       }
 
       function logout() {
-          axios.delete('/login')
-          .catch(function (error) {
-              console.log(error);
-          });
-      }
-
-      function display_login() {
-          axios.get('/login')
+        axios
+          .delete("http://localhost:3000/login")
           .then(function (response) {
-              document.getElementById("logoutButton").innerHTML = "Logout " + response.data;
+            username.value = "";
           })
           .catch(function (error) {
-              console.log(error);
+            console.log(error);
           });
+        return false;
       }
-    </script>
-    <title>Zing</title>
-  </head>
-  <body>
-    <div class="container-fluid">
-      <form id="loginForm" onsubmit="login(); return false;">
-        <div class="row">
-          <div class="col">
-            <input
-              type="text"
-              class="form-control"
-              id="loginName"
-              placeholder="Name"
-              onkeydown="loginkeydown(event)"
-            />
-          </div>
-          <div class="col">
-            <button type="submit" class="btn btn-primary">Login</button>
-          </div>
-        </div>
-      </form>
-      <form id="logoutForm" onsubmit="logout(); return false;">
-        <div class="row">
-          <div class="col">
-            <button type="submit" class="btn btn-primary" id="logoutButton">
-              Logout
-            </button>
-          </div>
-        </div>
-      </form>
-    </div>
 
-    <script
-      src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
-      integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
-      crossorigin="anonymous"
-    ></script>
+      const app = createApp({
+        setup() {
+          return {
+            loginname,
+            username,
+            loggedin,
+            logoutCaption,
+            login,
+            logout,
+          };
+        },
+
+        mounted() {
+          axios
+            .get("http://localhost:3000/login")
+            .then((response) => {
+              username.value = response.data;
+              loginname.value = response.data;
+            })
+            .catch(function (error) {
+              console.log(error);
+            });
+        },
+      });
+
+      app.use(Quasar);
+      app.mount("#q-app");
+    </script>
   </body>
 </html>
