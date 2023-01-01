@@ -69,10 +69,20 @@ async fn login(
     Ok(user_name)
 }
 
-async fn logout(cookies: Cookies) {
+async fn logout(
+    State(state): State<Arc<Mutex<ZingState>>>,
+    login_id: LoginID,
+    cookies: Cookies,
+) -> Result<(), ErrorResponse> {
+    let mut state = state.lock().unwrap();
+    let user_name = state.whoami(&login_id.0);
+    state.logout(&login_id.0)?;
+    println!("Logged out {}", user_name.unwrap());
+
     let mut login_cookie = Cookie::new(USERNAME_COOKIE, "");
     login_cookie.set_same_site(SameSite::Strict);
     cookies.remove(login_cookie);
+    Ok(())
 }
 
 struct LoginID(String);

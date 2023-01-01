@@ -136,6 +136,16 @@ impl ZingState {
         login_id
     }
 
+    pub fn logout(&mut self, login_id: &str) -> Result<(), ErrorResponse> {
+        self.users
+            .remove(login_id)
+            .ok_or((
+                http::StatusCode::UNAUTHORIZED,
+                "user not found (bad id cookie)",
+            ))
+            .map(|_| ())
+    }
+
     pub fn get_user(&self, login_id: &str) -> Result<&User, ErrorResponse> {
         self.users.get(login_id).ok_or((
             http::StatusCode::UNAUTHORIZED,
