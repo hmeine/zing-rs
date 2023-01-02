@@ -38,7 +38,7 @@
         <q-table
           :rows="user_info.tables"
           :columns="table_info_columns"
-          :visible-columns="['created_at', 'user_names']"
+          :visible-columns="visible_columns"
           no-data-label="No table opened or joined yet"
         ></q-table>
       </div>
@@ -61,14 +61,38 @@
       }
 
       function format_created(dt, row) {
-        return luxon.DateTime.fromISO(dt).toRelative()
+        return luxon.DateTime.fromISO(dt).toRelative();
       }
 
-      const table_info_columns = ref([
+      function count_games(games, row) {
+        return games.length;
+      }
+
+      const table_info_columns = [
         { name: "id", field: "id" },
-        { name: "created_at", field: "created_at", label: "Created At:", format: format_created },
-        { name: "user_names", field: "user_names", label: "Players:", format: list_users },
-      ]);
+        {
+          name: "created_at",
+          field: "created_at",
+          label: "Created At:",
+          align: "left",
+          format: format_created,
+        },
+        {
+          name: "user_names",
+          field: "user_names",
+          label: "Players:",
+          align: "left",
+          format: list_users,
+        },
+        {
+          name: "games",
+          field: "game_results",
+          label: "#Games:",
+          align: "right",
+          format: count_games,
+        },
+      ];
+      const visible_columns = ["created_at", "user_names", "games"];
 
       const loggedin = computed(function () {
         return user_info.name.length > 0;
