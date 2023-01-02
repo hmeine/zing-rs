@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::{sync::{Arc, Mutex}, fs};
 
 use async_trait::async_trait;
 use axum::{
@@ -22,7 +22,7 @@ async fn main() {
     let state = Arc::new(Mutex::new(ZingState::default()));
 
     let app = Router::new()
-        .route("/", get(index))
+        .route("/", get(index_from_disk))
         .route("/login", post(login).get(whoami).delete(logout))
         .route("/table", post(create_table).get(list_tables))
         .route("/table/:table_id", post(join_table).delete(leave_table))
@@ -110,8 +110,12 @@ where
     }
 }
 
-async fn index() -> Html<&'static str> {
+async fn index_static() -> Html<&'static str> {
     Html(std::include_str!("../assets/index.html"))
+}
+
+async fn index_from_disk()  -> Html<String> {
+    Html(fs::read_to_string("zing-server/assets/index.html").unwrap())
 }
 
 async fn whoami(
@@ -128,7 +132,7 @@ async fn whoami(
 async fn create_table(
     login_id: LoginID,
     State(state): State<Arc<Mutex<ZingState>>>,
-) -> Result<String, ErrorResponse> {
+) -> Result<impl IntoResponse, ErrorResponse> {
     let mut state = state.lock().unwrap();
     state.create_table(&login_id.0)
 }
