@@ -110,6 +110,7 @@
           .then(function (response) {
             user_info.name = loginname.value;
             query_tables();
+            maybe_join_table();
           })
           .catch(function (error) {
             console.log(error);
@@ -155,12 +156,34 @@
           });
       }
 
+      function maybe_join_table() {
+        var join = new URLSearchParams(window.location.search).get("join");
+        if (join) {
+          return axios
+            .post("/table/" + join)
+            .then(function (response) {
+              user_info.tables.push(response.data);
+            })
+            .catch(function (error) {
+              // 404 is expected if table ID is invalid
+              // 409 Conflict is expected if table is already joined
+              if (error.response.status == 404)
+              {
+                Quasar.Notify.create('Invalid table ID, cannot join – ask sender for valid share link!')
+              } else if (error.response.status != 409) {
+                console.log('CAUGHT ERROR:', error);
+              }
+            });
+        }
+      }
+
       const app = createApp({
         setup() {
           return {
             loginname,
             user_info,
             table_info_columns,
+            visible_columns,
             loggedin,
             logoutCaption,
             login,
@@ -176,6 +199,7 @@
               user_info.name = response.data;
               loginname.value = response.data;
               query_tables();
+              maybe_join_table();
             })
             .catch(function (error) {
               // we do not have to log "not logged in" errors

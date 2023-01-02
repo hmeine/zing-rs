@@ -214,7 +214,7 @@ impl ZingState {
         Ok(Json(table_infos))
     }
 
-    pub fn join_table(&mut self, login_id: &str, table_id: &str) -> Result<(), ErrorResponse> {
+    pub fn join_table(&mut self, login_id: &str, table_id: &str) -> Result<Json<TableInfo>, ErrorResponse> {
         let user = self.get_user(login_id)?;
         let table_id = table_id.to_owned();
         if user.tables.contains(&table_id) {
@@ -235,9 +235,12 @@ impl ZingState {
 
         table.login_ids.push(login_id.to_owned());
         table.connections.push(None);
-        self.get_user_mut(login_id)?.tables.push(table_id);
+        self.get_user_mut(login_id)?.tables.push(table_id.clone());
+        
+        let table = self.tables.get(&table_id).unwrap();
+        let result = self.table_info(&table_id, &table);
 
-        Ok(())
+        Ok(Json(result))
     }
 
     pub fn leave_table(&mut self, login_id: &str, table_id: &str) -> Result<(), ErrorResponse> {

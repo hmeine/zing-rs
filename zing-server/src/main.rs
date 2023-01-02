@@ -149,7 +149,7 @@ async fn join_table(
     login_id: LoginID,
     Path(table_id): Path<String>,
     State(state): State<Arc<Mutex<ZingState>>>,
-) -> Result<(), ErrorResponse> {
+) -> Result<impl IntoResponse, ErrorResponse> {
     let mut state = state.lock().unwrap();
     state.join_table(&login_id.0, &table_id)
 }
