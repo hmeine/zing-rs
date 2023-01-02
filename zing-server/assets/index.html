@@ -115,7 +115,7 @@
             maybe_join_table();
           })
           .catch(function (error) {
-            console.log(error);
+            console.log('CAUGHT ERROR:', error);
           });
       }
 
@@ -130,7 +130,7 @@
               // illegal login cookie -> just clear user name
               user_info.name = "";
             } else {
-              console.log(error);
+              console.log('CAUGHT ERROR:', error);
             }
           });
       }
@@ -142,7 +142,7 @@
             user_info.tables.push(response.data);
           })
           .catch(function (error) {
-            console.log(error);
+            console.log('CAUGHT ERROR:', error);
           });
       }
 
@@ -154,7 +154,7 @@
             user_info.tables = response.data;
           })
           .catch(function (error) {
-            console.log(error);
+            console.log('CAUGHT ERROR:', error);
           });
       }
 
@@ -206,7 +206,7 @@
             .catch(function (error) {
               // we do not have to log "not logged in" errors
               if (error.response.status != 401) {
-                console.log(error);
+                console.log('CAUGHT ERROR:', error);
               }
             });
         },
