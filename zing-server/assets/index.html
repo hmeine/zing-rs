@@ -39,6 +39,8 @@
           :rows="user_info.tables"
           :columns="table_info_columns"
           :visible-columns="visible_columns"
+          :pagination="{ rowsPerPage: 0 }"
+          hide-pagination
           no-data-label="No table opened or joined yet"
         ></q-table>
       </div>
