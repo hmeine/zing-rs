@@ -1,4 +1,8 @@
-use axum::{http, response::IntoResponse, Json};
+use axum::{
+    http::{self, header},
+    response::IntoResponse,
+    Json,
+};
 use chrono::prelude::*;
 use rand::distributions::{Alphanumeric, DistString};
 use serde::{Serialize, Serializer};
@@ -187,7 +191,8 @@ impl ZingState {
     pub fn list_tables(&self, login_id: &str) -> Result<impl IntoResponse, ErrorResponse> {
         let user = self.get_user(login_id)?;
 
-        Ok(Json(
+        Ok((
+            [(header::CONTENT_TYPE, "application/json")],
             serde_json::to_string(
                 &user
                     .tables
