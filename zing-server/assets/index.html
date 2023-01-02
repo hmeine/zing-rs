@@ -19,77 +19,134 @@
 
   <body>
     <div id="q-app">
-      <q-form autofocus="true" @submit="login" v-if="!loggedin">
+      <q-form autofocus="true" @submit="login" v-if="!loggedin" class="fit row">
         <q-input label="Name" v-model="loginname"></q-input>
         <q-btn color="primary" label="Login" type="submit"></q-btn>
       </q-form>
-      <q-form autofocus="true" @submit="logout" v-else>
-        <q-btn color="primary" :label="logoutCaption" type="submit"></q-btn>
-      </q-form>
+      <div v-else class="fit column">
+        <div class="row">
+          <q-form autofocus="true" @submit="logout">
+            <q-btn color="primary" :label="logoutCaption" type="submit"></q-btn>
+          </q-form>
+          <q-btn
+            color="primary"
+            label="Open New Table"
+            @click="create_table"
+          ></q-btn>
+        </div>
+        <q-table
+          :rows="user_info.tables"
+          :columns="table_info_columns"
+          :visible-columns="['created_at', 'user_names']"
+          no-data-label="No table opened or joined yet"
+        ></q-table>
+      </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/quasar@2.11.3/dist/quasar.umd.prod.js"></script>
 
     <script>
-      const { ref, computed, createApp } = Vue;
+      const { ref, reactive, computed, createApp } = Vue;
 
       const loginname = ref("");
-      const username = ref("");
+      const user_info = reactive({
+        name: "",
+        tables: [],
+      });
 
-      const loggedin = computed(() => username.value.length > 0);
+      function list_users(users, row) {
+        return users.join(", ");
+      }
 
-      const logoutCaption = computed(() => "Logout '" + username.value + "'");
+      const table_info_columns = ref([
+        { name: "id", field: "id" },
+        { name: "created_at", field: "created_at", label: "Created At:" },
+        { name: "user_names", field: "user_names", label: "Players:", format: list_users },
+      ]);
+
+      const loggedin = computed(function () {
+        return user_info.name.length > 0;
+      });
+
+      const logoutCaption = computed(function () {
+        return "Logout '" + user_info.name + "'";
+      });
 
       function login() {
-        axios
+        return axios
           .post("/login", {
             name: loginname.value,
           })
           .then(function (response) {
-            username.value = loginname.value;
+            user_info.name = loginname.value;
+            query_tables();
           })
           .catch(function (error) {
             console.log(error);
           });
-        return false;
       }
 
       function logout() {
-        axios
+        return axios
           .delete("/login")
           .then(function (response) {
-            username.value = "";
+            user_info.name = "";
           })
           .catch(function (error) {
             if (error.response.status == 401) {
-              // illegal login cookie -> just clear username
-              username.value = "";
+              // illegal login cookie -> just clear user name
+              user_info.name = "";
             } else {
               console.log(error);
             }
           });
-        return false;
+      }
+
+      function create_table() {
+        return axios
+          .post("/table")
+          .then(function (response) {
+            user_info.tables.push(response.data);
+          })
+          .catch(function (error) {
+            console.log(error);
+          });
+      }
+
+      // TODO: we should maybe do this reactively?
+      function query_tables() {
+        axios
+          .get("/table")
+          .then(function (response) {
+            user_info.tables = response.data;
+          })
+          .catch(function (error) {
+            console.log(error);
+          });
       }
 
       const app = createApp({
         setup() {
           return {
             loginname,
-            username,
+            user_info,
+            table_info_columns,
             loggedin,
             logoutCaption,
             login,
             logout,
+            query_tables,
           };
         },
 
         mounted() {
           axios
             .get("/login")
-            .then((response) => {
-              username.value = response.data;
+            .then(function (response) {
+              user_info.name = response.data;
               loginname.value = response.data;
+              query_tables();
             })
             .catch(function (error) {
               // we do not have to log "not logged in" errors
