@@ -14,6 +14,7 @@
       type="text/css"
     />
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3.2.0/build/global/luxon.min.js"></script>
     <title>Zing</title>
   </head>
 
@@ -59,9 +60,13 @@
         return users.join(", ");
       }
 
+      function format_created(dt, row) {
+        return luxon.DateTime.fromISO(dt).toRelative()
+      }
+
       const table_info_columns = ref([
         { name: "id", field: "id" },
-        { name: "created_at", field: "created_at", label: "Created At:" },
+        { name: "created_at", field: "created_at", label: "Created At:", format: format_created },
         { name: "user_names", field: "user_names", label: "Players:", format: list_users },
       ]);
 
