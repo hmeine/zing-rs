@@ -1,8 +1,4 @@
-use axum::{
-    http::{self, header},
-    response::IntoResponse,
-    Json,
-};
+use axum::{http, Json};
 use chrono::prelude::*;
 use rand::distributions::{Alphanumeric, DistString};
 use serde::{Serialize, Serializer};
@@ -26,16 +22,21 @@ pub struct User {
     tables: Vec<String>,
 }
 
-#[derive(Serialize)]
 pub struct Table {
-    #[serde(serialize_with = "serialize_datetime_as_iso8601")]
     created_at: DateTime<Utc>,
     login_ids: Vec<String>,
-    #[serde(skip)]
     connections: Vec<Option<NotificationSenderHandle>>,
     game_results: Vec<ZingGamePoints>,
-    #[serde(skip)]
     game: Option<ZingGame>,
+}
+
+#[derive(Serialize)]
+pub struct TableInfo {
+    id: String,
+    #[serde(serialize_with = "serialize_datetime_as_iso8601")]
+    created_at: DateTime<Utc>,
+    user_names: Vec<String>,
+    game_results: Vec<ZingGamePoints>,
 }
 
 fn serialize_datetime_as_iso8601<S>(
@@ -168,40 +169,49 @@ impl ZingState {
         self.users.get(login_id).map(|user| user.name.clone())
     }
 
-    pub fn create_table(&mut self, login_id: &str) -> Result<String, ErrorResponse> {
+    pub fn table_info(&self, id: &str, table: &Table) -> TableInfo {
+        TableInfo {
+            id: id.to_owned(),
+            created_at: table.created_at,
+            user_names: table
+                .login_ids
+                .iter()
+                .map(|id| self.get_user(id).unwrap().name.clone())
+                .collect(),
+            game_results: table.game_results.clone(),
+        }
+    }
+
+    pub fn create_table(&mut self, login_id: &str) -> Result<Json<TableInfo>, ErrorResponse> {
         let table_id = random_id();
 
         let user = self.get_user_mut(login_id)?;
         user.tables.push(table_id.clone());
 
-        self.tables.insert(
-            table_id.clone(),
-            Table {
-                created_at: Utc::now(),
-                login_ids: vec![login_id.to_owned()],
-                connections: vec![None],
-                game_results: Vec::new(),
-                game: None,
-            },
-        );
+        let table = Table {
+            created_at: Utc::now(),
+            login_ids: vec![login_id.to_owned()],
+            connections: vec![None],
+            game_results: Vec::new(),
+            game: None,
+        };
+        let result = self.table_info(&table_id, &table);
 
-        Ok(table_id)
+        self.tables.insert(table_id, table);
+
+        Ok(Json(result))
     }
 
-    pub fn list_tables(&self, login_id: &str) -> Result<impl IntoResponse, ErrorResponse> {
+    pub fn list_tables(&self, login_id: &str) -> Result<Json<Vec<TableInfo>>, ErrorResponse> {
         let user = self.get_user(login_id)?;
 
-        Ok((
-            [(header::CONTENT_TYPE, "application/json")],
-            serde_json::to_string(
-                &user
-                    .tables
-                    .iter()
-                    .map(|table_id| (table_id, self.tables.get(table_id).unwrap()))
-                    .collect::<HashMap<_, _>>(),
-            )
-            .unwrap(),
-        ))
+        let table_infos = user
+            .tables
+            .iter()
+            .map(|table_id| self.table_info(table_id, self.tables.get(table_id).unwrap()))
+            .collect::<Vec<_>>();
+
+        Ok(Json(table_infos))
     }
 
     pub fn join_table(&mut self, login_id: &str, table_id: &str) -> Result<(), ErrorResponse> {

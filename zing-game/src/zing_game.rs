@@ -18,7 +18,7 @@ pub struct ZingGame {
     history: Vec<CardAction>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 pub struct ZingGamePoints {
     pub card_points: (u32, u32),
     pub card_count_points: (u32, u32),
