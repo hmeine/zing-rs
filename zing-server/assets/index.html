@@ -38,11 +38,17 @@
         <q-table
           :rows="user_info.tables"
           :columns="table_info_columns"
-          :visible-columns="visible_columns"
           :pagination="{ rowsPerPage: 0 }"
           hide-pagination
           no-data-label="No table opened or joined yet"
-        ></q-table>
+        ><template v-slot:body-cell-id="props">
+          <q-td :props="props">
+            <div>
+              <q-btn label="Copy Share Link" icon="content_copy" @click="share(props)"></q-btn>
+            </div>
+          </q-td>
+        </template>
+      </q-table>
       </div>
     </div>
 
@@ -71,7 +77,6 @@
       }
 
       const table_info_columns = [
-        { name: "id", field: "id" },
         {
           name: "created_at",
           field: "created_at",
@@ -93,8 +98,8 @@
           align: "right",
           format: count_games,
         },
+        { name: "id", field: "id" },
       ];
-      const visible_columns = ["created_at", "user_names", "games"];
 
       const loggedin = computed(function () {
         return user_info.name.length > 0;
@@ -158,6 +163,10 @@
           });
       }
 
+      function share(cell_props) {
+        Quasar.copyToClipboard(window.location.origin + '?join=' + cell_props.key);
+      }
+
       function maybe_join_table() {
         var join = new URLSearchParams(window.location.search).get("join");
         if (join) {
@@ -185,13 +194,13 @@
             loginname,
             user_info,
             table_info_columns,
-            visible_columns,
             loggedin,
             logoutCaption,
             login,
             logout,
             create_table,
             query_tables,
+            share,
           };
         },
 
