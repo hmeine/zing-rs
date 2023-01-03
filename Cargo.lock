@@ -4133,6 +4133,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a67300977d3dc3f8034dae89778f502b6ba20b269527b3223ba59c0cf393bb8a"
 
 [[package]]
+name = "zing-server"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "axum",
+ "chrono",
+ "cookie",
+ "futures",
+ "rand",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tower",
+ "tower-cookies",
+ "tracing",
+ "tracing-subscriber",
+ "zing_game",
+]
+
+[[package]]
 name = "zing-ui"
 version = "0.1.0"
 dependencies = [
@@ -4154,24 +4174,4 @@ dependencies = [
  "serde",
  "strum",
  "strum_macros",
-]
-
-[[package]]
-name = "zing_server"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "axum",
- "chrono",
- "cookie",
- "futures",
- "rand",
- "serde",
- "serde_json",
- "tokio",
- "tower",
- "tower-cookies",
- "tracing",
- "tracing-subscriber",
- "zing_game",
 ]
