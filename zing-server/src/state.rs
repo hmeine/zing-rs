@@ -142,13 +142,22 @@ impl ZingState {
     }
 
     pub fn logout(&mut self, login_id: &str) -> Result<(), ErrorResponse> {
-        self.users
-            .remove(login_id)
-            .ok_or((
-                http::StatusCode::UNAUTHORIZED,
-                "user not found (bad id cookie)",
-            ))
-            .map(|_| ())
+        // deletion of users during logout breaks name lookup from login IDs
+        // 
+        // A proper way (which may be overkill in the end?) would be to
+        // 
+        // * remove users only if they are not part of any tables anymore
+        // * mark users as logged out otherwise
+        // * remove tables if all users are logged out (or have left the table)
+        // see https://github.com/hmeine/zing-rs/issues/7
+        //self.users
+        //    .remove(login_id)
+        //    .ok_or((
+        //        http::StatusCode::UNAUTHORIZED,
+        //        "user not found (bad id cookie)",
+        //    ))
+        //    .map(|_| ())
+        Ok(())
     }
 
     pub fn get_user(&self, login_id: &str) -> Result<&User, ErrorResponse> {
