@@ -54,6 +54,8 @@ echo "create table"
 TABLE=`player1 POST :3000/table | jq -r .id`
 echo "list tables (should now list new table)"
 test `player1 :3000/table | jq length` -eq 1
+echo "get specific table info"
+test "`player1 :3000/table/${TABLE} | jq -r .id`" = ${TABLE}
 
 #echo "creating multiple tables without others should be forbidden:"
 #player1 POST :3000/table

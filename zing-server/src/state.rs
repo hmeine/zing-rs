@@ -143,9 +143,9 @@ impl ZingState {
 
     pub fn logout(&mut self, login_id: &str) -> Result<(), ErrorResponse> {
         // deletion of users during logout breaks name lookup from login IDs
-        // 
+        //
         // A proper way (which may be overkill in the end?) would be to
-        // 
+        //
         // * remove users only if they are not part of any tables anymore
         // * mark users as logged out otherwise
         // * remove tables if all users are logged out (or have left the table)
@@ -223,7 +223,28 @@ impl ZingState {
         Ok(Json(table_infos))
     }
 
-    pub fn join_table(&mut self, login_id: &str, table_id: &str) -> Result<Json<TableInfo>, ErrorResponse> {
+    pub fn get_table(
+        &self,
+        login_id: &str,
+        table_id: &str,
+    ) -> Result<Json<TableInfo>, ErrorResponse> {
+        self.get_user(login_id)?;
+
+        let table = self
+            .tables
+            .get(table_id)
+            .ok_or((http::StatusCode::NOT_FOUND, "table id not found"))?;
+
+        let result = self.table_info(table_id, &table);
+
+        Ok(Json(result))
+    }
+
+    pub fn join_table(
+        &mut self,
+        login_id: &str,
+        table_id: &str,
+    ) -> Result<Json<TableInfo>, ErrorResponse> {
         let user = self.get_user(login_id)?;
         let table_id = table_id.to_owned();
         if user.tables.contains(&table_id) {
@@ -245,7 +266,7 @@ impl ZingState {
         table.login_ids.push(login_id.to_owned());
         table.connections.push(None);
         self.get_user_mut(login_id)?.tables.push(table_id.clone());
-        
+
         let table = self.tables.get(&table_id).unwrap();
         let result = self.table_info(&table_id, &table);
 
