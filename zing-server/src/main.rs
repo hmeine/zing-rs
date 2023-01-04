@@ -1,6 +1,6 @@
 use std::{
     fs,
-    sync::{Arc, Mutex},
+    sync::{Arc, RwLock},
 };
 
 use async_trait::async_trait;
@@ -22,7 +22,7 @@ mod ws_notifications;
 
 #[tokio::main]
 async fn main() {
-    let state = Arc::new(Mutex::new(ZingState::default()));
+    let state = Arc::new(RwLock::new(ZingState::default()));
 
     let app = Router::new()
         .route("/", get(index_from_disk))
@@ -52,11 +52,11 @@ struct LoginRequest {
 const USERNAME_COOKIE: &str = "login_id";
 
 async fn login(
-    State(state): State<Arc<Mutex<ZingState>>>,
+    State(state): State<Arc<RwLock<ZingState>>>,
     cookies: Cookies,
     Json(login_request): Json<LoginRequest>,
 ) -> Result<String, ErrorResponse> {
-    let mut state = state.lock().unwrap();
+    let mut state = state.write().unwrap();
     let user_name = login_request.name;
     if user_name.is_empty() {
         return Err((http::StatusCode::BAD_REQUEST, "name must not be empty"));
@@ -73,11 +73,11 @@ async fn login(
 }
 
 async fn logout(
-    State(state): State<Arc<Mutex<ZingState>>>,
+    State(state): State<Arc<RwLock<ZingState>>>,
     login_id: LoginID,
     cookies: Cookies,
 ) -> Result<(), ErrorResponse> {
-    let mut state = state.lock().unwrap();
+    let mut state = state.write().unwrap();
     let user_name = state.whoami(&login_id.0);
     state.logout(&login_id.0)?;
     println!("Logged out {}", user_name.unwrap());
@@ -122,10 +122,10 @@ async fn index_from_disk() -> Html<String> {
 }
 
 async fn whoami(
-    State(state): State<Arc<Mutex<ZingState>>>,
+    State(state): State<Arc<RwLock<ZingState>>>,
     login_id: LoginID,
 ) -> Result<String, ErrorResponse> {
-    let state = state.lock().unwrap();
+    let state = state.read().unwrap();
     match state.whoami(&login_id.0) {
         Some(user_name) => Ok(user_name),
         None => Err((http::StatusCode::UNAUTHORIZED, "no valid login cookie")),
@@ -134,71 +134,71 @@ async fn whoami(
 
 async fn create_table(
     login_id: LoginID,
-    State(state): State<Arc<Mutex<ZingState>>>,
+    State(state): State<Arc<RwLock<ZingState>>>,
 ) -> Result<impl IntoResponse, ErrorResponse> {
-    let mut state = state.lock().unwrap();
+    let mut state = state.write().unwrap();
     state.create_table(&login_id.0)
 }
 
 async fn list_tables(
     login_id: LoginID,
-    State(state): State<Arc<Mutex<ZingState>>>,
+    State(state): State<Arc<RwLock<ZingState>>>,
 ) -> Result<impl IntoResponse, ErrorResponse> {
-    let state = state.lock().unwrap();
+    let state = state.read().unwrap();
     state.list_tables(&login_id.0)
 }
 
 async fn get_table(
     login_id: LoginID,
     Path(table_id): Path<String>,
-    State(state): State<Arc<Mutex<ZingState>>>,
+    State(state): State<Arc<RwLock<ZingState>>>,
 ) -> Result<impl IntoResponse, ErrorResponse> {
-    let state = state.lock().unwrap();
+    let state = state.read().unwrap();
     state.get_table(&login_id.0, &table_id)
 }
 
 async fn join_table(
     login_id: LoginID,
     Path(table_id): Path<String>,
-    State(state): State<Arc<Mutex<ZingState>>>,
+    State(state): State<Arc<RwLock<ZingState>>>,
 ) -> Result<impl IntoResponse, ErrorResponse> {
-    let mut state = state.lock().unwrap();
+    let mut state = state.write().unwrap();
     state.join_table(&login_id.0, &table_id)
 }
 
 async fn leave_table(
     login_id: LoginID,
     Path(table_id): Path<String>,
-    State(state): State<Arc<Mutex<ZingState>>>,
+    State(state): State<Arc<RwLock<ZingState>>>,
 ) -> Result<(), ErrorResponse> {
-    let mut state = state.lock().unwrap();
+    let mut state = state.write().unwrap();
     state.leave_table(&login_id.0, &table_id)
 }
 
 async fn start_game(
     login_id: LoginID,
     Path(table_id): Path<String>,
-    State(state): State<Arc<Mutex<ZingState>>>,
+    State(state): State<Arc<RwLock<ZingState>>>,
 ) -> Result<(), ErrorResponse> {
-    let mut state = state.lock().unwrap();
+    let mut state = state.write().unwrap();
     state.start_game(&login_id.0, &table_id)
 }
 
 async fn game_status(
     login_id: LoginID,
     Path(table_id): Path<String>,
-    State(state): State<Arc<Mutex<ZingState>>>,
+    State(state): State<Arc<RwLock<ZingState>>>,
 ) -> Result<Json<GameStatus>, ErrorResponse> {
-    let state = state.lock().unwrap();
+    let state = state.read().unwrap();
     state.game_status(&login_id.0, &table_id)
 }
 
 async fn finish_game(
     login_id: LoginID,
     Path(table_id): Path<String>,
-    State(state): State<Arc<Mutex<ZingState>>>,
+    State(state): State<Arc<RwLock<ZingState>>>,
 ) -> Result<(), ErrorResponse> {
-    let mut state = state.lock().unwrap();
+    let mut state = state.write().unwrap();
     state.finish_game(&login_id.0, &table_id)
 }
 
@@ -210,21 +210,21 @@ struct GameAction {
 async fn play_card(
     login_id: LoginID,
     Path(table_id): Path<String>,
-    State(state): State<Arc<Mutex<ZingState>>>,
+    State(state): State<Arc<RwLock<ZingState>>>,
     Json(game_action): Json<GameAction>,
 ) -> Result<(), ErrorResponse> {
-    let mut state = state.lock().unwrap();
+    let mut state = state.write().unwrap();
     state.play_card(&login_id.0, &table_id, game_action.card_index)
 }
 
 async fn ws_handler(
     login_id: LoginID,
     Path(table_id): Path<String>,
-    State(state): State<Arc<Mutex<ZingState>>>,
+    State(state): State<Arc<RwLock<ZingState>>>,
     ws: WebSocketUpgrade,
 ) -> Result<impl IntoResponse, ErrorResponse> {
     state
-        .lock()
+        .read()
         .unwrap()
         .check_user_can_connect(&login_id.0, &table_id)?;
 
@@ -236,12 +236,12 @@ async fn ws_handler(
 }
 
 async fn add_user_connection(
-    state: Arc<Mutex<ZingState>>,
+    state: Arc<RwLock<ZingState>>,
     login_id: String,
     table_id: String,
     sender: NotificationSenderHandle,
 ) {
-    let mut state = state.lock().unwrap();
+    let mut state = state.write().unwrap();
 
     state.add_user_connection(login_id, table_id, sender)
 }
