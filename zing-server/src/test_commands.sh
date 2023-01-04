@@ -76,12 +76,12 @@ player2_quiet POST :3000/table/${TABLE}
 test `player2 :3000/table | jq length` -eq 2
 
 echo "verify that game status is still inactive"
-test `player1 :3000/table/${TABLE}/game | jq .active` == false
+test `player1 :3000/table/${TABLE}/game | jq .active` = false
 echo "start game"
 player1_quiet POST :3000/table/${TABLE}/game
 echo "test that game status is now active (for both players at table)"
-test `player1 :3000/table/${TABLE}/game | jq .active` == true
-test `player2 :3000/table/${TABLE}/game | jq .active` == true
+test `player1 :3000/table/${TABLE}/game | jq .active` = true
+test `player2 :3000/table/${TABLE}/game | jq .active` = true
 echo "cannot start game twice"
 player2_expect_error "starting game twice" POST :3000/table/${TABLE}/game
 
@@ -106,15 +106,15 @@ done
 
 player2_quiet POST :3000/table/${TABLE}/game/play card_index:=0
 echo "test that game has not yet ended according to status"
-test `player1 :3000/table/${TABLE}/game | jq .ended` == false
+test `player1 :3000/table/${TABLE}/game | jq .ended` = false
 echo "trying to finish just a little too early"
 player1_expect_error "game not finished yet" DELETE :3000/table/${TABLE}/game
 player1_quiet POST :3000/table/${TABLE}/game/play card_index:=0
 
 echo "test that game status shows that game has now ended"
-test `player1 :3000/table/${TABLE}/game | jq .ended` == true
+test `player1 :3000/table/${TABLE}/game | jq .ended` = true
 
 echo "finishing game"
 player1_quiet DELETE :3000/table/${TABLE}/game
 
-test `player1 :3000/table/${TABLE}/game | jq .active` == false
+test `player1 :3000/table/${TABLE}/game | jq .active` = false
