@@ -3,6 +3,7 @@
 set -e # stop on error
 
 function player1() {
+    #echo http --check --session=test1 "$@" >> /tmp/debug.log
     http --check --session=test1 "$@"
 }
 function player1_quiet() {
@@ -50,7 +51,7 @@ player1_quiet POST :3000/login name="Jane Doe"
 echo "list tables (should be empty)"
 test `player1 :3000/table | jq length` -eq 0
 echo "create table"
-TABLE=`player1 POST :3000/table`
+TABLE=`player1 POST :3000/table | jq -r .id`
 echo "list tables (should now list new table)"
 test `player1 :3000/table | jq length` -eq 1
 
