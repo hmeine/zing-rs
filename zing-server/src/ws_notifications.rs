@@ -41,6 +41,6 @@ impl NotificationSenderHandle {
     pub fn send(&self, json: String) -> Result<(), &'static str> {
         self.sender
             .blocking_send(Notification { json })
-            .map_err(|_tokio_err| "could not write to websocket")
+            .map_err(|_tokio_err| "could not contact NotificationSender")
     }
 }
