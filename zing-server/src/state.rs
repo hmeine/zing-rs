@@ -7,6 +7,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 use zing_game::{
+    card_action::CardAction,
     game::GameState,
     zing_game::{ZingGame, ZingGamePoints},
 };
@@ -33,6 +34,7 @@ struct ClientConnection {
     connection_id: String,
     player: Arc<User>,
     sender: NotificationSenderHandle,
+    actions_sent: RwLock<usize>,
 }
 
 impl ClientConnection {
@@ -79,6 +81,7 @@ pub struct GameStatus {
 #[derive(Serialize)]
 enum ClientNotification {
     GameStarted(GameStatus),
+    CardActions(Vec<CardAction>),
 }
 
 impl Table {
@@ -127,6 +130,36 @@ impl Table {
         }
     }
 
+    pub fn action_notifications(&self) -> TableNotifications {
+        let history = self
+            .game
+            .as_ref()
+            .expect("action_notifications() called without active game")
+            .history();
+        let current_actions = history.len();
+
+        self.connections
+            .iter()
+            .map(|c| {
+                let known_actions = *c.actions_sent.read().expect("unexpected concurrency");
+                if current_actions > known_actions {
+                    *c.actions_sent.write().expect("unexpected concurrency") = current_actions;
+                    Some(
+                        c.notification(
+                            serde_json::to_string(&ClientNotification::CardActions(
+                                history[known_actions..current_actions].to_vec(),
+                            ))
+                            .unwrap(),
+                        ),
+                    )
+                } else {
+                    None
+                }
+            })
+            .flatten()
+            .collect()
+    }
+
     pub fn game_status(&self, login_id: &str) -> GameStatus {
         let player_index = self.user_index(login_id).unwrap();
 
@@ -158,6 +191,7 @@ impl Table {
             connection_id: random_id(),
             player: user,
             sender: connection,
+            actions_sent: RwLock::new(0),
         });
     }
 
@@ -396,10 +430,19 @@ impl ZingState {
         // send initial card notifications
         Self::send_notifications(notifications, state, table_id).await;
 
-        // finally, perform first dealer card actions (TODO: notifications)
-        let mut state = state.write().unwrap();
-        let table = state.tables.get_mut(table_id).unwrap();
-        table.setup_game()
+        // finally, perform first dealer card actions
+        let notifications;
+        {
+            let mut state = state.write().unwrap();
+            let table = state.tables.get_mut(table_id).unwrap();
+            table.setup_game()?;
+            notifications = table.action_notifications();
+        }
+
+        // send notifications about dealer actions
+        Self::send_notifications(notifications, state, table_id).await;
+
+        Ok(())
     }
 
     pub async fn send_notifications(
