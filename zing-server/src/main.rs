@@ -1,5 +1,6 @@
 use std::{
     fs,
+    ops::Deref,
     sync::{Arc, RwLock},
 };
 
@@ -28,7 +29,10 @@ async fn main() {
         .route("/", get(index_from_disk))
         .route("/login", post(login).get(whoami).delete(logout))
         .route("/table", post(create_table).get(list_tables))
-        .route("/table/:table_id", post(join_table).get(get_table).delete(leave_table))
+        .route(
+            "/table/:table_id",
+            post(join_table).get(get_table).delete(leave_table),
+        )
         .route(
             "/table/:table_id/game",
             post(start_game).get(game_status).delete(finish_game),
@@ -180,8 +184,7 @@ async fn start_game(
     Path(table_id): Path<String>,
     State(state): State<Arc<RwLock<ZingState>>>,
 ) -> Result<(), ErrorResponse> {
-    let mut state = state.write().unwrap();
-    state.start_game(&login_id.0, &table_id)
+    ZingState::start_game(state.deref(), &login_id.0, &table_id)
 }
 
 async fn game_status(

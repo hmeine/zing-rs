@@ -2,7 +2,7 @@ use axum::{http, Json};
 use chrono::prelude::*;
 use rand::distributions::{Alphanumeric, DistString};
 use serde::{Serialize, Serializer};
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::RwLock};
 use zing_game::{
     game::GameState,
     zing_game::{ZingGame, ZingGamePoints},
@@ -141,7 +141,7 @@ impl ZingState {
         login_id
     }
 
-    pub fn logout(&mut self, login_id: &str) -> Result<(), ErrorResponse> {
+    pub fn logout(&mut self, _login_id: &str) -> Result<(), ErrorResponse> {
         // deletion of users during logout breaks name lookup from login IDs
         //
         // A proper way (which may be overkill in the end?) would be to
@@ -311,12 +311,17 @@ impl ZingState {
         Ok(())
     }
 
-    pub fn start_game(&mut self, login_id: &str, table_id: &str) -> Result<(), ErrorResponse> {
-        self.get_user(login_id)?;
+    pub fn start_game(
+        state: &RwLock<ZingState>,
+        login_id: &str,
+        table_id: &str,
+    ) -> Result<(), ErrorResponse> {
+        let self_ = state.read().unwrap();
+        self_.get_user(login_id)?;
 
-        let table = self
+        let table = self_
             .tables
-            .get_mut(table_id)
+            .get(table_id)
             .ok_or((http::StatusCode::NOT_FOUND, "table id not found"))?;
 
         table.user_index(login_id).ok_or((
@@ -324,13 +329,17 @@ impl ZingState {
             "user has not joined table at which game should start",
         ))?;
 
-        table.start_game(
-            table
-                .login_ids
-                .iter()
-                .map(|login_id| self.users.get(login_id).unwrap().name.clone())
-                .collect(),
-        )
+        let user_names = table
+            .login_ids
+            .iter()
+            .map(|login_id| self_.users.get(login_id).unwrap().name.clone())
+            .collect();
+
+        drop(self_);
+        let mut self_ = state.write().unwrap();
+
+        let table = self_.tables.get_mut(table_id).unwrap();
+        table.start_game(user_names)
     }
 
     pub fn game_status(
