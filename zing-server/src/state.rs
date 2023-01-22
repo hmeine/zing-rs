@@ -2,7 +2,10 @@ use axum::{http, Json};
 use chrono::prelude::*;
 use rand::distributions::{Alphanumeric, DistString};
 use serde::{Serialize, Serializer};
-use std::{collections::HashMap, sync::RwLock};
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
 use zing_game::{
     game::GameState,
     zing_game::{ZingGame, ZingGamePoints},
@@ -16,15 +19,16 @@ fn random_id() -> String {
     Alphanumeric.sample_string(&mut rand::thread_rng(), 16)
 }
 
-#[derive(Default)]
 pub struct User {
+    login_id: String,
     name: String,
-    tables: Vec<String>,
+    logged_in: RwLock<bool>,
+    tables: RwLock<Vec<String>>,
 }
 
 pub struct Table {
     created_at: DateTime<Utc>,
-    login_ids: Vec<String>,
+    players: Vec<Arc<User>>,
     connections: Vec<Option<NotificationSenderHandle>>,
     game_results: Vec<ZingGamePoints>,
     game: Option<ZingGame>,
@@ -63,20 +67,24 @@ impl Table {
     }
 
     pub fn user_index(&self, login_id: &str) -> Option<usize> {
-        self.login_ids.iter().position(|id| *id == login_id)
+        self.players
+            .iter()
+            .position(|player| player.login_id == login_id)
     }
 
+    // FIXME: we now longer need the names argument
     pub fn start_game(&mut self, names: Vec<String>) -> Result<(), ErrorResponse> {
         if self.game.is_some() {
             return Err((http::StatusCode::CONFLICT, "game already started"));
         }
 
-        let dealer = self.game_results.len() % names.len();
-        self.game = Some(ZingGame::new_with_player_names(names, dealer));
-        for player_index in 0..self.login_ids.len() {
+        let dealer_index = self.game_results.len() % names.len();
+        self.game = Some(ZingGame::new_with_player_names(names, dealer_index));
+        for player_index in 0..self.players.len() {
             if self.connections[player_index].is_some() {
-                let msg = serde_json::to_string(&self.game_status(&self.login_ids[player_index]))
-                    .unwrap();
+                let msg =
+                    serde_json::to_string(&self.game_status(&self.players[player_index].login_id))
+                        .unwrap();
                 if self.connections[player_index]
                     .as_mut()
                     .unwrap()
@@ -91,6 +99,7 @@ impl Table {
         Ok(())
     }
 
+    // TODO: should we take a RwLock<User>?
     pub fn game_status(&self, login_id: &str) -> GameStatus {
         let player_index = self.user_index(login_id).unwrap();
 
@@ -124,7 +133,7 @@ impl Table {
 
 #[derive(Default)]
 pub struct ZingState {
-    users: HashMap<String, User>,
+    users: HashMap<String, Arc<User>>,
     tables: HashMap<String, Table>,
 }
 
@@ -133,45 +142,37 @@ impl ZingState {
         let login_id = random_id();
         self.users.insert(
             login_id.clone(),
-            User {
+            Arc::new(User {
+                login_id: login_id.clone(),
                 name: user_name.to_owned(),
-                ..Default::default()
-            },
+                logged_in: RwLock::new(true),
+                tables: RwLock::new(Vec::new()),
+            }),
         );
         login_id
     }
 
-    pub fn logout(&mut self, _login_id: &str) -> Result<(), ErrorResponse> {
-        // deletion of users during logout breaks name lookup from login IDs
-        //
-        // A proper way (which may be overkill in the end?) would be to
-        //
-        // * remove users only if they are not part of any tables anymore
-        // * mark users as logged out otherwise
-        // * remove tables if all users are logged out (or have left the table)
-        // see https://github.com/hmeine/zing-rs/issues/7
-        //self.users
-        //    .remove(login_id)
-        //    .ok_or((
-        //        http::StatusCode::UNAUTHORIZED,
-        //        "user not found (bad id cookie)",
-        //    ))
-        //    .map(|_| ())
-        Ok(())
+    pub fn logout(&mut self, login_id: &str) -> Result<(), ErrorResponse> {
+        self.users
+            .remove_entry(login_id)
+            .ok_or((
+                http::StatusCode::UNAUTHORIZED,
+                "user not found (bad id cookie)",
+            ))
+            .map(|(_, user)| {
+                *user.logged_in.write().expect("unexpected concurrency") = false;
+                // TODO: remove table if all users have left or logged out
+            })
     }
 
-    pub fn get_user(&self, login_id: &str) -> Result<&User, ErrorResponse> {
-        self.users.get(login_id).ok_or((
-            http::StatusCode::UNAUTHORIZED,
-            "user not found (bad id cookie)",
-        ))
-    }
-
-    pub fn get_user_mut(&mut self, login_id: &str) -> Result<&mut User, ErrorResponse> {
-        self.users.get_mut(login_id).ok_or((
-            http::StatusCode::UNAUTHORIZED,
-            "user not found (bad id cookie)",
-        ))
+    pub fn get_user(&self, login_id: &str) -> Result<Arc<User>, ErrorResponse> {
+        self.users.get(login_id).map_or(
+            Err((
+                http::StatusCode::UNAUTHORIZED,
+                "user not found (bad id cookie)",
+            )),
+            |user| Ok(user.clone()),
+        )
     }
 
     pub fn whoami(&self, login_id: &str) -> Option<String> {
@@ -182,11 +183,7 @@ impl ZingState {
         TableInfo {
             id: id.to_owned(),
             created_at: table.created_at,
-            user_names: table
-                .login_ids
-                .iter()
-                .map(|id| self.get_user(id).unwrap().name.clone())
-                .collect(),
+            user_names: table.players.iter().map(|user| user.name.clone()).collect(),
             game_results: table.game_results.clone(),
         }
     }
@@ -194,12 +191,15 @@ impl ZingState {
     pub fn create_table(&mut self, login_id: &str) -> Result<Json<TableInfo>, ErrorResponse> {
         let table_id = random_id();
 
-        let user = self.get_user_mut(login_id)?;
-        user.tables.push(table_id.clone());
+        let user = self.get_user(login_id)?;
+        user.tables
+            .write()
+            .expect("unexpected concurrency")
+            .push(table_id.clone());
 
         let table = Table {
             created_at: Utc::now(),
-            login_ids: vec![login_id.to_owned()],
+            players: vec![user],
             connections: vec![None],
             game_results: Vec::new(),
             game: None,
@@ -216,6 +216,8 @@ impl ZingState {
 
         let table_infos = user
             .tables
+            .read()
+            .expect("unexpected concurrency")
             .iter()
             .map(|table_id| self.table_info(table_id, self.tables.get(table_id).unwrap()))
             .collect::<Vec<_>>();
@@ -247,7 +249,12 @@ impl ZingState {
     ) -> Result<Json<TableInfo>, ErrorResponse> {
         let user = self.get_user(login_id)?;
         let table_id = table_id.to_owned();
-        if user.tables.contains(&table_id) {
+        if user
+            .tables
+            .read()
+            .expect("unexpected concurrency")
+            .contains(&table_id)
+        {
             return Err((http::StatusCode::CONFLICT, "trying to join table again"));
         }
 
@@ -263,9 +270,12 @@ impl ZingState {
             ));
         }
 
-        table.login_ids.push(login_id.to_owned());
+        user.tables
+            .write()
+            .expect("unexpected concurrency")
+            .push(table_id.clone());
+        table.players.push(user.clone());
         table.connections.push(None);
-        self.get_user_mut(login_id)?.tables.push(table_id.clone());
 
         let table = self.tables.get(&table_id).unwrap();
         let result = self.table_info(&table_id, &table);
@@ -276,10 +286,16 @@ impl ZingState {
     pub fn leave_table(&mut self, login_id: &str, table_id: &str) -> Result<(), ErrorResponse> {
         let user = self.get_user(login_id)?;
 
-        let table_index_in_user = user.tables.iter().position(|id| *id == table_id).ok_or((
-            http::StatusCode::UNAUTHORIZED,
-            "trying to leave table before joining",
-        ))?;
+        let table_index_in_user = user
+            .tables
+            .read()
+            .expect("unexpected concurrency")
+            .iter()
+            .position(|id| *id == table_id)
+            .ok_or((
+                http::StatusCode::UNAUTHORIZED,
+                "trying to leave table before joining",
+            ))?;
 
         let table = self
             .tables
@@ -293,19 +309,17 @@ impl ZingState {
             ));
         }
 
-        let user_index_in_table = table
-            .login_ids
-            .iter()
-            .position(|id| *id == login_id)
-            .expect("inconsistent state");
+        let user_index_in_table = table.user_index(login_id).expect("inconsistent state");
 
-        table.login_ids.remove(user_index_in_table);
+        // TODO: remove table if all remaining users are logged out
+        table.players.remove(user_index_in_table);
         table.connections.remove(user_index_in_table);
-        if table.login_ids.is_empty() {
+        if table.players.is_empty() {
             self.tables.remove(table_id);
         }
-        self.get_user_mut(login_id)?
-            .tables
+        user.tables
+            .write()
+            .expect("unexpected concurrency")
             .remove(table_index_in_user);
 
         Ok(())
@@ -329,11 +343,7 @@ impl ZingState {
             "user has not joined table at which game should start",
         ))?;
 
-        let user_names = table
-            .login_ids
-            .iter()
-            .map(|login_id| self_.users.get(login_id).unwrap().name.clone())
-            .collect();
+        let user_names = table.players.iter().map(|user| user.name.clone()).collect();
 
         drop(self_);
         let mut self_ = state.write().unwrap();
