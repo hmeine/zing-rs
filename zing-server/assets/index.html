@@ -41,14 +41,18 @@
           :pagination="{ rowsPerPage: 0 }"
           hide-pagination
           no-data-label="No table opened or joined yet"
-        ><template v-slot:body-cell-id="props">
-          <q-td :props="props">
-            <div>
-              <q-btn label="Copy Share Link" icon="content_copy" @click="share(props)"></q-btn>
-            </div>
-          </q-td>
-        </template>
-      </q-table>
+          ><template v-slot:body-cell-id="props">
+            <q-td :props="props">
+              <div>
+                <q-btn
+                  label="Copy Share Link"
+                  icon="content_copy"
+                  @click="share(props)"
+                ></q-btn>
+              </div>
+            </q-td>
+          </template>
+        </q-table>
       </div>
     </div>
 
@@ -120,7 +124,7 @@
             maybe_join_table();
           })
           .catch(function (error) {
-            console.log('CAUGHT ERROR:', error);
+            console.log("CAUGHT ERROR:", error);
           });
       }
 
@@ -135,7 +139,7 @@
               // illegal login cookie -> just clear user name
               user_info.name = "";
             } else {
-              console.log('CAUGHT ERROR:', error);
+              console.log("CAUGHT ERROR:", error);
             }
           });
       }
@@ -145,9 +149,10 @@
           .post("/table")
           .then(function (response) {
             user_info.tables.push(response.data);
+            open_table_connection(user_info.tables.slice(-1)[0]);
           })
           .catch(function (error) {
-            console.log('CAUGHT ERROR:', error);
+            console.log("CAUGHT ERROR:", error);
           });
       }
 
@@ -159,12 +164,14 @@
             user_info.tables = response.data;
           })
           .catch(function (error) {
-            console.log('CAUGHT ERROR:', error);
+            console.log("CAUGHT ERROR:", error);
           });
       }
 
       function share(cell_props) {
-        Quasar.copyToClipboard(window.location.origin + '?join=' + cell_props.key);
+        Quasar.copyToClipboard(
+          window.location.origin + "?join=" + cell_props.key
+        );
       }
 
       function maybe_join_table() {
@@ -174,18 +181,37 @@
             .post("/table/" + join)
             .then(function (response) {
               user_info.tables.push(response.data);
+              open_table_connection(user_info.tables.slice(-1)[0]);
             })
             .catch(function (error) {
               // 404 is expected if table ID is invalid
               // 409 Conflict is expected if table is already joined
-              if (error.response.status == 404)
-              {
-                Quasar.Notify.create('Invalid table ID, cannot join – ask sender for valid share link!')
+              if (error.response.status == 404) {
+                Quasar.Notify.create(
+                  "Invalid table ID, cannot join – ask sender for valid share link!"
+                );
               } else if (error.response.status != 409) {
-                console.log('CAUGHT ERROR:', error);
+                console.log("CAUGHT ERROR:", error);
               }
             });
         }
+      }
+
+      function open_table_connection(table_info) {
+        var ws = new WebSocket(
+          "ws://" +
+            window.location.host +
+            "/table/" +
+            table_info.id +
+            "/game/ws"
+        );
+        ws.addEventListener("message", (event) => {
+          console.log("Message from server ", event.data);
+        });
+        ws.addEventListener("close", (event) => {
+          console.log("Server connection closed");
+        });
+        table_info.ws = ws;
       }
 
       const app = createApp({
@@ -216,7 +242,7 @@
             .catch(function (error) {
               // we do not have to log "not logged in" errors
               if (error.response.status != 401) {
-                console.log('CAUGHT ERROR:', error);
+                console.log("CAUGHT ERROR:", error);
               }
             });
         },
