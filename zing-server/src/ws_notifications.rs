@@ -38,9 +38,10 @@ impl NotificationSenderHandle {
         Self { sender }
     }
 
-    pub fn send(&self, json: String) -> Result<(), &'static str> {
+    pub async fn send(&self, json: String) -> Result<(), &'static str> {
         self.sender
-            .blocking_send(Notification { json })
+            .send(Notification { json })
+            .await
             .map_err(|_tokio_err| "could not contact NotificationSender")
     }
 }

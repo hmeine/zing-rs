@@ -29,7 +29,7 @@ pub struct User {
 pub struct Table {
     created_at: DateTime<Utc>,
     players: Vec<Arc<User>>,
-    connections: Vec<(Arc<User>, NotificationSenderHandle)>,
+    connections: Vec<(String, Arc<User>, NotificationSenderHandle)>,
     game_results: Vec<ZingGamePoints>,
     game: Option<ZingGame>,
 }
@@ -80,18 +80,30 @@ impl Table {
         let names: Vec<String> = self.players.iter().map(|user| user.name.clone()).collect();
         let dealer_index = self.game_results.len() % names.len();
         self.game = Some(ZingGame::new_with_player_names(names, dealer_index));
-        let mut close_indices = Vec::new();
-        for (i, (player, connection)) in self.connections.iter().enumerate() {
-            let msg = serde_json::to_string(&self.game_status(&player.login_id)).unwrap();
-            if connection.send(msg).is_err() {
-                close_indices.push(i);
-            };
-        }
-        for i in close_indices.into_iter().rev() {
-            self.connections.remove(i);
-        }
-        self.game.as_mut().unwrap().setup_game();
         Ok(())
+    }
+
+    pub fn initial_game_status_messages(&self) -> Vec<(String, String, NotificationSenderHandle)> {
+        self.connections
+            .iter()
+            .map(|(connection_id, player, connection)| {
+                (
+                    connection_id.clone(),
+                    serde_json::to_string(&self.game_status(&player.login_id)).unwrap(),
+                    connection.clone(),
+                )
+            })
+            .collect()
+    }
+
+    pub fn setup_game(&mut self) -> Result<(), ErrorResponse> {
+        match &mut self.game {
+            None => Err((http::StatusCode::CONFLICT, "game not started yet")),
+            Some(game) => {
+                game.setup_game();
+                Ok(())
+            }
+        }
     }
 
     pub fn game_status(&self, login_id: &str) -> GameStatus {
@@ -121,7 +133,16 @@ impl Table {
     }
 
     pub fn connection_opened(&mut self, user: Arc<User>, connection: NotificationSenderHandle) {
-        self.connections.push((user, connection));
+        self.connections.push((random_id(), user, connection));
+    }
+
+    pub fn connection_closed(&mut self, connection_id: String) {
+        for (i, (registered_id, _, _)) in self.connections.iter().enumerate() {
+            if *registered_id == connection_id {
+                self.connections.remove(i);
+                break;
+            }
+        }
     }
 }
 
@@ -318,29 +339,52 @@ impl ZingState {
         Ok(())
     }
 
-    pub fn start_game(
+    pub async fn start_game(
         state: &RwLock<ZingState>,
         login_id: &str,
         table_id: &str,
     ) -> Result<(), ErrorResponse> {
-        let self_ = state.read().unwrap();
-        self_.get_user(login_id)?;
+        // start a game (sync code), collect initial game status notifications
+        let notifications;
+        {
+            let self_ = state.read().unwrap();
+            self_.get_user(login_id)?;
+    
+            let table = self_
+                .tables
+                .get(table_id)
+                .ok_or((http::StatusCode::NOT_FOUND, "table id not found"))?;
+    
+            table.user_index(login_id).ok_or((
+                http::StatusCode::NOT_FOUND,
+                "user has not joined table at which game should start",
+            ))?;
+    
+            drop(self_);
+            let mut self_ = state.write().unwrap();
+    
+            let table = self_.tables.get_mut(table_id).unwrap();
+            table.start_game()?;
+            notifications = table.initial_game_status_messages();
+        }
 
-        let table = self_
-            .tables
-            .get(table_id)
-            .ok_or((http::StatusCode::NOT_FOUND, "table id not found"))?;
+        // now send notifications (async, we don't want to hold the state locked)
+        let mut broken_connections = Vec::new();
+        for (connection_id, msg, connection) in notifications {
+            if connection.send(msg).await.is_err() {
+                broken_connections.push(connection_id);
+            };
+        }
 
-        table.user_index(login_id).ok_or((
-            http::StatusCode::NOT_FOUND,
-            "user has not joined table at which game should start",
-        ))?;
-
-        drop(self_);
+        // lock the state again to remove broken connections:
         let mut self_ = state.write().unwrap();
-
         let table = self_.tables.get_mut(table_id).unwrap();
-        table.start_game()
+        for connection_id in broken_connections {
+            table.connection_closed(connection_id);
+        }
+        
+        // finally, perform first dealer card actions (TODO: notifications)
+        table.setup_game()
     }
 
     pub fn game_status(
@@ -412,18 +456,6 @@ impl ZingState {
             })
         });
     }
-
-    //    loop {
-    //        if socket
-    //            .send(Message::Text(String::from("Hi!")))
-    //            .await
-    //            .is_err()
-    //        {
-    //            println!("client disconnected");
-    //            return;
-    //        }
-    //        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-    //    }
 
     pub fn play_card(
         &mut self,

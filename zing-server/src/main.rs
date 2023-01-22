@@ -184,7 +184,7 @@ async fn start_game(
     Path(table_id): Path<String>,
     State(state): State<Arc<RwLock<ZingState>>>,
 ) -> Result<(), ErrorResponse> {
-    ZingState::start_game(state.deref(), &login_id.0, &table_id)
+    ZingState::start_game(state.deref(), &login_id.0, &table_id).await
 }
 
 async fn game_status(
