@@ -29,7 +29,7 @@ pub struct User {
 pub struct Table {
     created_at: DateTime<Utc>,
     players: Vec<Arc<User>>,
-    connections: Vec<Option<NotificationSenderHandle>>,
+    connections: Vec<(Arc<User>, NotificationSenderHandle)>,
     game_results: Vec<ZingGamePoints>,
     game: Option<ZingGame>,
 }
@@ -80,20 +80,15 @@ impl Table {
         let names: Vec<String> = self.players.iter().map(|user| user.name.clone()).collect();
         let dealer_index = self.game_results.len() % names.len();
         self.game = Some(ZingGame::new_with_player_names(names, dealer_index));
-        for player_index in 0..self.players.len() {
-            if self.connections[player_index].is_some() {
-                let msg =
-                    serde_json::to_string(&self.game_status(&self.players[player_index].login_id))
-                        .unwrap();
-                if self.connections[player_index]
-                    .as_mut()
-                    .unwrap()
-                    .send(msg)
-                    .is_err()
-                {
-                    self.connections[player_index] = None;
-                };
-            }
+        let mut close_indices = Vec::new();
+        for (i, (player, connection)) in self.connections.iter().enumerate() {
+            let msg = serde_json::to_string(&self.game_status(&player.login_id)).unwrap();
+            if connection.send(msg).is_err() {
+                close_indices.push(i);
+            };
+        }
+        for i in close_indices.into_iter().rev() {
+            self.connections.remove(i);
         }
         self.game.as_mut().unwrap().setup_game();
         Ok(())
@@ -125,8 +120,8 @@ impl Table {
         Ok(())
     }
 
-    pub fn connection_opened(&mut self, user_index: usize, sender: NotificationSenderHandle) {
-        self.connections[user_index] = Some(sender);
+    pub fn connection_opened(&mut self, user: Arc<User>, connection: NotificationSenderHandle) {
+        self.connections.push((user, connection));
     }
 }
 
@@ -199,7 +194,7 @@ impl ZingState {
         let table = Table {
             created_at: Utc::now(),
             players: vec![user],
-            connections: vec![None],
+            connections: Vec::new(),
             game_results: Vec::new(),
             game: None,
         };
@@ -274,7 +269,6 @@ impl ZingState {
             .expect("unexpected concurrency")
             .push(table_id.clone());
         table.players.push(user.clone());
-        table.connections.push(None);
 
         let table = self.tables.get(&table_id).unwrap();
         let result = self.table_info(&table_id, &table);
@@ -411,9 +405,9 @@ impl ZingState {
         sender: NotificationSenderHandle,
     ) {
         // it would be nice if we could socket.close() if the following expression is false:
-        self.tables.get_mut(&table_id).map_or(false, |table| {
-            table.user_index(&login_id).map_or(false, |user_index| {
-                table.connection_opened(user_index, sender);
+        self.get_user(&login_id).map_or(false, |user| {
+            self.tables.get_mut(&table_id).map_or(false, |table| {
+                table.connection_opened(user, sender);
                 true
             })
         });
