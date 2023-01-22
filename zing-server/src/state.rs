@@ -76,6 +76,11 @@ pub struct GameStatus {
     state: Option<GameState>,
 }
 
+#[derive(Serialize)]
+enum ClientNotification {
+    GameStarted(GameStatus),
+}
+
 impl Table {
     pub fn games_have_started(&self) -> bool {
         self.game.is_some() || !self.game_results.is_empty()
@@ -103,7 +108,10 @@ impl Table {
             .iter()
             .map(|c| {
                 c.notification(
-                    serde_json::to_string(&self.game_status(&c.player.login_id)).unwrap(),
+                    serde_json::to_string(&ClientNotification::GameStarted(
+                        self.game_status(&c.player.login_id),
+                    ))
+                    .unwrap(),
                 )
             })
             .collect()
