@@ -72,12 +72,12 @@ impl Table {
             .position(|player| player.login_id == login_id)
     }
 
-    // FIXME: we now longer need the names argument
-    pub fn start_game(&mut self, names: Vec<String>) -> Result<(), ErrorResponse> {
+    pub fn start_game(&mut self) -> Result<(), ErrorResponse> {
         if self.game.is_some() {
             return Err((http::StatusCode::CONFLICT, "game already started"));
         }
 
+        let names: Vec<String> = self.players.iter().map(|user| user.name.clone()).collect();
         let dealer_index = self.game_results.len() % names.len();
         self.game = Some(ZingGame::new_with_player_names(names, dealer_index));
         for player_index in 0..self.players.len() {
@@ -99,7 +99,6 @@ impl Table {
         Ok(())
     }
 
-    // TODO: should we take a RwLock<User>?
     pub fn game_status(&self, login_id: &str) -> GameStatus {
         let player_index = self.user_index(login_id).unwrap();
 
@@ -343,13 +342,11 @@ impl ZingState {
             "user has not joined table at which game should start",
         ))?;
 
-        let user_names = table.players.iter().map(|user| user.name.clone()).collect();
-
         drop(self_);
         let mut self_ = state.write().unwrap();
 
         let table = self_.tables.get_mut(table_id).unwrap();
-        table.start_game(user_names)
+        table.start_game()
     }
 
     pub fn game_status(
