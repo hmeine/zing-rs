@@ -15,6 +15,8 @@ use crate::ws_notifications::NotificationSenderHandle;
 
 pub type ErrorResponse = (http::StatusCode, &'static str);
 
+type TableNotifications = Vec<(String, String, NotificationSenderHandle)>;
+
 fn random_id() -> String {
     Alphanumeric.sample_string(&mut rand::thread_rng(), 16)
 }
@@ -83,7 +85,7 @@ impl Table {
         Ok(())
     }
 
-    pub fn initial_game_status_messages(&self) -> Vec<(String, String, NotificationSenderHandle)> {
+    pub fn initial_game_status_messages(&self) -> TableNotifications {
         self.connections
             .iter()
             .map(|(connection_id, player, connection)| {
@@ -368,7 +370,17 @@ impl ZingState {
             notifications = table.initial_game_status_messages();
         }
 
-        // now send notifications (async, we don't want to hold the state locked)
+        // send initial card notifications
+        Self::send_notifications(notifications, state, table_id).await;
+        
+        // finally, perform first dealer card actions (TODO: notifications)
+        let mut state = state.write().unwrap();
+        let table = state.tables.get_mut(table_id).unwrap();
+        table.setup_game()
+    }
+
+    pub async fn send_notifications(notifications: TableNotifications, state: &RwLock<ZingState>, table_id: &str) {
+        // send notifications (async, we don't want to hold the state locked)
         let mut broken_connections = Vec::new();
         for (connection_id, msg, connection) in notifications {
             if connection.send(msg).await.is_err() {
@@ -377,14 +389,11 @@ impl ZingState {
         }
 
         // lock the state again to remove broken connections:
-        let mut self_ = state.write().unwrap();
-        let table = self_.tables.get_mut(table_id).unwrap();
+        let mut state = state.write().unwrap();
+        let table = state.tables.get_mut(table_id).unwrap();
         for connection_id in broken_connections {
             table.connection_closed(connection_id);
         }
-        
-        // finally, perform first dealer card actions (TODO: notifications)
-        table.setup_game()
     }
 
     pub fn game_status(
