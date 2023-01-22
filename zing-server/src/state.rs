@@ -15,7 +15,8 @@ use crate::ws_notifications::NotificationSenderHandle;
 
 pub type ErrorResponse = (http::StatusCode, &'static str);
 
-type TableNotifications = Vec<(String, String, NotificationSenderHandle)>;
+type TableNotification = (String, String, NotificationSenderHandle);
+type TableNotifications = Vec<TableNotification>;
 
 fn random_id() -> String {
     Alphanumeric.sample_string(&mut rand::thread_rng(), 16)
@@ -28,10 +29,22 @@ pub struct User {
     tables: RwLock<Vec<String>>,
 }
 
+struct ClientConnection {
+    connection_id: String,
+    player: Arc<User>,
+    sender: NotificationSenderHandle,
+}
+
+impl ClientConnection {
+    pub fn notification(&self, msg: String) -> TableNotification {
+        (self.connection_id.clone(), msg, self.sender.clone())
+    }
+}
+
 pub struct Table {
     created_at: DateTime<Utc>,
     players: Vec<Arc<User>>,
-    connections: Vec<(String, Arc<User>, NotificationSenderHandle)>,
+    connections: Vec<ClientConnection>,
     game_results: Vec<ZingGamePoints>,
     game: Option<ZingGame>,
 }
@@ -88,11 +101,9 @@ impl Table {
     pub fn initial_game_status_messages(&self) -> TableNotifications {
         self.connections
             .iter()
-            .map(|(connection_id, player, connection)| {
-                (
-                    connection_id.clone(),
-                    serde_json::to_string(&self.game_status(&player.login_id)).unwrap(),
-                    connection.clone(),
+            .map(|c| {
+                c.notification(
+                    serde_json::to_string(&self.game_status(&c.player.login_id)).unwrap(),
                 )
             })
             .collect()
@@ -135,12 +146,16 @@ impl Table {
     }
 
     pub fn connection_opened(&mut self, user: Arc<User>, connection: NotificationSenderHandle) {
-        self.connections.push((random_id(), user, connection));
+        self.connections.push(ClientConnection {
+            connection_id: random_id(),
+            player: user,
+            sender: connection,
+        });
     }
 
     pub fn connection_closed(&mut self, connection_id: String) {
-        for (i, (registered_id, _, _)) in self.connections.iter().enumerate() {
-            if *registered_id == connection_id {
+        for (i, c) in self.connections.iter().enumerate() {
+            if c.connection_id == connection_id {
                 self.connections.remove(i);
                 break;
             }
@@ -351,20 +366,20 @@ impl ZingState {
         {
             let self_ = state.read().unwrap();
             self_.get_user(login_id)?;
-    
+
             let table = self_
                 .tables
                 .get(table_id)
                 .ok_or((http::StatusCode::NOT_FOUND, "table id not found"))?;
-    
+
             table.user_index(login_id).ok_or((
                 http::StatusCode::NOT_FOUND,
                 "user has not joined table at which game should start",
             ))?;
-    
+
             drop(self_);
             let mut self_ = state.write().unwrap();
-    
+
             let table = self_.tables.get_mut(table_id).unwrap();
             table.start_game()?;
             notifications = table.initial_game_status_messages();
@@ -372,14 +387,18 @@ impl ZingState {
 
         // send initial card notifications
         Self::send_notifications(notifications, state, table_id).await;
-        
+
         // finally, perform first dealer card actions (TODO: notifications)
         let mut state = state.write().unwrap();
         let table = state.tables.get_mut(table_id).unwrap();
         table.setup_game()
     }
 
-    pub async fn send_notifications(notifications: TableNotifications, state: &RwLock<ZingState>, table_id: &str) {
+    pub async fn send_notifications(
+        notifications: TableNotifications,
+        state: &RwLock<ZingState>,
+        table_id: &str,
+    ) {
         // send notifications (async, we don't want to hold the state locked)
         let mut broken_connections = Vec::new();
         for (connection_id, msg, connection) in notifications {
