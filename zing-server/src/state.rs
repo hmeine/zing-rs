@@ -140,7 +140,7 @@ impl Table {
 
         self.connections
             .iter()
-            .map(|c| {
+            .filter_map(|c| {
                 let known_actions = *c.actions_sent.read().expect("unexpected concurrency");
                 if current_actions > known_actions {
                     *c.actions_sent.write().expect("unexpected concurrency") = current_actions;
@@ -156,7 +156,6 @@ impl Table {
                     None
                 }
             })
-            .flatten()
             .collect()
     }
 
@@ -311,7 +310,7 @@ impl ZingState {
             .get(table_id)
             .ok_or((http::StatusCode::NOT_FOUND, "table id not found"))?;
 
-        let result = self.table_info(table_id, &table);
+        let result = self.table_info(table_id, table);
 
         Ok(Json(result))
     }
@@ -348,10 +347,10 @@ impl ZingState {
             .write()
             .expect("unexpected concurrency")
             .push(table_id.clone());
-        table.players.push(user.clone());
+        table.players.push(user);
 
         let table = self.tables.get(&table_id).unwrap();
-        let result = self.table_info(&table_id, &table);
+        let result = self.table_info(&table_id, table);
 
         Ok(Json(result))
     }
