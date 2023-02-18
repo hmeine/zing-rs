@@ -6,6 +6,7 @@ use crate::layout_state::{handle_keyboard_input, GamePhase, LayoutState};
 use bevy::{prelude::*, render::camera::ScalingMode};
 use bevy_tweening::lens::TransformPositionLens;
 use bevy_tweening::{Animator, EaseFunction, Tween};
+use zing_game::game::GameState;
 use zing_game::zing_game::ZingGame;
 use zing_game::{card_action::CardLocation, game::CardState};
 
@@ -65,7 +66,7 @@ impl CardStack {
             .id()
     }
 
-    fn card_states<'a>(&self, game: &'a zing_game::game::GameState) -> &'a Vec<CardState> {
+    fn card_states<'a>(&self, game: &'a GameState) -> &'a Vec<CardState> {
         match self.location {
             CardLocation::PlayerHand => &game.players[self.index].hand,
             CardLocation::Stack => &game.stacks[self.index].cards,

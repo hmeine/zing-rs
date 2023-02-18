@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use bevy::prelude::*;
+use zing_game::game::GameState;
 use zing_game::{card_action::CardAction, zing_game::ZingGame};
 
 use crate::constants::STEP_DURATION_MILLIS;
@@ -11,7 +12,7 @@ pub struct LayoutState {
     game: ZingGame,
     pub we_are_player: usize,
     last_synced_history_len: usize,
-    pub displayed_state: zing_game::game::GameState,
+    pub displayed_state: GameState,
     pub step_animation_timer: Timer,
 }
 
