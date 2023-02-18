@@ -86,6 +86,9 @@ fn setup_camera(mut commands: Commands) {
 fn setup_card_stacks(mut commands: Commands, game_state: Res<GameState>) {
     let opposite_hand_pos_y = PLAYING_CENTER_Y + VERTICAL_SPACING + CARD_HEIGHT;
 
+    let we_are_player = game_state.we_are_player;
+    drop(game_state);
+
     info!("layouting card stacks");
 
     CardStack::spawn(
@@ -99,7 +102,7 @@ fn setup_card_stacks(mut commands: Commands, game_state: Res<GameState>) {
         Vec3::ZERO,
         Vec3::ONE,
         CardLocation::PlayerHand,
-        1 - game_state.we_are_player, // opponent's hand
+        1 - we_are_player, // opponent's hand
     );
 
     let own_hand_pos_y =
@@ -116,7 +119,7 @@ fn setup_card_stacks(mut commands: Commands, game_state: Res<GameState>) {
         Vec3::ZERO,
         Vec3::splat(OWN_CARD_ZOOM),
         CardLocation::PlayerHand,
-        game_state.we_are_player, // own hand
+        we_are_player, // own hand
     );
 
     // TODO: we need to know if we have two or four players
@@ -152,7 +155,7 @@ fn setup_card_stacks(mut commands: Commands, game_state: Res<GameState>) {
         Vec3::ZERO,
         Vec3::ONE,
         CardLocation::Stack,
-        2 + ((game_state.we_are_player + 1) % 2), // opponent's winning stack
+        2 + ((we_are_player + 1) % 2), // opponent's winning stack
     );
 
     CardStack::spawn(
@@ -166,7 +169,7 @@ fn setup_card_stacks(mut commands: Commands, game_state: Res<GameState>) {
         Vec3::ZERO,
         Vec3::ONE,
         CardLocation::Stack,
-        2 + game_state.we_are_player % 2, // own winning stack
+        2 + we_are_player % 2, // own winning stack
     );
 
     CardStack::spawn(
@@ -180,7 +183,7 @@ fn setup_card_stacks(mut commands: Commands, game_state: Res<GameState>) {
         Vec3::new(0., VERTICAL_PEEPING, 0.),
         Vec3::ONE,
         CardLocation::Stack,
-        4 + ((game_state.we_are_player + 1) % 2), // opponent's score stack
+        4 + ((we_are_player + 1) % 2), // opponent's score stack
     );
 
     CardStack::spawn(
@@ -194,7 +197,7 @@ fn setup_card_stacks(mut commands: Commands, game_state: Res<GameState>) {
         Vec3::new(0., VERTICAL_PEEPING, 0.),
         Vec3::ONE,
         CardLocation::Stack,
-        4 + game_state.we_are_player % 2, // own score stack
+        4 + we_are_player % 2, // own score stack
     );
 }
 
