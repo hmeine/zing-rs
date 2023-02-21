@@ -2,26 +2,18 @@ use std::time::Duration;
 
 use bevy::prelude::*;
 use zing_game::game::GameState;
+use zing_game::zing_game::GamePhase;
 use zing_game::{card_action::CardAction, zing_game::ZingGame};
 
 use crate::constants::STEP_DURATION_MILLIS;
 
 #[derive(Resource)]
 pub struct LayoutState {
-    pub phase: GamePhase,
     game: ZingGame,
     pub we_are_player: usize,
     last_synced_history_len: usize,
     pub displayed_state: GameState,
     pub step_animation_timer: Timer,
-}
-
-#[derive(PartialEq, Eq, Clone, Copy)]
-pub enum GamePhase {
-    Initial,
-    Prepared,
-    InGame,
-    Finished,
 }
 
 impl LayoutState {
@@ -30,7 +22,6 @@ impl LayoutState {
         let initial_history_len = game.history().len();
 
         Self {
-            phase: GamePhase::Initial,
             game,
             we_are_player,
             last_synced_history_len: initial_history_len,
@@ -43,22 +34,8 @@ impl LayoutState {
     }
 
     pub fn get_next_action(&mut self) -> Option<CardAction> {
-        match self.phase {
-            GamePhase::Initial => {
-                self.game.setup_game();
-                self.phase = GamePhase::Prepared;
-            }
-            GamePhase::Prepared => {
-                if self.game.turn() > 0 {
-                    self.phase = GamePhase::InGame;
-                }
-            }
-            GamePhase::InGame => {
-                if self.game.finished() {
-                    self.phase = GamePhase::Finished;
-                }
-            }
-            GamePhase::Finished => {}
+        if self.game.phase() == GamePhase::Initial {
+            self.game.setup_game();
         }
 
         if self.game.history().len() > self.last_synced_history_len {
@@ -70,6 +47,10 @@ impl LayoutState {
         } else {
             None
         }
+    }
+
+    pub fn phase(&self) -> GamePhase {
+        self.game.phase()
     }
 }
 

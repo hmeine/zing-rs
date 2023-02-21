@@ -12,10 +12,19 @@ use crate::{
 
 pub struct ZingGame {
     game_state: GameState,
+    phase: GamePhase,
     dealer: usize,
     turn: usize, // number of cards actively played
     last_winner: usize,
     history: Vec<CardAction>,
+}
+
+#[derive(PartialEq, Eq, Clone, Copy)]
+pub enum GamePhase {
+    Initial,
+    Prepared,
+    InGame,
+    Finished,
 }
 
 #[derive(Serialize, Clone)]
@@ -62,13 +71,16 @@ impl ZingGame {
             turn: 0,
             last_winner: 999, // will always be overwritten; needs to be 0/1
             history: Vec::new(),
+            phase: GamePhase::Initial,
         }
     }
 
     pub fn setup_game(&mut self) {
+        assert!(self.phase == GamePhase::Initial);
         self.hand_out_cards();
         self.show_bottom_card_of_dealer();
         self.initial_cards_to_table();
+        self.phase = GamePhase::Prepared;
     }
 
     pub fn state(&self) -> &GameState {
@@ -77,6 +89,10 @@ impl ZingGame {
 
     pub fn turn(&self) -> usize {
         self.turn
+    }
+
+    pub fn phase(&self) -> GamePhase {
+        self.phase
     }
 
     pub fn current_player(&self) -> usize {
@@ -196,6 +212,18 @@ impl ZingGame {
         self.auto_actions();
 
         self.turn += 1;
+
+        match self.phase {
+            GamePhase::Initial => unreachable!(),
+            GamePhase::Prepared => self.phase = GamePhase::InGame,
+            GamePhase::InGame => {
+                if self.finished() {
+                    self.phase = GamePhase::Finished
+                }
+            }
+            GamePhase::Finished => {}
+        }
+
         Ok(())
     }
 

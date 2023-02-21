@@ -2,12 +2,12 @@ use std::time::Duration;
 
 use crate::card_sprite::CardSprite;
 use crate::constants::*;
-use crate::layout_state::{handle_keyboard_input, GamePhase, LayoutState};
+use crate::layout_state::{handle_keyboard_input, LayoutState};
 use bevy::{prelude::*, render::camera::ScalingMode};
 use bevy_tweening::lens::TransformPositionLens;
 use bevy_tweening::{Animator, EaseFunction, Tween};
 use zing_game::game::GameState;
-use zing_game::zing_game::ZingGame;
+use zing_game::zing_game::{ZingGame, GamePhase};
 use zing_game::{card_action::CardLocation, game::CardState};
 
 pub struct LayoutPlugin;
@@ -258,7 +258,7 @@ fn spawn_cards_for_initial_game_state(
 
         let card_entities: Vec<_> = card_states
             .iter()
-            .zip(card_offsets_for_stack(card_states, stack, game_state.phase))
+            .zip(card_offsets_for_stack(card_states, stack, game_state.phase()))
             .map(|(card_state, card_offset)| {
                 CardSprite::spawn(&mut commands, &asset_server, card_state, card_offset)
             })
@@ -378,7 +378,7 @@ fn reposition_cards_after_action(
         for (pos, card) in card_offsets_for_stack(
             stack.card_states(&game_state.displayed_state),
             stack,
-            game_state.phase,
+            game_state.phase(),
         )
         .zip(children)
         {
