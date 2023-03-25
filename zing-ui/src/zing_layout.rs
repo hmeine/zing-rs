@@ -18,7 +18,7 @@ impl Plugin for LayoutPlugin {
         app.add_startup_system(setup_card_stacks);
 
         app.add_startup_system(
-            spawn_cards_for_initial_game_state.in_base_set(StartupSet::PostStartup)
+            spawn_cards_for_initial_state.in_base_set(StartupSet::PostStartup),
         );
 
         app.add_system(handle_keyboard_input.before(update_cards_from_action));
@@ -83,11 +83,10 @@ fn setup_camera(mut commands: Commands) {
     });
 }
 
-fn setup_card_stacks(mut commands: Commands, game_state: Res<LayoutState>) {
+fn setup_card_stacks(mut commands: Commands, layout_state: Res<LayoutState>) {
     let opposite_hand_pos_y = PLAYING_CENTER_Y + VERTICAL_SPACING + CARD_HEIGHT;
 
-    let we_are_player = game_state.we_are_player;
-    drop(game_state);
+    let we_are_player = layout_state.we_are_player;
 
     info!("layouting card stacks");
 
@@ -246,18 +245,22 @@ fn card_offsets_for_stack<'a>(
         })
 }
 
-fn spawn_cards_for_initial_game_state(
+fn spawn_cards_for_initial_state(
     mut commands: Commands,
-    game_state: Res<LayoutState>,
+    layout_state: Res<LayoutState>,
     query_stacks: Query<(Entity, &CardStack)>,
     asset_server: Res<AssetServer>,
 ) {
     for (stack_id, stack) in query_stacks.iter() {
-        let card_states = stack.card_states(&game_state.displayed_state);
+        let card_states = stack.card_states(&layout_state.displayed_state);
 
         let card_entities: Vec<_> = card_states
             .iter()
-            .zip(card_offsets_for_stack(card_states, stack, game_state.phase()))
+            .zip(card_offsets_for_stack(
+                card_states,
+                stack,
+                layout_state.phase(),
+            ))
             .map(|(card_state, card_offset)| {
                 CardSprite::spawn(&mut commands, &asset_server, card_state, card_offset)
             })
@@ -272,20 +275,20 @@ struct StackRepositioning;
 
 fn update_cards_from_action(
     mut commands: Commands,
-    mut game_state: ResMut<LayoutState>,
+    mut layout_state: ResMut<LayoutState>,
     query_stacks: Query<(Entity, &CardStack, &Transform)>,
     query_children: Query<&Children>,
     mut query_cards: Query<(&CardSprite, &mut Transform), Without<CardStack>>,
     asset_server: Res<AssetServer>,
     time: Res<Time>,
 ) {
-    game_state.step_animation_timer.tick(time.delta());
-    if !game_state.step_animation_timer.finished() {
+    layout_state.step_animation_timer.tick(time.delta());
+    if !layout_state.step_animation_timer.finished() {
         return;
     }
 
-    if let Some(action) = game_state.get_next_action() {
-        action.apply(&mut game_state.displayed_state);
+    if let Some(action) = layout_state.get_next_action() {
+        action.apply(&mut layout_state.displayed_state);
 
         let mut source_parent = None;
         let mut target_parent = None;
@@ -363,21 +366,21 @@ fn update_cards_from_action(
             .insert_children(*action.dest_card_indices.first().unwrap(), &source_cards)
             .insert(StackRepositioning);
 
-        game_state.step_animation_timer.reset();
+        layout_state.step_animation_timer.reset();
     }
 }
 
 fn reposition_cards_after_action(
     mut commands: Commands,
-    game_state: Res<LayoutState>,
+    layout_state: Res<LayoutState>,
     query_stacks: Query<(Entity, &Children, &CardStack), With<StackRepositioning>>,
     mut query_transform: Query<&mut Transform>,
 ) {
     for (entity, children, stack) in &query_stacks {
         for (pos, card) in card_offsets_for_stack(
-            stack.card_states(&game_state.displayed_state),
+            stack.card_states(&layout_state.displayed_state),
             stack,
-            game_state.phase(),
+            layout_state.phase(),
         )
         .zip(children)
         {
