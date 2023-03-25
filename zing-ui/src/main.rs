@@ -10,20 +10,19 @@ mod zing_layout;
 
 fn main() {
     App::new()
-        .insert_resource(Msaa { samples: 4 })
+        .insert_resource(Msaa::default())
         .insert_resource(ClearColor(Color::rgb_u8(0x33, 0x69, 0x1d)))
         .insert_resource(LayoutState::new(
             ZingGame::new_with_player_names(vec!["Hans".into(), "Darko".into()], 1),
             0,
         ))
         .add_plugins(DefaultPlugins.set(WindowPlugin {
-            window: WindowDescriptor {
+            primary_window: Some(Window {
                 title: "Zing".to_string(),
-                width: 1200.,
-                height: 900.,
+                resolution: (1200., 900.).into(),
                 fit_canvas_to_parent: true,
                 ..Default::default()
-            },
+            }),
             ..Default::default()
         }))
         .add_plugin(TweeningPlugin)

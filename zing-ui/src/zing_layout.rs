@@ -17,14 +17,13 @@ impl Plugin for LayoutPlugin {
         app.add_startup_system(setup_camera);
         app.add_startup_system(setup_card_stacks);
 
-        app.add_startup_system_to_stage(
-            StartupStage::PostStartup,
-            spawn_cards_for_initial_game_state,
+        app.add_startup_system(
+            spawn_cards_for_initial_game_state.in_base_set(StartupSet::PostStartup)
         );
 
         app.add_system(handle_keyboard_input.before(update_cards_from_action));
         app.add_system(update_cards_from_action);
-        app.add_system_to_stage(CoreStage::PostUpdate, reposition_cards_after_action);
+        app.add_system(reposition_cards_after_action.in_base_set(CoreSet::PostUpdate));
     }
 }
 
