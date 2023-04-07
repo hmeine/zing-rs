@@ -55,10 +55,10 @@ impl LayoutState {
 }
 
 pub fn handle_keyboard_input(
-    mut game_state: ResMut<LayoutState>,
+    mut layout_state: ResMut<LayoutState>,
     keyboard_input: Res<Input<KeyCode>>,
 ) {
-    if !game_state.step_animation_timer.finished() {
+    if !layout_state.step_animation_timer.finished() {
         return;
     }
 
@@ -74,7 +74,7 @@ pub fn handle_keyboard_input(
     }
 
     if let Some(card_index) = play_card {
-        let game = &mut game_state.game;
+        let game = &mut layout_state.game;
         let player_index = game.current_player();
         // ignore possible failure from too high card indices:
         let _ = game.play_card(player_index, card_index);
