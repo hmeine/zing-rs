@@ -7,7 +7,7 @@ use bevy::{prelude::*, render::camera::ScalingMode};
 use bevy_tweening::lens::TransformPositionLens;
 use bevy_tweening::{Animator, EaseFunction, Tween};
 use zing_game::game::GameState;
-use zing_game::zing_game::{ZingGame, GamePhase};
+use zing_game::zing_game::{GamePhase, ZingGame};
 use zing_game::{card_action::CardLocation, game::CardState};
 
 pub struct LayoutPlugin;
@@ -17,9 +17,7 @@ impl Plugin for LayoutPlugin {
         app.add_startup_system(setup_camera);
         app.add_startup_system(setup_card_stacks);
 
-        app.add_startup_system(
-            spawn_cards_for_initial_state.in_base_set(StartupSet::PostStartup),
-        );
+        app.add_startup_system(spawn_cards_for_initial_state.in_base_set(StartupSet::PostStartup));
 
         app.add_system(handle_keyboard_input.before(update_cards_from_action));
         app.add_system(update_cards_from_action);
