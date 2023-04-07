@@ -6,7 +6,7 @@ use zing_game::{card_action::CardAction, zing_game::ZingGame};
 use crate::constants::STEP_DURATION_MILLIS;
 
 #[derive(Resource)]
-pub struct GameState {
+pub struct LayoutState {
     pub phase: GamePhase,
     game: ZingGame,
     pub we_are_player: usize,
@@ -23,7 +23,7 @@ pub enum GamePhase {
     Finished,
 }
 
-impl GameState {
+impl LayoutState {
     pub fn new(game: ZingGame, we_are_player: usize) -> Self {
         let initial_state = game.state().new_view_for_player(we_are_player);
         let initial_history_len = game.history().len();
@@ -73,7 +73,7 @@ impl GameState {
 }
 
 pub fn handle_keyboard_input(
-    mut game_state: ResMut<GameState>,
+    mut game_state: ResMut<LayoutState>,
     keyboard_input: Res<Input<KeyCode>>,
 ) {
     if !game_state.step_animation_timer.finished() {

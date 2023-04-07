@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use crate::card_sprite::CardSprite;
 use crate::constants::*;
-use crate::game_state::{handle_keyboard_input, GamePhase, GameState};
+use crate::layout_state::{handle_keyboard_input, GamePhase, LayoutState};
 use bevy::{prelude::*, render::camera::ScalingMode};
 use bevy_tweening::lens::TransformPositionLens;
 use bevy_tweening::{Animator, EaseFunction, Tween};
@@ -83,7 +83,7 @@ fn setup_camera(mut commands: Commands) {
     });
 }
 
-fn setup_card_stacks(mut commands: Commands, game_state: Res<GameState>) {
+fn setup_card_stacks(mut commands: Commands, game_state: Res<LayoutState>) {
     let opposite_hand_pos_y = PLAYING_CENTER_Y + VERTICAL_SPACING + CARD_HEIGHT;
 
     let we_are_player = game_state.we_are_player;
@@ -248,7 +248,7 @@ fn card_offsets_for_stack<'a>(
 
 fn spawn_cards_for_initial_game_state(
     mut commands: Commands,
-    game_state: Res<GameState>,
+    game_state: Res<LayoutState>,
     query_stacks: Query<(Entity, &CardStack)>,
     asset_server: Res<AssetServer>,
 ) {
@@ -272,7 +272,7 @@ struct StackRepositioning;
 
 fn update_cards_from_action(
     mut commands: Commands,
-    mut game_state: ResMut<GameState>,
+    mut game_state: ResMut<LayoutState>,
     query_stacks: Query<(Entity, &CardStack, &Transform)>,
     query_children: Query<&Children>,
     mut query_cards: Query<(&CardSprite, &mut Transform), Without<CardStack>>,
@@ -369,7 +369,7 @@ fn update_cards_from_action(
 
 fn reposition_cards_after_action(
     mut commands: Commands,
-    game_state: Res<GameState>,
+    game_state: Res<LayoutState>,
     query_stacks: Query<(Entity, &Children, &CardStack), With<StackRepositioning>>,
     mut query_transform: Query<&mut Transform>,
 ) {
