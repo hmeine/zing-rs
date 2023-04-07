@@ -26,7 +26,7 @@ async fn main() {
     let state = Arc::new(RwLock::new(ZingState::default()));
 
     let app = Router::new()
-        .route("/", get(index_from_disk))
+        .route("/", get(index))
         .route("/login", post(login).get(whoami).delete(logout))
         .route("/table", post(create_table).get(list_tables))
         .route(
@@ -117,11 +117,13 @@ where
     }
 }
 
-async fn index_static() -> Html<&'static str> {
+#[cfg(not(debug_assertions))]
+async fn index() -> Html<&'static str> {
     Html(std::include_str!("../assets/index.html"))
 }
 
-async fn index_from_disk() -> Html<String> {
+#[cfg(debug_assertions)]
+async fn index() -> Html<String> {
     Html(fs::read_to_string("zing-server/assets/index.html").unwrap())
 }
 
