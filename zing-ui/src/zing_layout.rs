@@ -27,11 +27,16 @@ impl Plugin for LayoutPlugin {
 
 // TODO: we need to consider having four players
 
+/// Bevy component representing a stack or hand of cards.
 #[derive(Component)]
 struct CardStack {
+    /// CardStack may represent either a stack or a hand of cards
     location: CardLocation,
+    /// Index of player ([CardLocation::PlayerHand]) or stack ([CardLocation::Stack])
     index: usize,
+    /// Offset applied to cards that are face up in order to make them stand out and recognizable
     peeping_offset: Vec3,
+    /// Additional offset indicating points assigned during final counting
     score_offset: Vec3,
 }
 
@@ -224,8 +229,10 @@ fn card_offsets_for_stack<'a>(
     };
     let score_offset = stack.score_offset;
 
+    // The bottommost cards have to stand out far enough to be recognizable
     let mut total_peeping: i8 = card_states.iter().map(|cs| i8::from(cs.face_up)).sum();
     if let Some(CardState { face_up: true, .. }) = card_states.last() {
+        // We do not need a peeping offset for the topmost card:
         total_peeping -= 1;
     }
     let mut peeping_offset = (0i8..).map(move |i| f32::from(total_peeping - i) * peeping_offset);
