@@ -2,24 +2,63 @@ use std::time::Duration;
 
 use crate::card_sprite::CardSprite;
 use crate::constants::*;
-use crate::layout_state::{handle_keyboard_input, LayoutState};
+use crate::game_logic::GameLogic;
 use bevy::{prelude::*, render::camera::ScalingMode};
 use bevy_tweening::lens::TransformPositionLens;
 use bevy_tweening::{Animator, EaseFunction, Tween};
+use zing_game::card_action::CardAction;
 use zing_game::game::GameState;
 use zing_game::zing_game::{GamePhase, ZingGame};
 use zing_game::{card_action::CardLocation, game::CardState};
 
+#[derive(Resource)]
+pub struct LayoutState {
+    /// Current displayed state of the game (not always in sync with core game logic, but will be eventually)
+    pub displayed_state: GameState,
+    /// We need to know the index of the player to be displayed in front ("ourselves")
+    pub we_are_player: usize,
+    /// Timer suppressing interactions during active animations
+    pub step_animation_timer: Timer,
+    /// During the game, only the topmost card put to the table is visible, but
+    /// initially, they are dealt spread out
+    pub table_stack_spread_out: bool,
+}
+
+impl LayoutState {
+    pub fn new(game_logic: &GameLogic) -> Self {
+        let initial_state = game_logic
+            .game()
+            .state()
+            .new_view_for_player(game_logic.we_are_player);
+
+        Self {
+            displayed_state: initial_state,
+            we_are_player: game_logic.we_are_player,
+            step_animation_timer: Timer::new(
+                Duration::from_millis(STEP_DURATION_MILLIS),
+                TimerMode::Once,
+            ),
+            table_stack_spread_out: game_logic.game().phase() != GamePhase::InGame,
+        }
+    }
+}
+
 pub struct LayoutPlugin;
+
+struct CardActionEvent(CardAction);
 
 impl Plugin for LayoutPlugin {
     fn build(&self, app: &mut App) {
+        app.add_event::<CardActionEvent>();
+        app.add_startup_system(setup_state.in_base_set(StartupSet::PreStartup));
+
         app.add_startup_system(setup_camera);
         app.add_startup_system(setup_card_stacks);
 
         app.add_startup_system(spawn_cards_for_initial_state.in_base_set(StartupSet::PostStartup));
 
         app.add_system(handle_keyboard_input.before(update_cards_from_action));
+        app.add_system(update_state_from_action);
         app.add_system(update_cards_from_action);
         app.add_system(reposition_cards_after_action.in_base_set(CoreSet::PostUpdate));
     }
@@ -74,6 +113,11 @@ impl CardStack {
             CardLocation::Stack => &game.stacks[self.index].cards,
         }
     }
+}
+
+fn setup_state(mut commands: Commands, game_logic: Res<GameLogic>) {
+    let layout_state = LayoutState::new(&game_logic);
+    commands.insert_resource(layout_state);
 }
 
 fn setup_camera(mut commands: Commands) {
@@ -206,7 +250,7 @@ fn setup_card_stacks(mut commands: Commands, layout_state: Res<LayoutState>) {
 fn card_offsets_for_stack<'a>(
     card_states: &'a [CardState],
     stack: &CardStack,
-    phase: GamePhase,
+    table_stack_spread_out: bool,
 ) -> impl Iterator<Item = Vec3> + 'a {
     let card_offset = match stack.location {
         CardLocation::PlayerHand => HAND_CARD_OFFSET,
@@ -219,14 +263,12 @@ fn card_offsets_for_stack<'a>(
         }
     } + Vec3::new(0., 0., 1.);
 
-    let peeping_offset = if stack.location == CardLocation::Stack
-        && stack.index == 1
-        && phase == GamePhase::InGame
-    {
-        Vec3::ZERO
-    } else {
-        stack.peeping_offset
-    };
+    let peeping_offset =
+        if stack.location == CardLocation::Stack && stack.index == 1 && !table_stack_spread_out {
+            Vec3::ZERO
+        } else {
+            stack.peeping_offset
+        };
     let score_offset = stack.score_offset;
 
     // The bottommost cards have to stand out far enough to be recognizable
@@ -264,7 +306,7 @@ fn spawn_cards_for_initial_state(
             .zip(card_offsets_for_stack(
                 card_states,
                 stack,
-                layout_state.phase(),
+                layout_state.table_stack_spread_out,
             ))
             .map(|(card_state, card_offset)| {
                 CardSprite::spawn(&mut commands, &asset_server, card_state, card_offset)
@@ -275,16 +317,10 @@ fn spawn_cards_for_initial_state(
     }
 }
 
-#[derive(Component)]
-struct StackRepositioning;
-
-fn update_cards_from_action(
-    mut commands: Commands,
+fn update_state_from_action(
+    mut game_logic: ResMut<GameLogic>,
     mut layout_state: ResMut<LayoutState>,
-    query_stacks: Query<(Entity, &CardStack, &Transform)>,
-    query_children: Query<&Children>,
-    mut query_cards: Query<(&CardSprite, &mut Transform), Without<CardStack>>,
-    asset_server: Res<AssetServer>,
+    mut card_events: EventWriter<CardActionEvent>,
     time: Res<Time>,
 ) {
     layout_state.step_animation_timer.tick(time.delta());
@@ -292,8 +328,35 @@ fn update_cards_from_action(
         return;
     }
 
-    if let Some(action) = layout_state.get_next_action() {
+    if let Some(action) = game_logic.get_next_action() {
         action.apply(&mut layout_state.displayed_state);
+
+        // Zing-specific logic that might eventually want to be generalized:
+        layout_state.table_stack_spread_out = game_logic.game().phase() != GamePhase::InGame;
+
+        // we are done with the GameLogic, but we need to update our card
+        // entities, start animations, etc.:
+        card_events.send(CardActionEvent(action));
+    }
+}
+
+#[derive(Component)]
+struct StackRepositioning;
+
+fn update_cards_from_action(
+    mut commands: Commands,
+    mut layout_state: ResMut<LayoutState>,
+    mut action_events: EventReader<CardActionEvent>,
+    query_stacks: Query<(Entity, &CardStack, &Transform)>,
+    query_children: Query<&Children>,
+    mut query_cards: Query<(&CardSprite, &mut Transform), Without<CardStack>>,
+    asset_server: Res<AssetServer>,
+) {
+    for card_action_event in action_events.iter() {
+        // This action was already applied to our displayed_state in the
+        // previous system, but we still need to update our entities
+        // accordingly:
+        let action = &card_action_event.0;
 
         let mut source_parent = None;
         let mut target_parent = None;
@@ -385,7 +448,7 @@ fn reposition_cards_after_action(
         for (pos, card) in card_offsets_for_stack(
             stack.card_states(&layout_state.displayed_state),
             stack,
-            layout_state.phase(),
+            layout_state.table_stack_spread_out,
         )
         .zip(children)
         {
@@ -405,5 +468,30 @@ fn reposition_cards_after_action(
         }
 
         commands.entity(entity).remove::<StackRepositioning>();
+    }
+}
+
+pub fn handle_keyboard_input(
+    layout_state: ResMut<LayoutState>,
+    mut game_logic: ResMut<GameLogic>,
+    keyboard_input: Res<Input<KeyCode>>,
+) {
+    if !layout_state.step_animation_timer.finished() {
+        return;
+    }
+
+    let mut play_card = None;
+    if keyboard_input.just_pressed(KeyCode::Key1) {
+        play_card = Some(0);
+    } else if keyboard_input.just_pressed(KeyCode::Key2) {
+        play_card = Some(1);
+    } else if keyboard_input.just_pressed(KeyCode::Key3) {
+        play_card = Some(2);
+    } else if keyboard_input.just_pressed(KeyCode::Key4) {
+        play_card = Some(3);
+    }
+
+    if let Some(card_index) = play_card {
+        game_logic.play_card(card_index);
     }
 }

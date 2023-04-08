@@ -1,21 +1,18 @@
 use bevy::prelude::*;
 use bevy_tweening::TweeningPlugin;
-use layout_state::LayoutState;
-use zing_game::zing_game::ZingGame;
 
 mod card_sprite;
 mod constants;
-mod layout_state;
+mod game_logic;
 mod zing_layout;
 
 fn main() {
+    let game_logic = game_logic::GameLogic::new();
+
     App::new()
         .insert_resource(Msaa::default())
         .insert_resource(ClearColor(Color::rgb_u8(0x33, 0x69, 0x1d)))
-        .insert_resource(LayoutState::new(
-            ZingGame::new_with_player_names(vec!["Hans".into(), "Darko".into()], 1),
-            0,
-        ))
+        .insert_resource(game_logic)
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "Zing".to_string(),
