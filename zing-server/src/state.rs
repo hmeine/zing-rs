@@ -100,6 +100,14 @@ impl Table {
             return Err((http::StatusCode::CONFLICT, "game already started"));
         }
 
+        let players_at_table = self.players.len();
+        if (players_at_table != 2) && (players_at_table != 4) {
+            return Err((
+                http::StatusCode::CONFLICT,
+                "game can only start when there are exactly two or four players present",
+            ));
+        }
+
         let names: Vec<String> = self.players.iter().map(|user| user.name.clone()).collect();
         let dealer_index = self.game_results.len() % names.len();
         self.game = Some(ZingGame::new_with_player_names(names, dealer_index));

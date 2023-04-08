@@ -57,6 +57,7 @@ impl ZingGamePoints {
 }
 
 impl ZingGame {
+    // TODO: names must have length 2 or eventually 4:
     pub fn new_with_player_names(names: Vec<String>, dealer: usize) -> Self {
         let mut game_state = GameState::new_with_player_names(names);
 
