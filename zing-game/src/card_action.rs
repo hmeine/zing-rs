@@ -14,6 +14,9 @@ pub enum CardRotation {
     FaceDown,
 }
 
+/// Generic action moving cards from one stack to another, from a stack to a
+/// hand or vice versa.  Cards can also be rotated or placed in a particular
+/// location in the stack (e.g., from top to bottom of the same stack).
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct CardAction {
     pub source_location: Option<CardLocation>,
@@ -34,6 +37,8 @@ impl CardAction {
         Default::default()
     }
 
+    /// Returns a copy of this CardAction, using CardState::covered() to hide
+    /// cards on other player's hands.
     pub fn new_view_for_player(&self, player_index: usize) -> Self {
         match self.dest_location.expect("destination not set up") {
             CardLocation::PlayerHand => {

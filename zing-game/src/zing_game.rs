@@ -10,12 +10,25 @@ use crate::{
     Card, Rank, Suit,
 };
 
+/// Extension of the generic card [GameState] by elements relevant for the Zing
+/// rules.  It is a little unclear to me if this separation makes sense; the
+/// intent was to support other games in the future. Probably, a generic version
+/// of game "phases", dealers etc. can be put into GameState eventually.  For
+/// now, this is catching all the rule-specific state until a more generic
+/// version can be properly modeled.
 pub struct ZingGame {
     game_state: GameState,
     phase: GamePhase,
+    /// index of player who deals/dealt cards in this game
     dealer: usize,
-    turn: usize, // number of cards actively played
+    /// number of cards actively played
+    turn: usize,
+    /// index of the player who last scored a stack of cards (not won a full
+    /// game - better terminology needed!)
     last_winner: usize,
+    /// outlier field - this is not a Zing-specific extension, but extends
+    /// [GameState] via a generic history of actions performed, so it should
+    /// possibly be moved
     history: Vec<CardAction>,
 }
 

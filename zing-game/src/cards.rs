@@ -26,7 +26,7 @@ pub enum Rank {
     Ace,
 }
 
-#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Back {
     Red,
     Blue,

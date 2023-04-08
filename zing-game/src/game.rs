@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::Card;
 
+/// Represents a named player.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Player {
     pub name: String,
@@ -20,6 +21,8 @@ impl Player {
     }
 }
 
+/// Represents a single card (without position) with front and back side and
+/// whether it is face up or face down.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CardState {
     pub card: Card,
@@ -27,8 +30,9 @@ pub struct CardState {
 }
 
 impl CardState {
-    /// face down version of this CardState, with rank/suit replaced with an
-    /// arbitrary choice (ace of clubs, currently – not guaranteed to stay like that)
+    /// Produce a face down version of this CardState, with rank/suit replaced
+    /// with an arbitrary choice (ace of clubs, currently – not guaranteed to
+    /// stay like that).
     pub fn covered(&self) -> Self {
         Self {
             card: Card {
@@ -40,6 +44,9 @@ impl CardState {
         }
     }
 
+    /// Return a copy of this state, but use covered() if face down. (The
+    /// purpose of this method is for network communication in multi-player
+    /// scenarios in which it should not be possible to "peek" below the card.)
     pub fn covered_if_face_down(&self) -> Self {
         if self.face_up {
             self.clone()
@@ -57,6 +64,8 @@ pub fn unicode(cards: &[CardState]) -> String {
     cards //.join(" ").collect()
 }
 
+/// Represents an ordered stack of cards, each with front and back side and
+/// which side is up. Also has a stack ID (string).
 #[derive(Clone, Serialize, Deserialize)]
 pub struct StackState {
     pub id: String,
@@ -96,6 +105,8 @@ impl StackState {
     }
 }
 
+/// Represents a generic card game with a list of players (each of which has a
+/// name and a hand of cards) and stacks on the table.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct GameState {
     pub players: Vec<Player>,
