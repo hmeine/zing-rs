@@ -206,7 +206,8 @@
             "/game/ws"
         );
         ws.addEventListener("message", (event) => {
-          console.log("Message from server ", event.data);
+          var message = JSON.parse(event.data);
+          console.log("Message from server ", message);
         });
         ws.addEventListener("close", (event) => {
           console.log("Server connection closed");
