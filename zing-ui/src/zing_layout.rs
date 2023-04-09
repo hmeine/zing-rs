@@ -8,7 +8,7 @@ use bevy_tweening::lens::TransformPositionLens;
 use bevy_tweening::{Animator, EaseFunction, Tween};
 use zing_game::card_action::CardAction;
 use zing_game::game::GameState;
-use zing_game::zing_game::{GamePhase, ZingGame};
+use zing_game::zing_game::ZingGame;
 use zing_game::{card_action::CardLocation, game::CardState};
 
 #[derive(Resource)]
@@ -26,19 +26,16 @@ pub struct LayoutState {
 
 impl LayoutState {
     pub fn new(game_logic: &GameLogic) -> Self {
-        let initial_state = game_logic
-            .game()
-            .state()
-            .new_view_for_player(game_logic.we_are_player);
+        let initial_state = game_logic.our_view_of_game_state();
 
         Self {
             displayed_state: initial_state,
-            we_are_player: game_logic.we_are_player,
+            we_are_player: game_logic.we_are_player(),
             step_animation_timer: Timer::new(
                 Duration::from_millis(STEP_DURATION_MILLIS),
                 TimerMode::Once,
             ),
-            table_stack_spread_out: game_logic.game().phase() != GamePhase::InGame,
+            table_stack_spread_out: !game_logic.game_phase_is_ingame(),
         }
     }
 }
@@ -332,7 +329,7 @@ fn update_state_from_action(
         action.apply(&mut layout_state.displayed_state);
 
         // Zing-specific logic that might eventually want to be generalized:
-        layout_state.table_stack_spread_out = game_logic.game().phase() != GamePhase::InGame;
+        layout_state.table_stack_spread_out = !game_logic.game_phase_is_ingame();
 
         // we are done with the GameLogic, but we need to update our card
         // entities, start animations, etc.:

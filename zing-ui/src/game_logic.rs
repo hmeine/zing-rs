@@ -1,11 +1,12 @@
 use bevy::prelude::Resource;
+use zing_game::game::GameState;
 use zing_game::zing_game::GamePhase;
 use zing_game::{card_action::CardAction, zing_game::ZingGame};
 
 #[derive(Resource)]
 pub struct GameLogic {
     game: ZingGame,
-    pub we_are_player: usize,
+    we_are_player: usize,
     last_synced_history_len: usize,
 }
 
@@ -21,8 +22,16 @@ impl GameLogic {
         }
     }
 
-    pub fn game(&self) -> &ZingGame {
-        &self.game
+    pub fn we_are_player(&self) -> usize {
+        self.we_are_player
+    }
+
+    pub fn our_view_of_game_state(&self) -> GameState {
+        self.game.state().new_view_for_player(self.we_are_player)
+    }
+
+    pub fn game_phase_is_ingame(&self) -> bool {
+        self.game.phase() == GamePhase::InGame
     }
 
     pub fn get_next_action(&mut self) -> Option<CardAction> {
@@ -46,13 +55,11 @@ impl GameLogic {
     pub fn play_card(&mut self, card_index: usize) {
         let game = &mut self.game;
         let player_index = game.current_player(); // TODO: we_are_player
+
         // ignore possible failure from too high card indices:
         let _ = game.play_card(player_index, card_index);
 
-
         // let card_tx = layout_state.card_tx.lock().unwrap();
-
         // card_tx.send(card_index);
     }
 }
-
