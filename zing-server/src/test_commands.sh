@@ -65,6 +65,8 @@ echo "try to join own table"
 player1_expect_error "already at table" POST :3000/table/${TABLE}
 echo "list tables (should still list a single table)"
 test `player1 :3000/table | jq length` -eq 1
+echo "try starting game too early, with only a single player present"
+player1_expect_error "can only start with two players" POST :3000/table/${TABLE}/game
 
 echo "log in second player"
 player2_quiet POST :3000/login name="Crabby"
