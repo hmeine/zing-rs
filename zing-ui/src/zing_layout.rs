@@ -42,7 +42,7 @@ impl LayoutState {
 
 pub struct LayoutPlugin;
 
-struct CardActionEvent(CardAction);
+struct CardActionEvent(CardAction, bool);
 
 impl Plugin for LayoutPlugin {
     fn build(&self, app: &mut App) {
@@ -55,7 +55,7 @@ impl Plugin for LayoutPlugin {
         app.add_startup_system(spawn_cards_for_initial_state.in_base_set(StartupSet::PostStartup));
 
         app.add_system(handle_keyboard_input.before(update_cards_from_action));
-        app.add_system(update_state_from_action);
+        app.add_system(get_next_action_after_animation_finished);
         app.add_system(update_cards_from_action);
         app.add_system(reposition_cards_after_action.in_base_set(CoreSet::PostUpdate));
     }
@@ -314,7 +314,7 @@ fn spawn_cards_for_initial_state(
     }
 }
 
-fn update_state_from_action(
+fn get_next_action_after_animation_finished(
     mut game_logic: ResMut<GameLogic>,
     mut layout_state: ResMut<LayoutState>,
     mut card_events: EventWriter<CardActionEvent>,
@@ -326,14 +326,7 @@ fn update_state_from_action(
     }
 
     if let Some(action) = game_logic.get_next_action() {
-        action.apply(&mut layout_state.displayed_state);
-
-        // Zing-specific logic that might eventually want to be generalized:
-        layout_state.table_stack_spread_out = !game_logic.game_phase_is_ingame();
-
-        // we are done with the GameLogic, but we need to update our card
-        // entities, start animations, etc.:
-        card_events.send(CardActionEvent(action));
+        card_events.send(CardActionEvent(action, game_logic.game_phase_is_ingame()));
     }
 }
 
@@ -350,10 +343,14 @@ fn update_cards_from_action(
     asset_server: Res<AssetServer>,
 ) {
     for card_action_event in action_events.iter() {
-        // This action was already applied to our displayed_state in the
-        // previous system, but we still need to update our entities
-        // accordingly:
         let action = &card_action_event.0;
+        let game_phase_is_ingame = card_action_event.1;
+
+        action.apply(&mut layout_state.displayed_state);
+
+        layout_state.table_stack_spread_out = !game_phase_is_ingame;
+
+        // state update is finished; update entities accordingly:
 
         let mut source_parent = None;
         let mut target_parent = None;
