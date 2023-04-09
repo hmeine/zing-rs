@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::Card;
 
 /// Represents a named player.
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Player {
     pub name: String,
     /// The difference between player hands and other stacks of cards is that
@@ -66,7 +66,7 @@ pub fn unicode(cards: &[CardState]) -> String {
 
 /// Represents an ordered stack of cards, each with front and back side and
 /// which side is up. Also has a stack ID (string).
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct StackState {
     pub id: String,
     pub cards: Vec<CardState>,
@@ -107,7 +107,7 @@ impl StackState {
 
 /// Represents a generic card game with a list of players (each of which has a
 /// name and a hand of cards) and stacks on the table.
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct GameState {
     pub players: Vec<Player>,
     pub stacks: Vec<StackState>,

@@ -7,9 +7,8 @@ use std::{
     sync::{Arc, RwLock},
 };
 use zing_game::{
-    card_action::CardAction,
     game::GameState,
-    zing_game::{ZingGame, ZingGamePoints},
+    zing_game::{ZingGame, ZingGamePoints}, client_notification::ClientNotification,
 };
 
 use crate::ws_notifications::NotificationSenderHandle;
@@ -78,12 +77,6 @@ pub struct GameStatus {
     state: Option<GameState>,
 }
 
-#[derive(Serialize)]
-enum ClientNotification {
-    GameStarted(GameStatus),
-    CardActions(Vec<CardAction>),
-}
-
 impl Table {
     pub fn games_have_started(&self) -> bool {
         self.game.is_some() || !self.game_results.is_empty()
@@ -120,7 +113,9 @@ impl Table {
             .map(|c| {
                 c.notification(
                     serde_json::to_string(&ClientNotification::GameStarted(
-                        self.game_status(&c.player.login_id),
+                        self.game_status(&c.player.login_id)
+                            .state
+                            .expect("game should be started, so must have valid state"),
                     ))
                     .unwrap(),
                 )

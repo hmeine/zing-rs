@@ -4495,6 +4495,7 @@ dependencies = [
  "bevy_tweening",
  "clap",
  "futures-util",
+ "serde_json",
  "tokio",
  "tokio-tungstenite 0.18.0",
  "zing_game",

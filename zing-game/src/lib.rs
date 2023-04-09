@@ -1,5 +1,6 @@
 pub mod card_action;
 pub mod cards;
+pub mod client_notification;
 pub mod decks;
 pub mod game;
 pub mod zing_ai;

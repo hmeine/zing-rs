@@ -7,11 +7,13 @@ use tokio_tungstenite::{
     tungstenite::{client::IntoClientRequest, http::{Uri, HeaderValue}},
 };
 //use std::sync::mpsc;
+use zing_game::client_notification::ClientNotification;
 
 mod card_sprite;
 mod constants;
 mod game_logic;
 mod zing_layout;
+
 #[derive(Parser)]
 struct Cli {
     login_id: String,
@@ -41,7 +43,8 @@ async fn tokio_main(args: Cli) -> Result<(), Box<dyn std::error::Error + Send + 
         .for_each(|message| async {
             println!("got message");
             let json = message.unwrap().into_text().unwrap();
-            dbg!(json);
+            let client_notification: Option<ClientNotification> = serde_json::from_str(&json).ok();
+            dbg!(client_notification);
         })
         .await;
 
