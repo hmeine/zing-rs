@@ -47,6 +47,9 @@ struct CardActionEvent(CardAction, bool);
 impl Plugin for LayoutPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<CardActionEvent>();
+        // implementing this as a system gives us access to the GameLogic, but
+        // this sets up the LayoutState resource so it needs to run before other
+        // startup systems:
         app.add_startup_system(setup_state.in_base_set(StartupSet::PreStartup));
 
         app.add_startup_system(setup_camera);
@@ -403,6 +406,9 @@ fn update_cards_from_action(
 
         if do_rotation {
             for entity in source_cards {
+                // TODO: we should extend card_sprite::CardSprite to allow for
+                // changing the CardState and the corresponding sprite PNG, so
+                // that we do not have to despawn + spawn just for that...
                 commands.entity(entity).despawn();
             }
 
