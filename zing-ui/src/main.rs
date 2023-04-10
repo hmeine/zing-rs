@@ -1,15 +1,17 @@
 use bevy::prelude::*;
 use bevy_tweening::TweeningPlugin;
 use clap::Parser;
-use futures::sink::SinkExt;
 use futures_util::StreamExt;
-use std::{sync::mpsc::Sender, time::Duration};
+use reqwest::{cookie, header::CONTENT_TYPE};
+use std::{
+    sync::{mpsc::Sender, Arc},
+    time::Duration,
+};
 use tokio_tungstenite::{
     connect_async,
     tungstenite::{
         client::IntoClientRequest,
         http::{HeaderValue, Uri},
-        Message,
     },
 };
 use zing_game::client_notification::ClientNotification;
@@ -23,7 +25,7 @@ mod zing_layout;
 struct Cli {
     login_id: String,
     table_id: String,
-    #[arg(default_value = "ws://localhost:3000")]
+    #[arg(default_value = "http://localhost:3000")]
     base_url: String,
 }
 
@@ -33,8 +35,22 @@ async fn tokio_main(
     notification_sender: Sender<ClientNotification>,
     mut card_receiver: tokio::sync::mpsc::Receiver<usize>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let ws_uri: Uri =
-        format!("{}/table/{}/game/ws", args.base_url, args.table_id).parse::<Uri>()?;
+    let jar = cookie::Jar::default();
+    jar.add_cookie_str(
+        &format!("login_id={}", args.login_id),
+        &args.base_url.parse().unwrap(),
+    );
+    let client = reqwest::Client::builder()
+        .cookie_provider(Arc::new(jar))
+        .build()
+        .unwrap();
+
+    let ws_uri: Uri = format!(
+        "{}/table/{}/game/ws",
+        args.base_url.replace("http", "ws"),
+        args.table_id
+    )
+    .parse::<Uri>()?;
 
     let mut request = ws_uri.into_client_request()?;
     request.headers_mut().insert(
@@ -44,17 +60,23 @@ async fn tokio_main(
 
     let (ws_stream, _response) = connect_async(request).await?;
 
-    let (mut ws_tx, ws_rx) = ws_stream.split();
-    //let mut card_receiver = Arc::new(card_receiver);
-
     tokio::spawn(async move {
+        let play_uri = format!("{}/table/{}/game/play", args.base_url, args.table_id);
+
         loop {
-            if let Ok(card) = card_receiver.try_recv() {
-                if let Err(err) = ws_tx.send(Message::Text(card.to_string())).await {
-                    println!(
-                        "could not send WebSocket notification about card being played: {}",
-                        err
-                    );
+            if let Ok(card_index) = card_receiver.try_recv() {
+                println!("todo: send card event for index {}", card_index);
+                match client
+                    .post(&play_uri)
+                    .header(CONTENT_TYPE, "application/json")
+                    .body(format!("{{ \"card_index\": {} }}", card_index))
+                    .send()
+                    .await
+                {
+                    Err(err) => println!("Rest API error trying to play card: {}", err),
+                    Ok(response) => {
+                        println!("{} {}", response.status(), response.text().await.unwrap());
+                    }
                 };
             }
 
@@ -62,7 +84,7 @@ async fn tokio_main(
         }
     });
 
-    ws_rx
+    ws_stream
         .for_each(|message| async {
             let json = message.unwrap().into_text().unwrap();
             let client_notification: Option<ClientNotification> = serde_json::from_str(&json).ok();
