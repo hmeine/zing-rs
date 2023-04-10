@@ -148,11 +148,14 @@ impl Table {
             .filter_map(|c| {
                 let known_actions = *c.actions_sent.read().expect("unexpected concurrency");
                 if current_actions > known_actions {
+                    let player_index = self.user_index(&c.player.login_id).unwrap();
                     *c.actions_sent.write().expect("unexpected concurrency") = current_actions;
                     Some(
                         c.notification(
                             serde_json::to_string(&ClientNotification::CardActions(
-                                history[known_actions..current_actions].to_vec(),
+                                history[known_actions..current_actions].iter().map(
+                                    |action| action.new_view_for_player(player_index)
+                                ).collect(),
                             ))
                             .unwrap(),
                         ),
