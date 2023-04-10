@@ -39,11 +39,9 @@ impl GameLogic {
             Some(ClientNotification::GameStarted(initial_state, we_are_player)) => self
                 .notifications
                 .push_back(StateChange::GameStarted(initial_state, we_are_player)),
-            Some(ClientNotification::CardActions(actions)) => self.notifications.extend(
-                actions
-                    .into_iter()
-                    .map(|action| StateChange::CardAction(action)),
-            ),
+            Some(ClientNotification::CardActions(actions)) => self
+                .notifications
+                .extend(actions.into_iter().map(StateChange::CardAction)),
             None => {}
         }
         self.notifications.pop_front()

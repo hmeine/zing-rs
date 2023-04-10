@@ -373,7 +373,7 @@ fn update_cards_from_action(
         let action = &card_action_event.action;
 
         action.apply(
-            &mut layout_state
+            layout_state
                 .displayed_state
                 .as_mut()
                 .expect("can only update cards if displayed state is not None"),
@@ -474,7 +474,7 @@ fn reposition_cards_after_action(
 ) {
     for (entity, children, stack) in &query_stacks {
         for (pos, card) in card_offsets_for_stack(
-            stack.card_states(&layout_state.displayed_state.as_ref().unwrap()),
+            stack.card_states(layout_state.displayed_state.as_ref().unwrap()),
             stack,
             layout_state.table_stack_spread_out,
         )

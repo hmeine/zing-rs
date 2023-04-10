@@ -2,11 +2,14 @@ use bevy::prelude::*;
 use bevy_tweening::TweeningPlugin;
 use clap::Parser;
 use futures_util::StreamExt;
+use std::sync::mpsc::{self, Sender};
 use tokio_tungstenite::{
     connect_async,
-    tungstenite::{client::IntoClientRequest, http::{Uri, HeaderValue}},
+    tungstenite::{
+        client::IntoClientRequest,
+        http::{HeaderValue, Uri},
+    },
 };
-use std::sync::mpsc::{self, Sender};
 use zing_game::client_notification::ClientNotification;
 
 mod card_sprite;
@@ -23,7 +26,10 @@ struct Cli {
 }
 
 #[tokio::main]
-async fn tokio_main(args: Cli, notification_sender: Sender<ClientNotification>) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+async fn tokio_main(
+    args: Cli,
+    notification_sender: Sender<ClientNotification>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let ws_uri: Uri =
         format!("{}/table/{}/game/ws", args.base_url, args.table_id).parse::<Uri>()?;
 

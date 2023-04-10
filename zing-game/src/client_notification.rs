@@ -1,6 +1,6 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-use crate::{game::GameState, card_action::CardAction};
+use crate::{card_action::CardAction, game::GameState};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum ClientNotification {
