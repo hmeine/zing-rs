@@ -1,7 +1,8 @@
 use bevy::prelude::Resource;
 use std::collections::VecDeque;
-use std::sync::mpsc::{Receiver, Sender};
+use std::sync::mpsc::Receiver;
 use std::sync::Mutex;
+use tokio::sync::mpsc::Sender;
 use zing_game::card_action::CardAction;
 use zing_game::client_notification::ClientNotification;
 use zing_game::game::GameState;
@@ -52,7 +53,7 @@ impl GameLogic {
 
     pub fn play_card(&mut self, card_index: usize) {
         let card_tx = self.card_tx.lock().unwrap();
-        if let Err(err) = card_tx.send(card_index) {
+        if let Err(err) = card_tx.blocking_send(card_index) {
             println!(
                 "could not send card play event to networking thread: {}",
                 err
