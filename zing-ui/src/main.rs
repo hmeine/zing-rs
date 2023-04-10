@@ -3,6 +3,7 @@ use bevy_tweening::TweeningPlugin;
 use clap::Parser;
 use futures_util::StreamExt;
 use reqwest::{cookie, header::CONTENT_TYPE};
+use tokio::net::TcpStream;
 use std::{
     sync::{mpsc::Sender, Arc},
     time::Duration,
@@ -12,7 +13,7 @@ use tokio_tungstenite::{
     tungstenite::{
         client::IntoClientRequest,
         http::{HeaderValue, Uri},
-    },
+    }, WebSocketStream, MaybeTlsStream,
 };
 use zing_game::client_notification::ClientNotification;
 
@@ -27,6 +28,29 @@ struct Cli {
     table_id: String,
     #[arg(default_value = "http://localhost:3000")]
     base_url: String,
+}
+
+async fn connect_websocket(
+    base_url: &str,
+    login_id: &str,
+    table_id: &str,
+) -> Result<WebSocketStream<MaybeTlsStream<TcpStream>>, Box<dyn std::error::Error + Send + Sync>> {
+    let ws_uri: Uri = format!(
+        "{}/table/{}/game/ws",
+        base_url.replace("http", "ws"),
+        table_id
+    )
+    .parse::<Uri>()?;
+
+    let mut request = ws_uri.into_client_request()?;
+    request.headers_mut().insert(
+        "Cookie",
+        HeaderValue::from_str(&format!("login_id={}", login_id))?,
+    );
+
+    let (ws_stream, _response) = connect_async(request).await?;
+
+    Ok(ws_stream)
 }
 
 #[tokio::main]
@@ -45,20 +69,7 @@ async fn tokio_main(
         .build()
         .unwrap();
 
-    let ws_uri: Uri = format!(
-        "{}/table/{}/game/ws",
-        args.base_url.replace("http", "ws"),
-        args.table_id
-    )
-    .parse::<Uri>()?;
-
-    let mut request = ws_uri.into_client_request()?;
-    request.headers_mut().insert(
-        "Cookie",
-        HeaderValue::from_str(&format!("login_id={}", args.login_id))?,
-    );
-
-    let (ws_stream, _response) = connect_async(request).await?;
+    let ws_stream = connect_websocket(&args.base_url, &args.login_id, &args.table_id).await?;
 
     tokio::spawn(async move {
         let play_uri = format!("{}/table/{}/game/play", args.base_url, args.table_id);
