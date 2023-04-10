@@ -1,6 +1,6 @@
 use bevy::prelude::Resource;
 use std::collections::VecDeque;
-use std::sync::mpsc::Receiver;
+use std::sync::mpsc::{Receiver, Sender};
 use std::sync::Mutex;
 use zing_game::card_action::CardAction;
 use zing_game::client_notification::ClientNotification;
@@ -12,7 +12,7 @@ pub struct GameLogic {
     // `std::sync::mpsc::Receiver<ClientNotification>` cannot be shared between threads safely
     // because it is not Sync, i.e., multiple threads may not use it at the same time
     pub notification_rx: Mutex<Receiver<ClientNotification>>,
-    // pub card_tx: Mutex<Sender<usize>>,
+    pub card_tx: Mutex<Sender<usize>>,
 }
 
 pub enum StateChange {
@@ -21,11 +21,14 @@ pub enum StateChange {
 }
 
 impl GameLogic {
-    pub fn new(notification_receiver: Receiver<ClientNotification>) -> Self {
+    pub fn new(
+        notification_receiver: Receiver<ClientNotification>,
+        playing_sender: Sender<usize>,
+    ) -> Self {
         Self {
             notifications: VecDeque::new(),
             notification_rx: Mutex::new(notification_receiver),
-            // card_tx: Mutex::new(playing_sender)
+            card_tx: Mutex::new(playing_sender),
         }
     }
 
@@ -48,7 +51,12 @@ impl GameLogic {
     }
 
     pub fn play_card(&mut self, card_index: usize) {
-        // let card_tx = layout_state.card_tx.lock().unwrap();
-        // card_tx.send(card_index);
+        let card_tx = self.card_tx.lock().unwrap();
+        if let Err(err) = card_tx.send(card_index) {
+            println!(
+                "could not send card play event to networking thread: {}",
+                err
+            );
+        }
     }
 }
