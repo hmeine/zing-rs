@@ -148,7 +148,7 @@
         return axios
           .post("/table")
           .then(function (response) {
-            user_info.tables.push(response.data);
+            user_info.tables.unshift(response.data);
             open_table_connection(user_info.tables.slice(-1)[0]);
           })
           .catch(function (error) {
@@ -161,7 +161,7 @@
         axios
           .get("/table")
           .then(function (response) {
-            user_info.tables = response.data;
+            user_info.tables = response.data.reverse();
           })
           .catch(function (error) {
             console.log("CAUGHT ERROR:", error);
