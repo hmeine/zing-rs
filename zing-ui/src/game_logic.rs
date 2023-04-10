@@ -1,64 +1,55 @@
 use bevy::prelude::Resource;
+use std::collections::VecDeque;
+use std::sync::mpsc::Receiver;
+use std::sync::Mutex;
+use zing_game::card_action::CardAction;
+use zing_game::client_notification::ClientNotification;
 use zing_game::game::GameState;
-use zing_game::zing_game::GamePhase;
-use zing_game::{card_action::CardAction, zing_game::ZingGame};
 
 #[derive(Resource)]
 pub struct GameLogic {
-    game: ZingGame,
-    we_are_player: usize,
-    last_synced_history_len: usize,
+    notifications: VecDeque<StateChange>,
+    // `std::sync::mpsc::Receiver<ClientNotification>` cannot be shared between threads safely
+    // because it is not Sync, i.e., multiple threads may not use it at the same time
+    pub notification_rx: Mutex<Receiver<ClientNotification>>,
+    // pub card_tx: Mutex<Sender<usize>>,
+}
+
+pub enum StateChange {
+    GameStarted(GameState, usize),
+    CardAction(CardAction),
 }
 
 impl GameLogic {
-    pub fn new() -> Self {
-        let game = ZingGame::new_with_player_names(vec!["Hans".into(), "Darko".into()], 1);
-        let history_len = game.history().len();
-
+    pub fn new(notification_receiver: Receiver<ClientNotification>) -> Self {
         Self {
-            game,
-            we_are_player: 0,
-            last_synced_history_len: history_len,
+            notifications: VecDeque::new(),
+            notification_rx: Mutex::new(notification_receiver),
+            // card_tx: Mutex::new(playing_sender)
         }
     }
 
-    pub fn we_are_player(&self) -> usize {
-        self.we_are_player
-    }
-
-    pub fn our_view_of_game_state(&self) -> GameState {
-        self.game.state().new_view_for_player(self.we_are_player)
-    }
-
-    pub fn game_phase_is_ingame(&self) -> bool {
-        self.game.phase() == GamePhase::InGame
-    }
-
-    pub fn get_next_action(&mut self) -> Option<CardAction> {
-        if self.game.phase() == GamePhase::Initial {
-            self.game.setup_game();
+    pub fn get_next_state_change(&mut self) -> Option<StateChange> {
+        match self
+            .notification_rx
+            .lock()
+            .ok()
+            .and_then(|notification| notification.try_recv().ok())
+        {
+            Some(ClientNotification::GameStarted(initial_state, we_are_player)) => self
+                .notifications
+                .push_back(StateChange::GameStarted(initial_state, we_are_player)),
+            Some(ClientNotification::CardActions(actions)) => self.notifications.extend(
+                actions
+                    .into_iter()
+                    .map(|action| StateChange::CardAction(action)),
+            ),
+            None => {}
         }
-
-        if self.game.history().len() > self.last_synced_history_len {
-            let action = self.game.history()[self.last_synced_history_len]
-                .new_view_for_player(self.we_are_player);
-            self.last_synced_history_len += 1;
-            Some(action)
-        } else {
-            None
-        }
-
-        // let action_rx = self.action_rx.lock().unwrap();
-        // action_rx.try_recv().ok()
+        self.notifications.pop_front()
     }
 
     pub fn play_card(&mut self, card_index: usize) {
-        let game = &mut self.game;
-        let player_index = game.current_player(); // TODO: we_are_player
-
-        // ignore possible failure from too high card indices:
-        let _ = game.play_card(player_index, card_index);
-
         // let card_tx = layout_state.card_tx.lock().unwrap();
         // card_tx.send(card_index);
     }

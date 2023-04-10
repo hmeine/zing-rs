@@ -6,7 +6,7 @@ use tokio_tungstenite::{
     connect_async,
     tungstenite::{client::IntoClientRequest, http::{Uri, HeaderValue}},
 };
-//use std::sync::mpsc;
+use std::sync::mpsc::{self, Sender};
 use zing_game::client_notification::ClientNotification;
 
 mod card_sprite;
@@ -23,7 +23,7 @@ struct Cli {
 }
 
 #[tokio::main]
-async fn tokio_main(args: Cli) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+async fn tokio_main(args: Cli, notification_sender: Sender<ClientNotification>) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let ws_uri: Uri =
         format!("{}/table/{}/game/ws", args.base_url, args.table_id).parse::<Uri>()?;
 
@@ -35,16 +35,17 @@ async fn tokio_main(args: Cli) -> Result<(), Box<dyn std::error::Error + Send + 
 
     let (ws_stream, _response) = connect_async(request).await?;
 
-    dbg!(_response);
-    //    let (_write, read) = ws_stream.split();
-
-    println!("receiving messages...");
     ws_stream
         .for_each(|message| async {
-            println!("got message");
             let json = message.unwrap().into_text().unwrap();
             let client_notification: Option<ClientNotification> = serde_json::from_str(&json).ok();
-            dbg!(client_notification);
+            if let Some(client_notification) = client_notification {
+                dbg!(&client_notification);
+                let r = notification_sender.send(client_notification);
+                if let Err(err) = r {
+                    println!("error sending notification to Bevy thread: {}", err);
+                }
+            }
         })
         .await;
 
@@ -56,9 +57,11 @@ async fn tokio_main(args: Cli) -> Result<(), Box<dyn std::error::Error + Send + 
 fn main() {
     let args = Cli::parse();
 
-    let _thread_handle = std::thread::spawn(|| tokio_main(args));
+    let (notification_tx, notification_rx) = mpsc::channel();
 
-    let game_logic = game_logic::GameLogic::new();
+    let _thread_handle = std::thread::spawn(|| tokio_main(args, notification_tx));
+    let game_logic = game_logic::GameLogic::new(notification_rx);
+
     App::new()
         .insert_resource(Msaa::default())
         .insert_resource(ClearColor(Color::rgb_u8(0x33, 0x69, 0x1d)))

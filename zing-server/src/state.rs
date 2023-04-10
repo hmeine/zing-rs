@@ -7,8 +7,9 @@ use std::{
     sync::{Arc, RwLock},
 };
 use zing_game::{
+    client_notification::ClientNotification,
     game::GameState,
-    zing_game::{ZingGame, ZingGamePoints}, client_notification::ClientNotification,
+    zing_game::{ZingGame, ZingGamePoints},
 };
 
 use crate::ws_notifications::NotificationSenderHandle;
@@ -116,6 +117,7 @@ impl Table {
                         self.game_status(&c.player.login_id)
                             .state
                             .expect("game should be started, so must have valid state"),
+                        self.user_index(&c.player.login_id).unwrap(),
                     ))
                     .unwrap(),
                 )

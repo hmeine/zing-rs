@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use crate::card_sprite::CardSprite;
 use crate::constants::*;
-use crate::game_logic::GameLogic;
+use crate::game_logic::{GameLogic, StateChange};
 use bevy::{prelude::*, render::camera::ScalingMode};
 use bevy_tweening::lens::TransformPositionLens;
 use bevy_tweening::{Animator, EaseFunction, Tween};
@@ -61,7 +61,11 @@ impl Plugin for LayoutPlugin {
         app.add_startup_system(setup_card_stacks);
 
         app.add_system(handle_keyboard_input.before(update_cards_from_action));
-        app.add_system(get_next_action_after_animation_finished);
+        app.add_system(
+            get_next_action_after_animation_finished
+                .before(spawn_cards_for_initial_state)
+                .before(update_cards_from_action),
+        );
         app.add_system(spawn_cards_for_initial_state);
         app.add_system(update_cards_from_action);
         app.add_system(reposition_cards_after_action.in_base_set(CoreSet::PostUpdate));
@@ -291,38 +295,6 @@ fn card_offsets_for_stack<'a>(
         })
 }
 
-fn spawn_cards_for_initial_state(
-    mut commands: Commands,
-    mut initial_state_events: EventReader<InitialGameStateEvent>,
-    mut layout_state: ResMut<LayoutState>,
-    query_stacks: Query<(Entity, &CardStack)>,
-    asset_server: Res<AssetServer>,
-) {
-    for initial_state_event in initial_state_events.into_iter() {
-        layout_state.displayed_state = Some(initial_state_event.game_state.clone());
-        layout_state.we_are_player = initial_state_event.we_are_player;
-        layout_state.table_stack_spread_out = initial_state_event.table_stack_spread_out;
-
-        for (stack_id, stack) in query_stacks.iter() {
-            let card_states = stack.card_states(layout_state.displayed_state.as_ref().unwrap());
-    
-            let card_entities: Vec<_> = card_states
-                .iter()
-                .zip(card_offsets_for_stack(
-                    card_states,
-                    stack,
-                    layout_state.table_stack_spread_out,
-                ))
-                .map(|(card_state, card_offset)| {
-                    CardSprite::spawn(&mut commands, &asset_server, card_state, card_offset)
-                })
-                .collect();
-    
-            commands.entity(stack_id).push_children(&card_entities);
-        }
-    }
-}
-
 fn get_next_action_after_animation_finished(
     mut game_logic: ResMut<GameLogic>,
     mut layout_state: ResMut<LayoutState>,
@@ -335,18 +307,52 @@ fn get_next_action_after_animation_finished(
         return;
     }
 
-    if layout_state.displayed_state.is_none() {
-        initial_state_events.send(InitialGameStateEvent {
-            game_state: game_logic.our_view_of_game_state(),
-            we_are_player: game_logic.we_are_player(),
-            table_stack_spread_out: !game_logic.game_phase_is_ingame(),
-        })
-    } else {
-        if let Some(action) = game_logic.get_next_action() {
+    match game_logic.get_next_state_change() {
+        Some(StateChange::GameStarted(game_state, we_are_player)) => {
+            initial_state_events.send(InitialGameStateEvent {
+                game_state,
+                we_are_player,
+                table_stack_spread_out: true,
+            })
+        }
+        Some(StateChange::CardAction(action)) => {
             card_events.send(CardActionEvent {
                 action,
-                table_stack_spread_out: !game_logic.game_phase_is_ingame(),
-            });
+                table_stack_spread_out: false, // !game_logic.game_phase_is_ingame(),
+            })
+        }
+        None => {}
+    }
+}
+
+fn spawn_cards_for_initial_state(
+    mut commands: Commands,
+    mut initial_state_events: EventReader<InitialGameStateEvent>,
+    mut layout_state: ResMut<LayoutState>,
+    query_stacks: Query<(Entity, &CardStack)>,
+    asset_server: Res<AssetServer>,
+) {
+    for initial_state_event in initial_state_events.iter() {
+        layout_state.displayed_state = Some(initial_state_event.game_state.clone());
+        layout_state.we_are_player = initial_state_event.we_are_player;
+        layout_state.table_stack_spread_out = initial_state_event.table_stack_spread_out;
+
+        for (stack_id, stack) in query_stacks.iter() {
+            let card_states = stack.card_states(layout_state.displayed_state.as_ref().unwrap());
+
+            let card_entities: Vec<_> = card_states
+                .iter()
+                .zip(card_offsets_for_stack(
+                    card_states,
+                    stack,
+                    layout_state.table_stack_spread_out,
+                ))
+                .map(|(card_state, card_offset)| {
+                    CardSprite::spawn(&mut commands, &asset_server, card_state, card_offset)
+                })
+                .collect();
+
+            commands.entity(stack_id).push_children(&card_entities);
         }
     }
 }
