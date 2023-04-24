@@ -4770,12 +4770,14 @@ checksum = "d2d7d3948613f75c98fd9328cfdcc45acc4d360655289d0a7d4ec931392200a3"
 name = "zing-server"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "async-trait",
  "axum",
  "chrono",
  "cookie",
  "futures",
  "rand",
+ "reqwest",
  "serde",
  "serde_json",
  "tokio",
