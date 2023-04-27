@@ -310,7 +310,7 @@ async fn test_playing_cards() -> Result<()> {
     );
 
     // echo "players have 48 cards in total; 2 have been played already, 2*23 to go..."
-    for i in 0..23 {
+    for _ in 0..23 {
         let play_response = client2
             .post(format!(
                 "http://localhost:3000/table/{}/game/play",
