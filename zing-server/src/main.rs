@@ -123,8 +123,10 @@ async fn index() -> Html<&'static str> {
 }
 
 #[cfg(debug_assertions)]
-async fn index() -> Html<String> {
-    Html(fs::read_to_string("zing-server/assets/index.html").unwrap())
+async fn index() -> Result<Html<String>, http::StatusCode> {
+    Ok(Html(
+        fs::read_to_string("zing-server/assets/index.html").or(Err(http::StatusCode::NOT_FOUND))?,
+    ))
 }
 
 async fn whoami(
