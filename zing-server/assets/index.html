@@ -20,20 +20,32 @@
 
   <body>
     <div id="q-app">
-      <q-form autofocus="true" @submit="login" v-if="!loggedin" class="fit row">
+      <q-form
+        autofocus="true"
+        @submit="login"
+        v-if="!loggedin"
+        class="window-height window-width fit row justify-center items-center"
+      >
         <q-input label="Name" v-model="loginname"></q-input>
         <q-btn color="primary" label="Login" type="submit"></q-btn>
       </q-form>
-      <div v-else class="fit column">
-        <div class="row">
-          <q-form autofocus="true" @submit="logout">
-            <q-btn color="primary" :label="logoutCaption" type="submit"></q-btn>
-          </q-form>
+      <div v-else class="fit column q-pa-md">
+        <div class="row q-mb-md">
           <q-btn
             color="primary"
+            icon="add"
             label="Open New Table"
             @click="create_table"
           ></q-btn>
+          <q-space></q-space>
+          <q-form autofocus="true" @submit="logout">
+            <q-btn
+              color="primary"
+              icon="logout"
+              :label="logoutCaption"
+              type="submit"
+            ></q-btn>
+          </q-form>
         </div>
         <q-table
           :rows="user_info.tables"
