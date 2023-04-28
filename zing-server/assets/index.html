@@ -26,8 +26,14 @@
         v-if="!loggedin"
         class="window-height window-width fit row justify-center items-center"
       >
-        <q-input label="Name" v-model="loginname"></q-input>
-        <q-btn color="primary" label="Login" type="submit"></q-btn>
+        <q-input label="Name" v-model="loginname" :autofocus="true"></q-input>
+        <q-btn
+          color="primary"
+          label="Login"
+          icon="login"
+          type="submit"
+          class="q-ml-sm"
+        ></q-btn>
       </q-form>
       <div v-else class="fit column q-pa-md">
         <div class="row q-mb-md">
