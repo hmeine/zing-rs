@@ -6,7 +6,7 @@ use serde::Serialize;
 use crate::{
     card_action::{CardAction, CardLocation, CardRotation},
     decks::shuffled_deck,
-    game::{CardState, GameState, StackState},
+    game::{CardState, GameState, StackState, GamePhase},
     Card, Rank, Suit,
 };
 
@@ -18,7 +18,6 @@ use crate::{
 /// version can be properly modeled.
 pub struct ZingGame {
     game_state: GameState,
-    phase: GamePhase,
     /// index of player who deals/dealt cards in this game
     dealer: usize,
     /// number of cards actively played
@@ -30,14 +29,6 @@ pub struct ZingGame {
     /// [GameState] via a generic history of actions performed, so it should
     /// possibly be moved
     history: Vec<CardAction>,
-}
-
-#[derive(PartialEq, Eq, Clone, Copy)]
-pub enum GamePhase {
-    Initial,
-    Prepared,
-    InGame,
-    Finished,
 }
 
 #[derive(Serialize, Clone)]
@@ -85,16 +76,15 @@ impl ZingGame {
             turn: 0,
             last_winner: 999, // will always be overwritten; needs to be 0/1
             history: Vec::new(),
-            phase: GamePhase::Initial,
         }
     }
 
     pub fn setup_game(&mut self) {
-        assert!(self.phase == GamePhase::Initial);
+        assert!(self.game_state.phase == GamePhase::Initial);
         self.hand_out_cards();
         self.show_bottom_card_of_dealer();
         self.initial_cards_to_table();
-        self.phase = GamePhase::Prepared;
+        self.game_state.phase = GamePhase::Prepared;
     }
 
     pub fn state(&self) -> &GameState {
@@ -103,10 +93,6 @@ impl ZingGame {
 
     pub fn turn(&self) -> usize {
         self.turn
-    }
-
-    pub fn phase(&self) -> GamePhase {
-        self.phase
     }
 
     pub fn current_player(&self) -> usize {
@@ -227,12 +213,12 @@ impl ZingGame {
 
         self.turn += 1;
 
-        match self.phase {
+        match self.game_state.phase {
             GamePhase::Initial => unreachable!(),
-            GamePhase::Prepared => self.phase = GamePhase::InGame,
+            GamePhase::Prepared => self.game_state.phase = GamePhase::InGame,
             GamePhase::InGame => {
                 if self.finished() {
-                    self.phase = GamePhase::Finished
+                    self.game_state.phase = GamePhase::Finished
                 }
             }
             GamePhase::Finished => {}

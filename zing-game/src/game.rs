@@ -111,6 +111,15 @@ impl StackState {
 pub struct GameState {
     pub players: Vec<Player>,
     pub stacks: Vec<StackState>,
+    pub phase: GamePhase,
+}
+
+#[derive(PartialEq, Eq, Clone, Copy, Serialize, Deserialize, Debug)]
+pub enum GamePhase {
+    Initial,
+    Prepared,
+    InGame,
+    Finished,
 }
 
 pub enum CardGameError {
@@ -118,12 +127,21 @@ pub enum CardGameError {
 }
 
 impl GameState {
+    pub fn player_count(&self) -> usize {
+        self.players.len()
+    }
+
+    pub fn phase(&self) -> GamePhase {
+        self.phase
+    }
+
     /// Initialize a game with the players of the given `Table`.  No card stacks
     /// are initialized.
     pub fn new_with_player_names(names: Vec<String>) -> Self {
         let mut result = Self {
             players: Vec::new(),
             stacks: Vec::new(),
+            phase: GamePhase::Initial,
         };
         for name in names {
             result.players.push(Player::new(name));
@@ -160,10 +178,7 @@ impl GameState {
                         .collect(),
                 })
                 .collect(),
+            phase: self.phase,
         }
-    }
-
-    pub fn player_count(&self) -> usize {
-        self.players.len()
     }
 }
