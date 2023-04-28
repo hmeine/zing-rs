@@ -14,9 +14,10 @@ use axum::{
 };
 use cookie::SameSite;
 use serde::Deserialize;
-use state::{ErrorResponse, GameStatus, ZingState};
+use state::{ErrorResponse, ZingState};
 use tower_cookies::{Cookie, CookieManagerLayer, Cookies};
 use ws_notifications::NotificationSenderHandle;
+use zing_game::game::GameState;
 
 mod state;
 mod ws_notifications;
@@ -195,7 +196,7 @@ async fn game_status(
     login_id: LoginID,
     Path(table_id): Path<String>,
     State(state): State<Arc<RwLock<ZingState>>>,
-) -> Result<Json<GameStatus>, ErrorResponse> {
+) -> Result<Json<GameState>, ErrorResponse> {
     let state = state.read().unwrap();
     state.game_status(&login_id.0, &table_id)
 }

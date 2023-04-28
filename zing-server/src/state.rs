@@ -71,13 +71,6 @@ where
     serializer.serialize_str(&s)
 }
 
-#[derive(Serialize)]
-pub struct GameStatus {
-    active: bool,
-    ended: bool,
-    state: Option<GameState>,
-}
-
 impl Table {
     pub fn games_have_started(&self) -> bool {
         self.game.is_some() || !self.game_results.is_empty()
@@ -115,7 +108,6 @@ impl Table {
                 c.notification(
                     serde_json::to_string(&ClientNotification::GameStarted(
                         self.game_status(&c.player.login_id)
-                            .state
                             .expect("game should be started, so must have valid state"),
                         self.user_index(&c.player.login_id).unwrap(),
                     ))
@@ -153,9 +145,10 @@ impl Table {
                     Some(
                         c.notification(
                             serde_json::to_string(&ClientNotification::CardActions(
-                                history[known_actions..current_actions].iter().map(
-                                    |action| action.new_view_for_player(player_index)
-                                ).collect(),
+                                history[known_actions..current_actions]
+                                    .iter()
+                                    .map(|action| action.new_view_for_player(player_index))
+                                    .collect(),
                             ))
                             .unwrap(),
                         ),
@@ -167,17 +160,12 @@ impl Table {
             .collect()
     }
 
-    pub fn game_status(&self, login_id: &str) -> GameStatus {
+    pub fn game_status(&self, login_id: &str) -> Option<GameState> {
         let player_index = self.user_index(login_id).unwrap();
 
-        GameStatus {
-            active: self.game.is_some(),
-            ended: self.game.as_ref().map_or(false, |game| game.finished()),
-            state: self
-                .game
-                .as_ref()
-                .map(|game| game.state().new_view_for_player(player_index)),
-        }
+        self.game
+            .as_ref()
+            .map(|game| game.state().new_view_for_player(player_index))
     }
 
     pub fn finish_game(&mut self) -> Result<(), ErrorResponse> {
@@ -477,7 +465,7 @@ impl ZingState {
         &self,
         login_id: &str,
         table_id: &str,
-    ) -> Result<Json<GameStatus>, ErrorResponse> {
+    ) -> Result<Json<GameState>, ErrorResponse> {
         self.get_user(login_id)?;
 
         let table = self
@@ -489,7 +477,10 @@ impl ZingState {
             .user_index(login_id)
             .ok_or((http::StatusCode::NOT_FOUND, "user has not joined table"))?;
 
-        Ok(Json(table.game_status(login_id)))
+        table.game_status(login_id).map_or(
+            Err((http::StatusCode::NOT_FOUND, "no game active")),
+            |game| Ok(Json(game)),
+        )
     }
 
     pub fn finish_game(&mut self, login_id: &str, table_id: &str) -> Result<(), ErrorResponse> {

@@ -154,15 +154,8 @@ async fn test_game_starting() -> Result<()> {
     let inactive_response = client2
         .get(format!("http://localhost:3000/table/{}/game", table_id))
         .send()
-        .await?
-        .json::<Value>()
         .await?;
-    assert_eq!(
-        inactive_response["active"]
-            .as_bool()
-            .context("game status should have active attribute")?,
-        false
-    );
+    assert_eq!(inactive_response.status(), StatusCode::NOT_FOUND);
 
     let start_response = client2
         .post(format!("http://localhost:3000/table/{}/game", table_id))
@@ -177,10 +170,10 @@ async fn test_game_starting() -> Result<()> {
         .json::<Value>()
         .await?;
     assert_eq!(
-        active_response["active"]
-            .as_bool()
-            .context("game status should have active attribute")?,
-        true
+        active_response["phase"]
+            .as_str()
+            .context("game state should have phase attribute")?,
+        "Prepared"
     );
 
     let active_response = client1
@@ -190,10 +183,10 @@ async fn test_game_starting() -> Result<()> {
         .json::<Value>()
         .await?;
     assert_eq!(
-        active_response["active"]
-            .as_bool()
-            .context("game status should have active attribute")?,
-        true
+        active_response["phase"]
+            .as_str()
+            .context("game state should have phase attribute")?,
+        "Prepared"
     );
 
     let start_response = client2
@@ -303,10 +296,10 @@ async fn test_playing_cards() -> Result<()> {
         .json::<Value>()
         .await?;
     assert_eq!(
-        ended_response["ended"]
-            .as_bool()
-            .context("game status should have ended attribute")?,
-        false
+        ended_response["phase"]
+            .as_str()
+            .context("game state should have phase attribute")?,
+        "InGame"
     );
 
     // echo "players have 48 cards in total; 2 have been played already, 2*23 to go..."
@@ -359,23 +352,10 @@ async fn test_playing_cards() -> Result<()> {
         .json::<Value>()
         .await?;
     assert_eq!(
-        ended_response["ended"]
-            .as_bool()
-            .context("game status should have ended attribute")?,
-        true
-    );
-
-    let active_response = client2
-        .get(format!("http://localhost:3000/table/{}/game", table_id))
-        .send()
-        .await?
-        .json::<Value>()
-        .await?;
-    assert_eq!(
-        active_response["active"]
-            .as_bool()
-            .context("game status should have active attribute")?,
-        true
+        ended_response["phase"]
+            .as_str()
+            .context("game state should have phase attribute")?,
+        "Finished"
     );
 
     let finish_response = client1
@@ -387,15 +367,8 @@ async fn test_playing_cards() -> Result<()> {
     let inactive_response = client2
         .get(format!("http://localhost:3000/table/{}/game", table_id))
         .send()
-        .await?
-        .json::<Value>()
         .await?;
-    assert_eq!(
-        inactive_response["active"]
-            .as_bool()
-            .context("game status should have active attribute")?,
-        false
-    );
+    assert_eq!(inactive_response.status(), StatusCode::NOT_FOUND);
 
     Ok(())
 }
