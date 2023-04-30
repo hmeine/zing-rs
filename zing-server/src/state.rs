@@ -101,19 +101,21 @@ impl Table {
         Ok(())
     }
 
+    fn game_status_notification(&self, c: &ClientConnection) -> TableNotification {
+        c.notification(
+            serde_json::to_string(&ClientNotification::GameStatus(
+                self.game_status(&c.player.login_id)
+                    .expect("game should be started, so must have valid state"),
+                self.user_index(&c.player.login_id).unwrap(),
+            ))
+            .unwrap(),
+        )
+    }
+
     pub fn initial_game_status_messages(&self) -> TableNotifications {
         self.connections
             .iter()
-            .map(|c| {
-                c.notification(
-                    serde_json::to_string(&ClientNotification::GameStatus(
-                        self.game_status(&c.player.login_id)
-                            .expect("game should be started, so must have valid state"),
-                        self.user_index(&c.player.login_id).unwrap(),
-                    ))
-                    .unwrap(),
-                )
-            })
+            .map(|c| self.game_status_notification(c))
             .collect()
     }
 
@@ -181,13 +183,21 @@ impl Table {
         Ok(())
     }
 
-    pub fn connection_opened(&mut self, user: Arc<User>, connection: NotificationSenderHandle) {
+    pub fn connection_opened(
+        &mut self,
+        user: Arc<User>,
+        connection: NotificationSenderHandle,
+    ) -> Option<TableNotification> {
         self.connections.push(ClientConnection {
             connection_id: random_id(),
             player: user,
             sender: connection,
             actions_sent: RwLock::new(0),
         });
+        self.game.as_ref().map(|_game| {
+            let new_conn = self.connections.last().unwrap();
+            self.game_status_notification(new_conn)
+        })
     }
 
     pub fn connection_closed(&mut self, connection_id: String) {
@@ -399,8 +409,7 @@ impl ZingState {
         table_id: &str,
     ) -> Result<(), ErrorResponse> {
         // start a game (sync code), collect initial game status notifications
-        let notifications;
-        {
+        let notifications = {
             let self_ = state.read().unwrap();
             self_.get_user(login_id)?;
 
@@ -419,8 +428,8 @@ impl ZingState {
 
             let table = self_.tables.get_mut(table_id).unwrap();
             table.start_game()?;
-            notifications = table.initial_game_status_messages();
-        }
+            table.initial_game_status_messages()
+        };
 
         // send initial card notifications
         Self::send_notifications(notifications, state, table_id).await;
@@ -519,19 +528,28 @@ impl ZingState {
         Ok(true)
     }
 
-    pub fn add_user_connection(
-        &mut self,
+    pub async fn add_user_connection(
+        state: &RwLock<ZingState>,
         login_id: String,
         table_id: String,
         sender: NotificationSenderHandle,
     ) {
-        // it would be nice if we could socket.close() if the following expression is false:
-        self.get_user(&login_id).map_or(false, |user| {
-            self.tables.get_mut(&table_id).map_or(false, |table| {
-                table.connection_opened(user, sender);
-                true
-            })
-        });
+        let mut notification = None;
+        {
+            let mut self_ = state.write().unwrap();
+
+            // it would be nice if we could socket.close() if the following expression is false:
+            self_.get_user(&login_id).map_or(false, |user| {
+                self_.tables.get_mut(&table_id).map_or(false, |table| {
+                    notification = table.connection_opened(user, sender);
+                    true
+                })
+            });
+        }
+
+        if let Some(notification) = notification {
+            Self::send_notifications(vec![notification], state, &table_id).await;
+        }
     }
 
     pub fn play_card(

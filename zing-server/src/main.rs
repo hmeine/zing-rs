@@ -249,7 +249,5 @@ async fn add_user_connection(
     table_id: String,
     sender: NotificationSenderHandle,
 ) {
-    let mut state = state.write().unwrap();
-
-    state.add_user_connection(login_id, table_id, sender)
+    ZingState::add_user_connection(state.deref(), login_id, table_id, sender).await
 }
