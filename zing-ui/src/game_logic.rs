@@ -40,7 +40,7 @@ impl GameLogic {
             .ok()
             .and_then(|notification| notification.try_recv().ok())
         {
-            Some(ClientNotification::GameStarted(initial_state, we_are_player)) => self
+            Some(ClientNotification::GameStatus(initial_state, we_are_player)) => self
                 .notifications
                 .push_back(StateChange::GameStarted(initial_state, we_are_player)),
             Some(ClientNotification::CardActions(actions)) => self

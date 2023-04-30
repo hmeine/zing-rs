@@ -106,7 +106,7 @@ impl Table {
             .iter()
             .map(|c| {
                 c.notification(
-                    serde_json::to_string(&ClientNotification::GameStarted(
+                    serde_json::to_string(&ClientNotification::GameStatus(
                         self.game_status(&c.player.login_id)
                             .expect("game should be started, so must have valid state"),
                         self.user_index(&c.player.login_id).unwrap(),
