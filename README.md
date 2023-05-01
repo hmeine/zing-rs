@@ -2,7 +2,8 @@ Zing Game
 =========
 
 This is a WIP implementation of a simple, but very fun card game named "Zing",
-apparently originating in Montenegro.
+apparently originating in Montenegro.  It is a trick-taking game, the [rules for
+which are documented here in English](Rules_en.md) and [German](Rules_de.md).
 
 The idea to implement an electronic edition came to me during the pandemic, when
 people were staying home and playing online games was a good way to socialize
