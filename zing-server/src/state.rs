@@ -552,30 +552,45 @@ impl ZingState {
         }
     }
 
-    pub fn play_card(
-        &mut self,
+    pub async fn play_card(
+        state: &RwLock<ZingState>,
         login_id: &str,
         table_id: &str,
         card_index: usize,
     ) -> Result<(), ErrorResponse> {
-        self.get_user(login_id)?;
+        let notifications;
+        let result;
 
-        let table = self
-            .tables
-            .get_mut(table_id)
-            .ok_or((http::StatusCode::NOT_FOUND, "table id not found"))?;
+        {
+            let mut self_ = state.write().unwrap();
 
-        let player = table.user_index(login_id).ok_or((
-            http::StatusCode::NOT_FOUND,
-            "user has not joined table at which game should start",
-        ))?;
+            self_.get_user(login_id)?;
 
-        let game = table
-            .game
-            .as_mut()
-            .ok_or((http::StatusCode::CONFLICT, "game not started yet"))?;
+            let table = self_
+                .tables
+                .get_mut(table_id)
+                .ok_or((http::StatusCode::NOT_FOUND, "table id not found"))?;
 
-        game.play_card(player, card_index)
-            .map_err(|msg| (http::StatusCode::CONFLICT, msg))
+            let player = table.user_index(login_id).ok_or((
+                http::StatusCode::NOT_FOUND,
+                "user has not joined table at which game should start",
+            ))?;
+
+            let game = table
+                .game
+                .as_mut()
+                .ok_or((http::StatusCode::CONFLICT, "game not started yet"))?;
+
+            result = game
+                .play_card(player, card_index)
+                .map_err(|msg| (http::StatusCode::CONFLICT, msg));
+
+            notifications = table.action_notifications();
+        }
+
+        // send notifications about performed actions
+        Self::send_notifications(notifications, state, table_id).await;
+
+        result
     }
 }
