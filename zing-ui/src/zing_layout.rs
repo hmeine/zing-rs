@@ -121,6 +121,20 @@ impl CardStack {
             CardLocation::Stack => &game.stacks[self.index].cards,
         }
     }
+
+    /// HACK: we_are_player is initialized to 0, and setup_card_stacks() will
+    /// always think we are player 0.  In order to fix that when we receive the
+    /// InitialGameStateEvent which carries our real player index, we support
+    /// belated switching of player 0 and player 1 with this method. (I do think
+    /// it would make more sense to setup the card stacks only after we received
+    /// the InitialGameStateEvent, but I think that must be done one tick
+    /// earlier than setting up the cards, so I am playing safe for now.)
+    fn switch_player(&mut self) {
+        if self.location == CardLocation::Stack && self.index < 2 {
+            return; // stock or table, must not change
+        }
+        self.index ^= 1;
+    }
 }
 
 fn setup_camera(mut commands: Commands) {
@@ -329,7 +343,7 @@ fn spawn_cards_for_initial_state(
     mut commands: Commands,
     mut initial_state_events: EventReader<InitialGameStateEvent>,
     mut layout_state: ResMut<LayoutState>,
-    query_stacks: Query<(Entity, &CardStack)>,
+    mut query_stacks: Query<(Entity, &mut CardStack)>,
     asset_server: Res<AssetServer>,
 ) {
     for initial_state_event in initial_state_events.iter() {
@@ -337,14 +351,18 @@ fn spawn_cards_for_initial_state(
         layout_state.we_are_player = initial_state_event.we_are_player;
         layout_state.table_stack_spread_out = initial_state_event.table_stack_spread_out;
 
-        for (stack_id, stack) in query_stacks.iter() {
+        for (stack_id, mut stack) in query_stacks.iter_mut() {
+            if initial_state_event.we_are_player > 0 {
+                stack.switch_player();
+            }
+
             let card_states = stack.card_states(layout_state.displayed_state.as_ref().unwrap());
 
             let card_entities: Vec<_> = card_states
                 .iter()
                 .zip(card_offsets_for_stack(
                     card_states,
-                    stack,
+                    &stack,
                     layout_state.table_stack_spread_out,
                 ))
                 .map(|(card_state, card_offset)| {
