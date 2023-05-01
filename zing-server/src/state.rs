@@ -196,6 +196,7 @@ impl Table {
         });
         self.game.as_ref().map(|_game| {
             let new_conn = self.connections.last().unwrap();
+            *new_conn.actions_sent.write().unwrap() = _game.history().len();
             self.game_status_notification(new_conn)
         })
     }
