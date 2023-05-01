@@ -10,6 +10,8 @@ license = "MIT"
 zing_game = { path = "../zing-game" }
 
 axum = { version = "0.6.20", features = ["ws"] }
+shuttle-runtime = "0.27.0"
+shuttle-axum = "0.27.0"
 chrono = "0.4.28"
 futures = "0.3.28"
 tokio = { version = "1.32.0", features = ["full"] }

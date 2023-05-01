@@ -23,13 +23,8 @@ use zing_game::game::GameState;
 mod state;
 mod ws_notifications;
 
-#[tokio::main]
-async fn main() {
-    #[cfg(not(target_family = "wasm"))]
-    tracing_subscriber::fmt::init();
-    #[cfg(target_family = "wasm")]
-    tracing_wasm::set_as_global_default();
-
+#[shuttle_runtime::main]
+async fn axum() -> shuttle_axum::ShuttleAxum {
     let state = Arc::new(RwLock::new(ZingState::default()));
 
     let app = Router::new()
@@ -58,10 +53,7 @@ async fn main() {
         .with_state(state)
         .layer(CookieManagerLayer::new());
 
-    axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
+    Ok(app.into())
 }
 
 #[derive(Deserialize)]
