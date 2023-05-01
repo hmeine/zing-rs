@@ -3,17 +3,18 @@ use bevy_tweening::TweeningPlugin;
 use clap::Parser;
 use futures_util::StreamExt;
 use reqwest::{cookie, header::CONTENT_TYPE};
-use tokio::net::TcpStream;
 use std::{
     sync::{mpsc::Sender, Arc},
     time::Duration,
 };
+use tokio::net::TcpStream;
 use tokio_tungstenite::{
     connect_async,
     tungstenite::{
         client::IntoClientRequest,
         http::{HeaderValue, Uri},
-    }, WebSocketStream, MaybeTlsStream,
+    },
+    MaybeTlsStream, WebSocketStream,
 };
 use zing_game::client_notification::ClientNotification;
 
@@ -53,8 +54,7 @@ async fn connect_websocket(
     Ok(ws_stream)
 }
 
-#[tokio::main]
-async fn tokio_main(
+async fn websocket_communication(
     args: Cli,
     notification_sender: Sender<ClientNotification>,
     mut card_receiver: tokio::sync::mpsc::Receiver<usize>,
@@ -107,7 +107,19 @@ async fn tokio_main(
         })
         .await;
 
-    println!("WebSocket for_each endet.");
+    Ok(())
+}
+
+#[tokio::main]
+async fn tokio_main(
+    args: Cli,
+    notification_sender: Sender<ClientNotification>,
+    card_receiver: tokio::sync::mpsc::Receiver<usize>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let result = websocket_communication(args, notification_sender, card_receiver).await;
+
+    println!("WebSocket communication endet.");
+    dbg!(result);
 
     Ok(())
 }
