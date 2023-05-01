@@ -55,24 +55,24 @@ async fn connect_websocket(
 }
 
 async fn websocket_communication(
-    args: Cli,
+    login_id: String, table_id: String, base_url: String,
     notification_sender: Sender<ClientNotification>,
     mut card_receiver: tokio::sync::mpsc::Receiver<usize>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let jar = cookie::Jar::default();
     jar.add_cookie_str(
-        &format!("login_id={}", args.login_id),
-        &args.base_url.parse().unwrap(),
+        &format!("login_id={}", login_id),
+        &base_url.parse().unwrap(),
     );
     let client = reqwest::Client::builder()
         .cookie_provider(Arc::new(jar))
         .build()
         .unwrap();
 
-    let ws_stream = connect_websocket(&args.base_url, &args.login_id, &args.table_id).await?;
+    let ws_stream = connect_websocket(&base_url, &login_id, &table_id).await?;
 
     tokio::spawn(async move {
-        let play_uri = format!("{}/table/{}/game/play", args.base_url, args.table_id);
+        let play_uri = format!("{}/table/{}/game/play", base_url, table_id);
 
         loop {
             if let Ok(card_index) = card_receiver.try_recv() {
@@ -111,11 +111,11 @@ async fn websocket_communication(
 
 #[tokio::main]
 async fn tokio_main(
-    args: Cli,
+    login_id: String, table_id: String, base_url: String,
     notification_sender: Sender<ClientNotification>,
     card_receiver: tokio::sync::mpsc::Receiver<usize>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let result = websocket_communication(args, notification_sender, card_receiver).await;
+    let result = websocket_communication(login_id, table_id, base_url, notification_sender, card_receiver).await;
 
     info!("WebSocket communication endet.");
     if let Err(error) = result {
@@ -125,13 +125,11 @@ async fn tokio_main(
     Ok(())
 }
 
-fn main() {
-    let args = Cli::parse();
-
+fn start_remote_game(login_id: String, table_id: String, base_url: String) {
     let (notification_tx, notification_rx) = std::sync::mpsc::channel();
     let (card_tx, card_rx) = tokio::sync::mpsc::channel(4);
 
-    let _thread_handle = std::thread::spawn(|| tokio_main(args, notification_tx, card_rx));
+    let _thread_handle = std::thread::spawn(|| tokio_main(login_id, table_id, base_url, notification_tx, card_rx));
     let game_logic = game_logic::GameLogic::new(notification_rx, card_tx);
 
     App::new()
@@ -150,4 +148,9 @@ fn main() {
         .add_plugin(TweeningPlugin)
         .add_plugin(zing_layout::LayoutPlugin)
         .run();
+}
+
+fn main() {
+    let args = Cli::parse();
+    start_remote_game(args.login_id, args.table_id, args.base_url)
 }
