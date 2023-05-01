@@ -1,0 +1,20 @@
+[package]
+name = "zing_ui_lib"
+version = "0.2.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+zing_game = { path = "../zing-game" }
+
+bevy = { version = "0.10" }
+bevy_tweening = "0.7"
+futures = "0.3.28"
+futures-util = "0.3.25"
+tokio = { version = "1", features = ["full"] }
+tokio-tungstenite = { version = "0.18.0", features = ["native-tls"] }
+serde_json = "1.0"
+reqwest = { version = "0.11.16", features = ["cookies"] }
+tungstenite = { version = "0.19.0", features = ["native-tls"] }
