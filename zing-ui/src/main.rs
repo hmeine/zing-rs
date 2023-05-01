@@ -76,7 +76,6 @@ async fn websocket_communication(
 
         loop {
             if let Ok(card_index) = card_receiver.try_recv() {
-                println!("todo: send card event for index {}", card_index);
                 match client
                     .post(&play_uri)
                     .header(CONTENT_TYPE, "application/json")
