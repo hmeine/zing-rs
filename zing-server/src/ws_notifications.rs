@@ -1,5 +1,6 @@
 use axum::extract::ws::{Message, WebSocket};
 use tokio::sync::mpsc;
+use tracing::debug;
 
 struct NotificationSender {
     receiver: mpsc::Receiver<Notification>,
@@ -17,6 +18,7 @@ impl NotificationSender {
     async fn run(&mut self) {
         while let Some(msg) = self.receiver.recv().await {
             if self.socket.send(Message::Text(msg.json)).await.is_err() {
+                debug!("*** NotificationSender: WebSocket send() failed ***");
                 // connection closed, finish actor
                 break;
             }

@@ -16,6 +16,7 @@ use cookie::SameSite;
 use serde::Deserialize;
 use state::{ErrorResponse, ZingState};
 use tower_cookies::{Cookie, CookieManagerLayer, Cookies};
+use tracing::info;
 use ws_notifications::NotificationSenderHandle;
 use zing_game::game::GameState;
 
@@ -24,6 +25,8 @@ mod ws_notifications;
 
 #[tokio::main]
 async fn main() {
+    tracing_subscriber::fmt::init();
+
     let state = Arc::new(RwLock::new(ZingState::default()));
 
     let app = Router::new()
@@ -67,7 +70,7 @@ async fn login(
         return Err((http::StatusCode::BAD_REQUEST, "name must not be empty"));
     }
     let login_id = state.login(&user_name);
-    println!("Logged in {} as {}", user_name, login_id);
+    info!("Logged in {} as {}", user_name, login_id);
 
     // TODO: log out if USERNAME_COOKIE is already set (and valid)
 
@@ -85,7 +88,7 @@ async fn logout(
     let mut state = state.write().unwrap();
     let user_name = state.whoami(&login_id.0);
     state.logout(&login_id.0)?;
-    println!("Logged out {}", user_name.unwrap());
+    info!("Logged out {}", user_name.unwrap());
 
     let mut login_cookie = Cookie::new(USERNAME_COOKIE, "");
     login_cookie.set_same_site(SameSite::Strict);

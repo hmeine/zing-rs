@@ -2,6 +2,7 @@ use axum::{http, Json};
 use chrono::prelude::*;
 use rand::distributions::{Alphanumeric, DistString};
 use serde::{Serialize, Serializer};
+use tracing::{debug, info};
 use std::{
     collections::HashMap,
     sync::{Arc, RwLock},
@@ -458,7 +459,13 @@ impl ZingState {
         // send notifications (async, we don't want to hold the state locked)
         let mut broken_connections = Vec::new();
         for (connection_id, msg, connection) in notifications {
+            debug!(
+                "sending notification to {} ({})",
+                &connection_id,
+                &msg[..30]
+            );
             if connection.send(msg).await.is_err() {
+                info!("removing broken client connection");
                 broken_connections.push(connection_id);
             };
         }
