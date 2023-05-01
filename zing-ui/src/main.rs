@@ -117,8 +117,10 @@ async fn tokio_main(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let result = websocket_communication(args, notification_sender, card_receiver).await;
 
-    println!("WebSocket communication endet.");
-    dbg!(result);
+    info!("WebSocket communication endet.");
+    if let Err(error) = result {
+        error!("{}", error)
+    }
 
     Ok(())
 }
