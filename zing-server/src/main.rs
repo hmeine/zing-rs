@@ -1,5 +1,4 @@
 use std::{
-    fs,
     ops::Deref,
     sync::{Arc, RwLock},
 };
@@ -129,7 +128,7 @@ async fn index() -> Html<&'static str> {
 #[cfg(debug_assertions)]
 async fn index() -> Result<Html<String>, http::StatusCode> {
     Ok(Html(
-        fs::read_to_string("zing-server/assets/index.html").or(Err(http::StatusCode::NOT_FOUND))?,
+        std::fs::read_to_string("zing-server/assets/index.html").or(Err(http::StatusCode::NOT_FOUND))?,
     ))
 }
 
