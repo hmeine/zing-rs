@@ -1,21 +1,26 @@
 use bevy::prelude::*;
-#[cfg(not(target_family = "wasm"))]
-use bevy_tokio_tasks::{TokioTasksPlugin, TokioTasksRuntime};
 use futures_util::StreamExt;
-#[cfg(not(target_family = "wasm"))]
-use reqwest::cookie;
 use std::collections::VecDeque;
-#[cfg(not(target_family = "wasm"))]
-use std::sync::Arc;
 use tracing::{event, Level};
-#[cfg(not(target_family = "wasm"))]
-use tungstenite::client::IntoClientRequest;
 use zing_game::card_action::CardAction;
 use zing_game::client_notification::ClientNotification;
 use zing_game::game::GameState;
 
 #[cfg(not(target_family = "wasm"))]
+use {
+    bevy_tokio_tasks::{TokioTasksPlugin, TokioTasksRuntime},
+    reqwest::cookie,
+    std::sync::Arc,
+    tungstenite::client::IntoClientRequest,
+};
+
+#[cfg(not(target_family = "wasm"))]
 pub type TasksRuntime = TokioTasksRuntime;
+
+#[cfg(target_family = "wasm")]
+use {
+    ws_stream_wasm::*,
+};
 
 #[cfg(target_family = "wasm")]
 #[derive(Resource)]
