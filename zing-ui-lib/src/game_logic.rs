@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy_tokio_tasks::TokioTasksRuntime;
+use bevy_tokio_tasks::{TokioTasksPlugin, TokioTasksRuntime};
 use futures_util::StreamExt;
 use reqwest::cookie;
 use std::collections::VecDeque;
@@ -9,6 +9,22 @@ use tungstenite::client::IntoClientRequest;
 use zing_game::card_action::CardAction;
 use zing_game::client_notification::ClientNotification;
 use zing_game::game::GameState;
+
+pub struct GameLogicPlugin {
+    pub base_url: String,
+    pub login_id: String,
+    pub table_id: String,
+}
+
+impl Plugin for GameLogicPlugin {
+    fn build(&self, app: &mut App) {
+        let game_logic = GameLogic::new(&self.base_url, &self.login_id, &self.table_id).unwrap();
+
+        app.insert_resource(game_logic)
+            .add_plugin(TokioTasksPlugin::default())
+            .add_startup_system(spawn_websocket_handler);
+    }
+}
 
 #[derive(Resource)]
 pub struct GameLogic {
