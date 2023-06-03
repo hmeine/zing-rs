@@ -45,11 +45,12 @@ async fn connect_websocket(
     Ok(ws_stream)
 }
 
-async fn websocket_communication(
-    login_id: String, table_id: String, base_url: String,
-    notification_sender: Sender<ClientNotification>,
+fn spawn_card_playing_task(
+    base_url: &str,
+    login_id: &str,
+    table_id: &str,
     mut card_receiver: tokio::sync::mpsc::Receiver<usize>,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+) {
     let jar = cookie::Jar::default();
     jar.add_cookie_str(
         &format!("login_id={}", login_id),
@@ -60,11 +61,8 @@ async fn websocket_communication(
         .build()
         .unwrap();
 
-    let ws_stream = connect_websocket(&base_url, &login_id, &table_id).await?;
-
+    let play_uri = format!("{}/table/{}/game/play", base_url, table_id);
     tokio::spawn(async move {
-        let play_uri = format!("{}/table/{}/game/play", base_url, table_id);
-
         loop {
             if let Ok(card_index) = card_receiver.try_recv() {
                 match client
@@ -84,6 +82,15 @@ async fn websocket_communication(
             tokio::time::sleep(Duration::from_millis(200)).await;
         }
     });
+}
+
+async fn websocket_communication(
+    base_url: &str,
+    login_id: &str,
+    table_id: &str,
+    notification_sender: Sender<ClientNotification>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let ws_stream = connect_websocket(&base_url, &login_id, &table_id).await?;
 
     ws_stream
         .for_each(|message| async {
@@ -102,11 +109,16 @@ async fn websocket_communication(
 
 #[tokio::main]
 async fn tokio_main(
-    login_id: String, table_id: String, base_url: String,
+    base_url: String,
+    login_id: String,
+    table_id: String,
     notification_sender: Sender<ClientNotification>,
     card_receiver: tokio::sync::mpsc::Receiver<usize>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let result = websocket_communication(login_id, table_id, base_url, notification_sender, card_receiver).await;
+    spawn_card_playing_task(&base_url, &login_id, &table_id, card_receiver);
+
+    let result =
+        websocket_communication(&base_url, &login_id, &table_id, notification_sender).await;
 
     info!("WebSocket communication endet.");
     if let Err(error) = result {
@@ -120,7 +132,8 @@ pub fn start_remote_game(login_id: String, table_id: String, base_url: String) {
     let (notification_tx, notification_rx) = std::sync::mpsc::channel();
     let (card_tx, card_rx) = tokio::sync::mpsc::channel(4);
 
-    let _thread_handle = std::thread::spawn(|| tokio_main(login_id, table_id, base_url, notification_tx, card_rx));
+    let _thread_handle =
+        std::thread::spawn(|| tokio_main(base_url, login_id, table_id, notification_tx, card_rx));
     let game_logic = game_logic::GameLogic::new(notification_rx, card_tx);
 
     App::new()
