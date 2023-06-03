@@ -510,7 +510,7 @@ impl ZingState {
 
         table.user_index(login_id).ok_or((
             http::StatusCode::NOT_FOUND,
-            "user has not joined table at which game should start",
+            "user has not joined table at which game should be finished",
         ))?;
 
         table.finish_game()
@@ -581,7 +581,7 @@ impl ZingState {
 
             let player = table.user_index(login_id).ok_or((
                 http::StatusCode::NOT_FOUND,
-                "user has not joined table at which game should start",
+                "user has not joined table at which card should be played",
             ))?;
 
             let game = table
