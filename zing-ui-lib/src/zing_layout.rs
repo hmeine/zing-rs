@@ -4,6 +4,7 @@ use crate::card_sprite::CardSprite;
 use crate::constants::*;
 use crate::game_logic::{GameLogic, StateChange};
 use bevy::{prelude::*, render::camera::ScalingMode};
+use bevy_tokio_tasks::TokioTasksRuntime;
 use bevy_tweening::lens::TransformPositionLens;
 use bevy_tweening::{Animator, EaseFunction, Tween};
 use zing_game::card_action::CardAction;
@@ -520,6 +521,7 @@ fn reposition_cards_after_action(
 pub fn handle_keyboard_input(
     layout_state: ResMut<LayoutState>,
     mut game_logic: ResMut<GameLogic>,
+    runtime: ResMut<TokioTasksRuntime>,
     keyboard_input: Res<Input<KeyCode>>,
 ) {
     if !layout_state.step_animation_timer.finished() {
@@ -538,6 +540,6 @@ pub fn handle_keyboard_input(
     }
 
     if let Some(card_index) = play_card {
-        game_logic.play_card(card_index);
+        game_logic.play_card(runtime, card_index);
     }
 }

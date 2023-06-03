@@ -394,6 +394,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy-tokio-tasks"
+version = "0.10.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "45f6a9e07362d3392856983cba0910a6391f9482093eae789fea844f8d150342"
+dependencies = [
+ "bevy_app",
+ "bevy_ecs",
+ "tokio",
+]
+
+[[package]]
 name = "bevy_a11y"
 version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4871,6 +4882,7 @@ name = "zing_ui_lib"
 version = "0.2.0"
 dependencies = [
  "bevy",
+ "bevy-tokio-tasks",
  "bevy_tweening",
  "futures",
  "futures-util",

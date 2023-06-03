@@ -1,8 +1,8 @@
-use bevy::prelude::Resource;
+use bevy::prelude::{ResMut, Resource};
+use bevy_tokio_tasks::TokioTasksRuntime;
+use reqwest::cookie;
 use std::collections::VecDeque;
-use std::sync::mpsc::Receiver;
-use std::sync::Mutex;
-use tokio::sync::mpsc::Sender;
+use std::sync::Arc;
 use zing_game::card_action::CardAction;
 use zing_game::client_notification::ClientNotification;
 use zing_game::game::GameState;
@@ -10,10 +10,8 @@ use zing_game::game::GameState;
 #[derive(Resource)]
 pub struct GameLogic {
     notifications: VecDeque<StateChange>,
-    // `std::sync::mpsc::Receiver<ClientNotification>` cannot be shared between threads safely
-    // because it is not Sync, i.e., multiple threads may not use it at the same time
-    pub notification_rx: Mutex<Receiver<ClientNotification>>,
-    pub card_tx: Mutex<Sender<usize>>,
+    client: reqwest::Client,
+    play_uri: String,
 }
 
 pub enum StateChange {
@@ -22,42 +20,54 @@ pub enum StateChange {
 }
 
 impl GameLogic {
-    pub fn new(
-        notification_receiver: Receiver<ClientNotification>,
-        playing_sender: Sender<usize>,
-    ) -> Self {
+    pub fn new(base_url: &str, login_id: &str, table_id: &str) -> Self {
+        let jar = cookie::Jar::default();
+        jar.add_cookie_str(
+            &format!("login_id={}", login_id),
+            &base_url.parse().unwrap(),
+        );
+        let client = reqwest::Client::builder()
+            .cookie_provider(Arc::new(jar))
+            .build()
+            .unwrap();
+
+        let play_uri = format!("{}/table/{}/game/play", base_url, table_id);
+
         Self {
             notifications: VecDeque::new(),
-            notification_rx: Mutex::new(notification_receiver),
-            card_tx: Mutex::new(playing_sender),
+            client,
+            play_uri,
+        }
+    }
+
+    pub fn handle_client_notification(&mut self, notification: ClientNotification) {
+        match notification {
+            ClientNotification::GameStatus(initial_state, we_are_player) => self
+                .notifications
+                .push_back(StateChange::GameStarted(initial_state, we_are_player)),
+            ClientNotification::CardActions(actions) => self
+                .notifications
+                .extend(actions.into_iter().map(StateChange::CardAction)),
         }
     }
 
     pub fn get_next_state_change(&mut self) -> Option<StateChange> {
-        match self
-            .notification_rx
-            .lock()
-            .ok()
-            .and_then(|notification| notification.try_recv().ok())
-        {
-            Some(ClientNotification::GameStatus(initial_state, we_are_player)) => self
-                .notifications
-                .push_back(StateChange::GameStarted(initial_state, we_are_player)),
-            Some(ClientNotification::CardActions(actions)) => self
-                .notifications
-                .extend(actions.into_iter().map(StateChange::CardAction)),
-            None => {}
-        }
         self.notifications.pop_front()
     }
 
-    pub fn play_card(&mut self, card_index: usize) {
-        let card_tx = self.card_tx.lock().unwrap();
-        if let Err(err) = card_tx.blocking_send(card_index) {
-            println!(
-                "could not send card play event to networking thread: {}",
-                err
-            );
-        }
+    pub fn play_card(&mut self, runtime: ResMut<TokioTasksRuntime>, card_index: usize) {
+        let request = self
+            .client
+            .post(&self.play_uri)
+            .header(reqwest::header::CONTENT_TYPE, "application/json")
+            .body(format!("{{ \"card_index\": {} }}", card_index));
+        runtime.spawn_background_task(|_ctx| async move {
+            match request.send().await {
+                Err(err) => println!("Rest API error trying to play card: {}", err),
+                Ok(response) => {
+                    println!("{} {}", response.status(), response.text().await.unwrap());
+                }
+            };
+        });
     }
 }
