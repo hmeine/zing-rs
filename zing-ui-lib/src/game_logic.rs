@@ -1,14 +1,25 @@
 use bevy::prelude::*;
+#[cfg(not(target_family = "wasm"))]
 use bevy_tokio_tasks::{TokioTasksPlugin, TokioTasksRuntime};
 use futures_util::StreamExt;
+#[cfg(not(target_family = "wasm"))]
 use reqwest::cookie;
 use std::collections::VecDeque;
+#[cfg(not(target_family = "wasm"))]
 use std::sync::Arc;
 use tracing::{event, Level};
+#[cfg(not(target_family = "wasm"))]
 use tungstenite::client::IntoClientRequest;
 use zing_game::card_action::CardAction;
 use zing_game::client_notification::ClientNotification;
 use zing_game::game::GameState;
+
+#[cfg(not(target_family = "wasm"))]
+pub type TasksRuntime = TokioTasksRuntime;
+
+#[cfg(target_family = "wasm")]
+#[derive(Resource)]
+pub struct TasksRuntime;
 
 pub struct GameLogicPlugin {
     pub base_url: String,
@@ -20,9 +31,13 @@ impl Plugin for GameLogicPlugin {
     fn build(&self, app: &mut App) {
         let game_logic = GameLogic::new(&self.base_url, &self.login_id, &self.table_id).unwrap();
 
+        #[cfg(not(target_family = "wasm"))]
         app.insert_resource(game_logic)
             .add_plugin(TokioTasksPlugin::default())
             .add_startup_system(spawn_websocket_handler);
+
+        #[cfg(target_family = "wasm")]
+        app.insert_resource(TasksRuntime {});
     }
 }
 
@@ -30,6 +45,7 @@ impl Plugin for GameLogicPlugin {
 pub struct GameLogic {
     notifications: VecDeque<StateChange>,
 
+    #[cfg(not(target_family = "wasm"))]
     client: reqwest::Client,
     play_uri: String,
     ws_uri: http::Uri,
@@ -42,6 +58,7 @@ pub enum StateChange {
 }
 
 impl GameLogic {
+    #[cfg(not(target_family = "wasm"))]
     pub fn new(
         base_url: &str,
         login_id: &str,
@@ -77,9 +94,35 @@ impl GameLogic {
         })
     }
 
+    #[cfg(target_family = "wasm")]
+    pub fn new(
+        base_url: &str,
+        login_id: &str,
+        table_id: &str,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        let play_uri = format!("{}/table/{}/game/play", base_url, table_id);
+
+        let ws_uri = format!(
+            "{}/table/{}/game/ws",
+            base_url.replace("http", "ws"),
+            table_id
+        )
+        .parse()?;
+
+        let login_cookie = format!("login_id={}", login_id);
+
+        Ok(Self {
+            notifications: VecDeque::new(),
+            play_uri,
+            ws_uri,
+            login_cookie,
+        })
+    }
+
+    #[cfg(not(target_family = "wasm"))]
     fn spawn_websocket_handler(
         &self,
-        runtime: ResMut<TokioTasksRuntime>,
+        runtime: ResMut<TasksRuntime>,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let mut request = self.ws_uri.clone().into_client_request()?;
         request
@@ -115,6 +158,14 @@ impl GameLogic {
         Ok(())
     }
 
+    #[cfg(target_family = "wasm")]
+    fn spawn_websocket_handler(
+        &self,
+        runtime: ResMut<TasksRuntime>,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        Ok(())
+    }
+
     pub fn handle_client_notification(&mut self, notification: ClientNotification) {
         match notification {
             ClientNotification::GameStatus(initial_state, we_are_player) => self
@@ -130,7 +181,8 @@ impl GameLogic {
         self.notifications.pop_front()
     }
 
-    pub fn play_card(&mut self, runtime: ResMut<TokioTasksRuntime>, card_index: usize) {
+    #[cfg(not(target_family = "wasm"))]
+    pub fn play_card(&mut self, runtime: ResMut<TasksRuntime>, card_index: usize) {
         let request = self
             .client
             .post(&self.play_uri)
@@ -150,8 +202,13 @@ impl GameLogic {
             };
         });
     }
+
+    #[cfg(target_family = "wasm")]
+    pub fn play_card(&mut self, runtime: ResMut<TasksRuntime>, card_index: usize) {
+    }
 }
 
-pub fn spawn_websocket_handler(game_logic: Res<GameLogic>, runtime: ResMut<TokioTasksRuntime>) {
+#[cfg(not(target_family = "wasm"))]
+pub fn spawn_websocket_handler(game_logic: Res<GameLogic>, runtime: ResMut<TasksRuntime>) {
     game_logic.spawn_websocket_handler(runtime).unwrap();
 }

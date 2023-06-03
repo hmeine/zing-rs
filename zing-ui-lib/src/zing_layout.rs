@@ -2,9 +2,8 @@ use std::time::Duration;
 
 use crate::card_sprite::CardSprite;
 use crate::constants::*;
-use crate::game_logic::{GameLogic, StateChange};
+use crate::game_logic::{GameLogic, StateChange, TasksRuntime};
 use bevy::{prelude::*, render::camera::ScalingMode};
-use bevy_tokio_tasks::TokioTasksRuntime;
 use bevy_tweening::lens::TransformPositionLens;
 use bevy_tweening::{Animator, EaseFunction, Tween};
 use zing_game::card_action::CardAction;
@@ -521,7 +520,7 @@ fn reposition_cards_after_action(
 pub fn handle_keyboard_input(
     layout_state: ResMut<LayoutState>,
     mut game_logic: ResMut<GameLogic>,
-    runtime: ResMut<TokioTasksRuntime>,
+    runtime: ResMut<TasksRuntime>,
     keyboard_input: Res<Input<KeyCode>>,
 ) {
     if !layout_state.step_animation_timer.finished() {

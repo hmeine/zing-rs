@@ -1,13 +1,14 @@
 use bevy::prelude::*;
-
 use bevy_tweening::TweeningPlugin;
+#[cfg(target_family = "wasm")]
+use wasm_bindgen::prelude::*;
 
 mod card_sprite;
 mod constants;
 mod game_logic;
 mod zing_layout;
 
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
+#[cfg_attr(target_family = "wasm", wasm_bindgen)]
 pub fn start_remote_game(login_id: String, table_id: String, base_url: String) {
     App::new()
         .insert_resource(Msaa::default())

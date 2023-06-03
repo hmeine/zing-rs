@@ -13,11 +13,17 @@ bevy = { version = "0.10" }
 bevy_tweening = "0.7"
 futures = "0.3.28"
 futures-util = "0.3.25"
-tokio = { version = "1", features = ["full"] }
-tokio-tungstenite = { version = "0.18.0", features = ["native-tls"] }
 serde_json = "1.0"
-reqwest = { version = "0.11.16", features = ["cookies"] }
-tungstenite = { version = "0.19.0", features = ["native-tls"] }
-bevy-tokio-tasks = "0.10.2"
 http = "0.2.9"
 tracing = "0.1.37"
+
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.11.16", features = ["cookies"] }
+tokio-tungstenite = { version = "0.19.0", features = ["native-tls"] }
+tungstenite = { version = "0.19.0", features = ["native-tls"] }
+bevy-tokio-tasks = "0.10.2"
+
+[target.'cfg(target_family = "wasm")'.dependencies]
+wasm-bindgen = "0.2.86"
+web-sys = { version = "0.3.4", features = ['Headers', 'Request', 'RequestInit', 'RequestMode', 'Response', 'Window'] }
