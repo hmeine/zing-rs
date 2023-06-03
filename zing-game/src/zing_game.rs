@@ -6,7 +6,7 @@ use serde::Serialize;
 use crate::{
     card_action::{CardAction, CardLocation, CardRotation},
     decks::shuffled_deck,
-    game::{CardState, GameState, StackState, GamePhase},
+    game::{CardState, GamePhase, GameState, StackState},
     Card, Rank, Suit,
 };
 

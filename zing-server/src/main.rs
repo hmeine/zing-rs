@@ -128,7 +128,8 @@ async fn index() -> Html<&'static str> {
 #[cfg(debug_assertions)]
 async fn index() -> Result<Html<String>, http::StatusCode> {
     Ok(Html(
-        std::fs::read_to_string("zing-server/assets/index.html").or(Err(http::StatusCode::NOT_FOUND))?,
+        std::fs::read_to_string("zing-server/assets/index.html")
+            .or(Err(http::StatusCode::NOT_FOUND))?,
     ))
 }
 
@@ -223,7 +224,13 @@ async fn play_card(
     State(state): State<Arc<RwLock<ZingState>>>,
     Json(game_action): Json<GameAction>,
 ) -> Result<(), ErrorResponse> {
-    ZingState::play_card(state.deref(), &login_id.0, &table_id, game_action.card_index).await
+    ZingState::play_card(
+        state.deref(),
+        &login_id.0,
+        &table_id,
+        game_action.card_index,
+    )
+    .await
 }
 
 async fn ws_handler(

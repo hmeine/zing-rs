@@ -2,11 +2,11 @@ use axum::{http, Json};
 use chrono::prelude::*;
 use rand::distributions::{Alphanumeric, DistString};
 use serde::{Serialize, Serializer};
-use tracing::{debug, info};
 use std::{
     collections::HashMap,
     sync::{Arc, RwLock},
 };
+use tracing::{debug, info};
 use zing_game::{
     client_notification::ClientNotification,
     game::GameState,

@@ -19,3 +19,5 @@ serde_json = "1.0"
 reqwest = { version = "0.11.16", features = ["cookies"] }
 tungstenite = { version = "0.19.0", features = ["native-tls"] }
 bevy-tokio-tasks = "0.10.2"
+http = "0.2.9"
+tracing = "0.1.37"
