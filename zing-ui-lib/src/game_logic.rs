@@ -19,7 +19,11 @@ pub type TasksRuntime = TokioTasksRuntime;
 
 #[cfg(target_family = "wasm")]
 use {
-    ws_stream_wasm::*,
+    wasm_bindgen::prelude::*,
+    wasm_bindgen_futures::JsFuture,
+    web_sys::{ErrorEvent, MessageEvent, WebSocket},
+    web_sys::{Request, RequestInit, RequestMode, Response},
+    //ws_stream_wasm::*,
 };
 
 #[cfg(target_family = "wasm")]
@@ -42,7 +46,9 @@ impl Plugin for GameLogicPlugin {
             .add_startup_system(spawn_websocket_handler);
 
         #[cfg(target_family = "wasm")]
-        app.insert_resource(TasksRuntime {});
+        app.insert_resource(game_logic)
+            .insert_resource(TasksRuntime {})
+            .add_startup_system(spawn_websocket_handler);
     }
 }
 
@@ -53,7 +59,10 @@ pub struct GameLogic {
     #[cfg(not(target_family = "wasm"))]
     client: reqwest::Client,
     play_uri: String,
+    #[cfg(not(target_family = "wasm"))]
     ws_uri: http::Uri,
+    #[cfg(target_family = "wasm")]
+    ws_uri: String,
     login_cookie: String,
 }
 
@@ -111,8 +120,7 @@ impl GameLogic {
             "{}/table/{}/game/ws",
             base_url.replace("http", "ws"),
             table_id
-        )
-        .parse()?;
+        );
 
         let login_cookie = format!("login_id={}", login_id);
 
@@ -130,9 +138,10 @@ impl GameLogic {
         runtime: ResMut<TasksRuntime>,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let mut request = self.ws_uri.clone().into_client_request()?;
-        request
-            .headers_mut()
-            .insert("Cookie", http::HeaderValue::from_str(&self.login_cookie)?);
+        request.headers_mut().insert(
+            http::header::COOKIE,
+            http::HeaderValue::from_str(&self.login_cookie)?,
+        );
 
         runtime.spawn_background_task(|mut ctx| async move {
             let result = tokio_tungstenite::connect_async(request).await;
@@ -164,11 +173,24 @@ impl GameLogic {
     }
 
     #[cfg(target_family = "wasm")]
-    fn spawn_websocket_handler(
-        &self,
-        runtime: ResMut<TasksRuntime>,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        Ok(())
+    fn spawn_websocket_handler(&self, runtime: ResMut<TasksRuntime>) {
+        let ws = WebSocket::new(&self.ws_uri).unwrap();
+
+        let onmessage_callback = Closure::<dyn FnMut(_)>::new(move |e: MessageEvent| {
+            if let Ok(txt) = e.data().dyn_into::<js_sys::JsString>() {
+                event!(Level::INFO, "message event, received Text: {:?}", txt);
+            } else {
+                event!(Level::INFO, "message event, received: {:?}", e.data());
+            }
+        });
+        ws.set_onmessage(Some(onmessage_callback.as_ref().unchecked_ref()));
+        onmessage_callback.forget();
+
+        let onerror_callback = Closure::<dyn FnMut(_)>::new(move |e: ErrorEvent| {
+            event!(Level::ERROR, "error event: {:?}", e);
+        });
+        ws.set_onerror(Some(onerror_callback.as_ref().unchecked_ref()));
+        onerror_callback.forget();
     }
 
     pub fn handle_client_notification(&mut self, notification: ClientNotification) {
@@ -191,7 +213,7 @@ impl GameLogic {
         let request = self
             .client
             .post(&self.play_uri)
-            .header(reqwest::header::CONTENT_TYPE, "application/json")
+            .header(http::header::CONTENT_TYPE, "application/json")
             .body(format!("{{ \"card_index\": {} }}", card_index));
         runtime.spawn_background_task(|_ctx| async move {
             match request.send().await {
@@ -209,11 +231,45 @@ impl GameLogic {
     }
 
     #[cfg(target_family = "wasm")]
-    pub fn play_card(&mut self, runtime: ResMut<TasksRuntime>, card_index: usize) {
+    pub fn play_card(
+        &mut self,
+        runtime: ResMut<TasksRuntime>,
+        card_index: usize,
+    ) -> Result<(), JsValue> {
+        use bevy::tasks::AsyncComputeTaskPool;
+
+        let mut opts = RequestInit::new();
+        opts.method("POST");
+        //opts.mode(RequestMode::Cors);
+
+        let request = Request::new_with_str_and_init(&self.play_uri, &opts)?;
+
+        request
+            .headers()
+            .set(http::header::COOKIE.as_str(), &self.login_cookie)?;
+        request
+            .headers()
+            .set(http::header::CONTENT_TYPE.as_str(), "application/json")?;
+
+        let thread_pool = AsyncComputeTaskPool::get();
+        let task = thread_pool.spawn(async move {
+            let window = web_sys::window().unwrap();
+            let resp_value = JsFuture::from(window.fetch_with_request(&request))
+                .await
+                .unwrap();
+
+            let resp: Response = resp_value.dyn_into().unwrap();
+
+            let json = JsFuture::from(resp.json().unwrap()).await;
+
+            event!(Level::INFO, "API response from playing card: {:?}", json);
+        });
+        task.detach();
+        Ok(())
     }
 }
 
-#[cfg(not(target_family = "wasm"))]
+//#[cfg(not(target_family = "wasm"))]
 pub fn spawn_websocket_handler(game_logic: Res<GameLogic>, runtime: ResMut<TasksRuntime>) {
-    game_logic.spawn_websocket_handler(runtime).unwrap();
+    let _ = game_logic.spawn_websocket_handler(runtime);
 }

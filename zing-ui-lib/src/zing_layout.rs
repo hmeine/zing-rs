@@ -539,6 +539,6 @@ pub fn handle_keyboard_input(
     }
 
     if let Some(card_index) = play_card {
-        game_logic.play_card(runtime, card_index);
+        let _ = game_logic.play_card(runtime, card_index);
     }
 }
