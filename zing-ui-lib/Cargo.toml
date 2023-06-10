@@ -28,3 +28,4 @@ bevy-tokio-tasks = "0.10.2"
 wasm-bindgen = "0.2.86"
 web-sys = { version = "0.3.4", features = ['Headers', 'Request', 'RequestInit', 'RequestMode', 'Response', 'Window'] }
 ws_stream_wasm = "0.7.4"
+tracing-wasm = "0.2.1"

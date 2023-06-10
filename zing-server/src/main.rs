@@ -24,7 +24,10 @@ mod ws_notifications;
 
 #[tokio::main]
 async fn main() {
+    #[cfg(not(target_family = "wasm"))]
     tracing_subscriber::fmt::init();
+    #[cfg(target_family = "wasm")]
+    tracing_wasm::set_as_global_default();
 
     let state = Arc::new(RwLock::new(ZingState::default()));
 
