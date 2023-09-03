@@ -6,20 +6,20 @@ edition = "2021"
 [dependencies]
 zing_game = { path = "../zing-game" }
 
-axum = { version = "0.6.1", features = ["ws"] }
-chrono = "0.4.23"
-futures = "0.3"
-tokio = { version = "1", features = ["full"] }
-tower = { version = "0.4", features = ["util"] }
-async-trait = "0.1"
-tower-cookies = "0.8.0"
-cookie = "0.16.1"
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+axum = { version = "0.6.20", features = ["ws"] }
+chrono = "0.4.28"
+futures = "0.3.28"
+tokio = { version = "1.32.0", features = ["full"] }
+tower = { version = "0.4.13", features = ["util"] }
+async-trait = "0.1.73"
+tower-cookies = "0.9.0"
+cookie = "0.17.0"
+tracing = "0.1.37"
+tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 rand = "0.8.5"
-serde = "1.0.147"
-serde_json = "1.0"
+serde = "1.0.188"
+serde_json = "1.0.105"
 
 [dev-dependencies]
-anyhow = "1"
-reqwest = { version = "0.11.16", features = ["cookies", "json"] }
+anyhow = "1.0.75"
+reqwest = { version = "0.11.20", features = ["cookies", "json"] }
