@@ -40,12 +40,14 @@ impl LayoutState {
 
 pub struct LayoutPlugin;
 
+#[derive(Event)]
 struct InitialGameStateEvent {
     pub game_state: GameState,
     pub we_are_player: usize,
     pub table_stack_spread_out: bool,
 }
 
+#[derive(Event)]
 struct CardActionEvent {
     pub action: CardAction,
     pub table_stack_spread_out: bool,
@@ -57,18 +59,20 @@ impl Plugin for LayoutPlugin {
         app.add_event::<CardActionEvent>();
         app.insert_resource(LayoutState::new());
 
-        app.add_startup_system(setup_camera);
-        app.add_startup_system(setup_card_stacks);
+        app.add_systems(Startup, (setup_camera, setup_card_stacks));
 
-        app.add_system(handle_keyboard_input.before(update_cards_from_action));
-        app.add_system(
-            get_next_action_after_animation_finished
-                .before(spawn_cards_for_initial_state)
-                .before(update_cards_from_action),
+        app.add_systems(
+            Update,
+            (
+                get_next_action_after_animation_finished
+                    .before(spawn_cards_for_initial_state)
+                    .before(update_cards_from_action),
+                spawn_cards_for_initial_state,
+                handle_keyboard_input.before(update_cards_from_action),
+                update_cards_from_action,
+            ),
         );
-        app.add_system(spawn_cards_for_initial_state);
-        app.add_system(update_cards_from_action);
-        app.add_system(reposition_cards_after_action.in_base_set(CoreSet::PostUpdate));
+        app.add_systems(PostUpdate, reposition_cards_after_action);
     }
 }
 

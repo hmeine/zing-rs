@@ -42,13 +42,13 @@ impl Plugin for GameLogicPlugin {
 
         #[cfg(not(target_family = "wasm"))]
         app.insert_resource(game_logic)
-            .add_plugin(TokioTasksPlugin::default())
-            .add_startup_system(spawn_websocket_handler);
+            .add_plugins(TokioTasksPlugin::default())
+            .add_systems(Startup, spawn_websocket_handler);
 
         #[cfg(target_family = "wasm")]
         app.insert_resource(game_logic)
             .insert_resource(TasksRuntime {})
-            .add_startup_system(spawn_websocket_handler);
+            .add_systems(Startup, spawn_websocket_handler);
     }
 }
 

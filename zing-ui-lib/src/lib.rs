@@ -22,9 +22,9 @@ pub fn start_remote_game(login_id: String, table_id: String, base_url: String) {
             }),
             ..Default::default()
         }))
-        .add_plugin(TweeningPlugin)
-        .add_plugin(zing_layout::LayoutPlugin)
-        .add_plugin(game_logic::GameLogicPlugin {
+        .add_plugins(TweeningPlugin)
+        .add_plugins(zing_layout::LayoutPlugin)
+        .add_plugins(game_logic::GameLogicPlugin {
             base_url,
             login_id,
             table_id,
