@@ -147,6 +147,12 @@ fn setup_camera(mut commands: Commands) {
             scaling_mode: ScalingMode::FixedVertical(1.0),
             ..Default::default()
         },
+        transform: Transform {
+            // by default, the camera is at z=0 and only displays stuff with z<0
+            // (2D frustrum culling came with 0.11)
+            translation: Vec3::new(0., 0., 500.),
+            ..Default::default()
+        },
         ..Default::default()
     });
 }
