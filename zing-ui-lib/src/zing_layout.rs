@@ -137,7 +137,7 @@ impl CardStack {
         if self.location == CardLocation::Stack && self.index < 2 {
             return; // stock or table, must not change
         }
-        self.index ^= 1;
+        self.index ^= 1; // FIXME would probably not work for four players
     }
 }
 
