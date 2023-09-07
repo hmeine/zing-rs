@@ -304,18 +304,18 @@ fn card_offsets_for_stack<'a>(
         // We do not need a peeping offset for the topmost card:
         total_peeping -= 1;
     }
-    let mut peeping_offset = (0i8..).map(move |i| f32::from(total_peeping - i) * peeping_offset);
+    let mut peeping_offsets = (0i8..).map(move |i| f32::from(total_peeping - i) * peeping_offset);
 
     (0i8..)
         .zip(card_states.iter())
         .map(move |(index, card_state)| {
             card_offset * f32::from(index)
                 + if card_state.face_up {
-                    peeping_offset.next().unwrap()
+                    peeping_offsets.next().unwrap()
                 } else {
                     Vec3::ZERO
                 }
-                + score_offset * (ZingGame::card_points(&card_state.card) as f32)
+                + score_offset * f32::from(ZingGame::card_points(&card_state.card))
         })
 }
 
