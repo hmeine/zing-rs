@@ -177,7 +177,11 @@ impl GameLogic {
         let ws = WebSocket::new(&self.ws_uri).unwrap();
 
         let onmessage_callback = Closure::<dyn FnMut(_)>::new(move |e: MessageEvent| {
-            if let Ok(txt) = e.data().dyn_into::<js_sys::JsString>() {
+            if let Ok(client_notification) =
+                serde_wasm_bindgen::from_value::<ClientNotification>(e.data())
+            {
+                dbg!(client_notification);
+            } else if let Ok(txt) = e.data().dyn_into::<js_sys::JsString>() {
                 event!(Level::INFO, "message event, received Text: {:?}", txt);
             } else {
                 event!(Level::INFO, "message event, received: {:?}", e.data());
