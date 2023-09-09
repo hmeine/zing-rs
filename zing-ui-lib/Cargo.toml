@@ -2,6 +2,9 @@
 name = "zing_ui_lib"
 version = "0.2.0"
 edition = "2021"
+description = "bevy-based card game UI for `Zing`, compilable to WASM"
+repository = "https://github.com/hmeine/zing-rs"
+license = "MIT"
 
 [lib]
 crate-type = ["cdylib", "rlib"]

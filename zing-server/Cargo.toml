@@ -2,6 +2,9 @@
 name = "zing-server"
 version = "0.2.0"
 edition = "2021"
+description = "Restful Zing game server implementing card game logic and game/table/player management"
+repository = "https://github.com/hmeine/zing-rs"
+license = "MIT"
 
 [dependencies]
 zing_game = { path = "../zing-game" }

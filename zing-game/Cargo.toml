@@ -2,6 +2,9 @@
 name = "zing_game"
 version = "0.1.0"
 edition = "2021"
+description = "card game logic for `Zing`, minimal dependencies (no UI or networking)"
+repository = "https://github.com/hmeine/zing-rs"
+license = "MIT"
 
 [dependencies]
 strum = "0.25.0"

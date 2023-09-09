@@ -2,6 +2,9 @@
 name = "zing-ui"
 version = "0.2.0"
 edition = "2021"
+description = "bevy-based card game UI for `Zing`, client connecting to zing-server"
+repository = "https://github.com/hmeine/zing-rs"
+license = "MIT"
 
 [dependencies]
 clap = { version = "4.0.32", features = ["derive"] }
