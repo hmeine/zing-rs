@@ -315,7 +315,7 @@ fn card_offsets_for_stack<'a>(
                 } else {
                     Vec3::ZERO
                 }
-                + score_offset * f32::from(ZingGame::card_points(&card_state.card))
+                + score_offset * (ZingGame::card_points(&card_state.card) as f32)
         })
 }
 
