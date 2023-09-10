@@ -18,6 +18,7 @@ pub type TasksRuntime = TokioTasksRuntime;
 
 #[cfg(target_family = "wasm")]
 use {
+    std::sync::{mpsc, mpsc::Receiver, Mutex},
     wasm_bindgen::prelude::*,
     wasm_bindgen_futures::JsFuture,
     web_sys::{ErrorEvent, MessageEvent, WebSocket},
@@ -27,7 +28,19 @@ use {
 
 #[cfg(target_family = "wasm")]
 #[derive(Resource)]
-pub struct TasksRuntime;
+pub struct TasksRuntime {
+    notification_receiver: Mutex<Receiver<ClientNotification>>,
+}
+
+#[cfg(target_family = "wasm")]
+impl TasksRuntime {
+    fn new() -> Self {
+        let (_dropped_sender, dangling_receiver) = mpsc::channel();
+        Self {
+            notification_receiver: Mutex::new(dangling_receiver),
+        }
+    }
+}
 
 pub struct GameLogicPlugin {
     pub base_url: String,
@@ -46,8 +59,9 @@ impl Plugin for GameLogicPlugin {
 
         #[cfg(target_family = "wasm")]
         app.insert_resource(game_logic)
-            .insert_resource(TasksRuntime {})
-            .add_systems(Startup, spawn_websocket_handler);
+            .insert_resource(TasksRuntime::new())
+            .add_systems(Startup, spawn_websocket_handler)
+            .add_systems(Update, receive_client_notifications);
     }
 }
 
@@ -170,7 +184,10 @@ impl GameLogic {
     }
 
     #[cfg(target_family = "wasm")]
-    fn spawn_websocket_handler(&self, runtime: ResMut<TasksRuntime>) {
+    fn spawn_websocket_handler(&self, mut runtime: ResMut<TasksRuntime>) {
+        let (sender, receiver) = mpsc::channel();
+        runtime.notification_receiver = Mutex::new(receiver);
+
         // nice: the browser already manages the login cookie for us
         let ws = WebSocket::new(&self.ws_uri).unwrap();
 
@@ -178,7 +195,14 @@ impl GameLogic {
             if let Ok(client_notification) =
                 serde_wasm_bindgen::from_value::<ClientNotification>(e.data())
             {
-                dbg!(client_notification);
+                info!(
+                    "message event, received ClientNotification: {:?}",
+                    client_notification
+                );
+                let r = sender.send(client_notification);
+                if r.is_err() {
+                    error!("could not send ClientNotification via mspc channel");
+                }
             } else if let Ok(txt) = e.data().dyn_into::<js_sys::JsString>() {
                 info!("message event, received Text: {:?}", txt);
             } else {
@@ -271,4 +295,16 @@ impl GameLogic {
 //#[cfg(not(target_family = "wasm"))]
 pub fn spawn_websocket_handler(game_logic: Res<GameLogic>, runtime: ResMut<TasksRuntime>) {
     let _ = game_logic.spawn_websocket_handler(runtime);
+}
+
+pub fn receive_client_notifications(mut game_logic: ResMut<GameLogic>, runtime: Res<TasksRuntime>) {
+    if let Ok(receiver) = runtime.notification_receiver.lock() {
+        let r = receiver.try_recv();
+        if let Ok(client_notification) = r {
+            info!("received client notification: {:?}", client_notification);
+            game_logic.handle_client_notification(client_notification);
+        }
+    } else {
+        error!("could not access receiver");
+    }
 }
