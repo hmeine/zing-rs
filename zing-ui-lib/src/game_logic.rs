@@ -1,7 +1,6 @@
 use bevy::prelude::*;
 use futures_util::StreamExt;
 use std::collections::VecDeque;
-use tracing::{event, Level};
 use zing_game::card_action::CardAction;
 use zing_game::client_notification::ClientNotification;
 use zing_game::game::GameState;
@@ -164,7 +163,7 @@ impl GameLogic {
                         .await;
                 }
                 Err(e) => {
-                    event!(Level::ERROR, "Could not connect to websocket: {}", e);
+                    error!("Could not connect to websocket: {}", e);
                 }
             };
         });
@@ -182,16 +181,16 @@ impl GameLogic {
             {
                 dbg!(client_notification);
             } else if let Ok(txt) = e.data().dyn_into::<js_sys::JsString>() {
-                event!(Level::INFO, "message event, received Text: {:?}", txt);
+                info!("message event, received Text: {:?}", txt);
             } else {
-                event!(Level::INFO, "message event, received: {:?}", e.data());
+                info!("message event, received: {:?}", e.data());
             }
         });
         ws.set_onmessage(Some(onmessage_callback.as_ref().unchecked_ref()));
         onmessage_callback.forget();
 
         let onerror_callback = Closure::<dyn FnMut(_)>::new(move |e: ErrorEvent| {
-            event!(Level::ERROR, "error event: {:?}", e);
+            error!("error event: {:?}", e);
         });
         ws.set_onerror(Some(onerror_callback.as_ref().unchecked_ref()));
         onerror_callback.forget();
@@ -221,7 +220,7 @@ impl GameLogic {
             .body(format!("{{ \"card_index\": {} }}", card_index));
         runtime.spawn_background_task(|_ctx| async move {
             match request.send().await {
-                Err(err) => event!(Level::ERROR, "Rest API error trying to play card: {}", err),
+                Err(err) => error!("Rest API error trying to play card: {}", err),
                 Ok(response) => {
                     event!(
                         Level::INFO,
@@ -266,7 +265,7 @@ impl GameLogic {
 
             let json = JsFuture::from(resp.json().unwrap()).await;
 
-            event!(Level::INFO, "API response from playing card: {:?}", json);
+            info!("API response from playing card: {:?}", json);
         });
         task.detach();
         Ok(())
