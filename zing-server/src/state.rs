@@ -556,6 +556,7 @@ impl ZingState {
         }
 
         if let Some(notification) = notification {
+            // send current state to newly connected user
             Self::send_notifications(vec![notification], state, &table_id).await;
         }
     }
