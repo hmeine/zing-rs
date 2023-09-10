@@ -7,10 +7,10 @@ use zing_game::game::GameState;
 #[cfg(not(target_family = "wasm"))]
 use {
     bevy_tokio_tasks::{TokioTasksPlugin, TokioTasksRuntime},
+    futures_util::StreamExt,
     reqwest::cookie,
     std::sync::Arc,
     tungstenite::client::IntoClientRequest,
-    futures_util::StreamExt,
 };
 
 #[cfg(not(target_family = "wasm"))]
@@ -199,12 +199,16 @@ impl GameLogic {
                     "message event, received ClientNotification: {:?}",
                     client_notification
                 );
-                let r = sender.send(client_notification);
-                if r.is_err() {
+                if sender.send(client_notification).is_err() {
                     error!("could not send ClientNotification via mspc channel");
                 }
             } else if let Ok(txt) = e.data().dyn_into::<js_sys::JsString>() {
                 info!("message event, received Text: {:?}", txt);
+                if let Ok(client_notification) = serde_json::from_str(&String::from(txt)) {
+                    if sender.send(client_notification).is_err() {
+                        error!("could not send ClientNotification via mspc channel");
+                    }
+                }
             } else {
                 info!("message event, received: {:?}", e.data());
             }
@@ -245,11 +249,7 @@ impl GameLogic {
             match request.send().await {
                 Err(err) => error!("Rest API error trying to play card: {}", err),
                 Ok(response) => {
-                    info!(
-                        "{} {}",
-                        response.status(),
-                        response.text().await.unwrap()
-                    );
+                    info!("{} {}", response.status(), response.text().await.unwrap());
                 }
             };
         });
