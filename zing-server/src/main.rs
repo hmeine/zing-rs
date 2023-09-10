@@ -15,6 +15,7 @@ use cookie::SameSite;
 use serde::Deserialize;
 use state::{ErrorResponse, ZingState};
 use tower_cookies::{Cookie, CookieManagerLayer, Cookies};
+use tower_http::services::{ServeDir, ServeFile};
 use tracing::info;
 use ws_notifications::NotificationSenderHandle;
 use zing_game::game::GameState;
@@ -45,6 +46,16 @@ async fn main() {
         )
         .route("/table/:table_id/game/play", post(play_card))
         .route("/table/:table_id/game/ws", get(ws_handler)) // /game/ws or just /ws?
+        .nest_service(
+            "/zing_ui_lib.js",
+            ServeFile::new("zing-ui-lib/pkg/zing_ui_lib.js"),
+        )
+        .nest_service(
+            "/zing_ui_lib_bg.wasm",
+            ServeFile::new("zing-ui-lib/pkg/zing_ui_lib_bg.wasm"),
+        )
+        .nest_service("/example.html", ServeFile::new("example.html"))
+        .nest_service("/assets", ServeDir::new("zing-ui-lib/assets"))
         .with_state(state)
         .layer(CookieManagerLayer::new());
 
