@@ -6,6 +6,7 @@ struct NotificationSender {
     receiver: mpsc::Receiver<Notification>,
     socket: WebSocket,
 }
+
 struct Notification {
     json: String,
 }

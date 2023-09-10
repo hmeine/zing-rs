@@ -22,7 +22,7 @@ use {
     wasm_bindgen::prelude::*,
     wasm_bindgen_futures::JsFuture,
     web_sys::{ErrorEvent, MessageEvent, WebSocket},
-    web_sys::{Request, RequestInit, RequestMode, Response},
+    web_sys::{Request, RequestInit, Response},
     //ws_stream_wasm::*,
 };
 
