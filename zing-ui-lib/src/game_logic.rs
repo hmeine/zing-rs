@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use futures_util::StreamExt;
 use std::collections::VecDeque;
 use zing_game::card_action::CardAction;
 use zing_game::client_notification::ClientNotification;
@@ -11,6 +10,7 @@ use {
     reqwest::cookie,
     std::sync::Arc,
     tungstenite::client::IntoClientRequest,
+    futures_util::StreamExt,
 };
 
 #[cfg(not(target_family = "wasm"))]
