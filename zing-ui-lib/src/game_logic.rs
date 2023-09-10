@@ -62,6 +62,7 @@ pub struct GameLogic {
     ws_uri: http::Uri,
     #[cfg(target_family = "wasm")]
     ws_uri: String,
+    #[cfg(not(target_family = "wasm"))]
     login_cookie: String,
 }
 
@@ -110,7 +111,7 @@ impl GameLogic {
     #[cfg(target_family = "wasm")]
     pub fn new(
         base_url: &str,
-        login_id: &str,
+        _login_id: &str,
         table_id: &str,
     ) -> Result<Self, Box<dyn std::error::Error>> {
         let play_uri = format!("{}/table/{}/game/play", base_url, table_id);
@@ -121,13 +122,10 @@ impl GameLogic {
             table_id
         );
 
-        let login_cookie = format!("login_id={}", login_id);
-
         Ok(Self {
             notifications: VecDeque::new(),
             play_uri,
             ws_uri,
-            login_cookie,
         })
     }
 
@@ -173,6 +171,7 @@ impl GameLogic {
 
     #[cfg(target_family = "wasm")]
     fn spawn_websocket_handler(&self, runtime: ResMut<TasksRuntime>) {
+        // nice: the browser already manages the login cookie for us
         let ws = WebSocket::new(&self.ws_uri).unwrap();
 
         let onmessage_callback = Closure::<dyn FnMut(_)>::new(move |e: MessageEvent| {
@@ -236,7 +235,7 @@ impl GameLogic {
     #[cfg(target_family = "wasm")]
     pub fn play_card(
         &mut self,
-        runtime: ResMut<TasksRuntime>,
+        _runtime: ResMut<TasksRuntime>,
         card_index: usize,
     ) -> Result<(), JsValue> {
         use bevy::tasks::AsyncComputeTaskPool;
@@ -247,9 +246,6 @@ impl GameLogic {
 
         let request = Request::new_with_str_and_init(&self.play_uri, &opts)?;
 
-        request
-            .headers()
-            .set(http::header::COOKIE.as_str(), &self.login_cookie)?;
         request
             .headers()
             .set(http::header::CONTENT_TYPE.as_str(), "application/json")?;
