@@ -245,8 +245,7 @@ impl GameLogic {
             match request.send().await {
                 Err(err) => error!("Rest API error trying to play card: {}", err),
                 Ok(response) => {
-                    event!(
-                        Level::INFO,
+                    info!(
                         "{} {}",
                         response.status(),
                         response.text().await.unwrap()
@@ -297,6 +296,7 @@ pub fn spawn_websocket_handler(game_logic: Res<GameLogic>, runtime: ResMut<Tasks
     let _ = game_logic.spawn_websocket_handler(runtime);
 }
 
+#[cfg(target_family = "wasm")]
 pub fn receive_client_notifications(mut game_logic: ResMut<GameLogic>, runtime: Res<TasksRuntime>) {
     if let Ok(receiver) = runtime.notification_receiver.lock() {
         let r = receiver.try_recv();
