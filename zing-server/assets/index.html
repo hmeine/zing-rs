@@ -190,6 +190,7 @@
         Quasar.copyToClipboard(
           window.location.origin + "?join=" + cell_props.key
         );
+        this.$q.notify("Share link copied to clipboard.");
       }
 
       function maybe_join_table() {
