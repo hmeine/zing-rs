@@ -195,7 +195,7 @@ impl GameLogic {
             if let Ok(client_notification) =
                 serde_wasm_bindgen::from_value::<ClientNotification>(e.data())
             {
-                info!(
+                debug!(
                     "message event, received ClientNotification: {:?}",
                     client_notification
                 );
@@ -203,14 +203,14 @@ impl GameLogic {
                     error!("could not send ClientNotification via mspc channel");
                 }
             } else if let Ok(txt) = e.data().dyn_into::<js_sys::JsString>() {
-                info!("message event, received Text: {:?}", txt);
+                debug!("message event, received Text: {:?}", txt);
                 if let Ok(client_notification) = serde_json::from_str(&String::from(txt)) {
                     if sender.send(client_notification).is_err() {
                         error!("could not send ClientNotification via mspc channel");
                     }
                 }
             } else {
-                info!("message event, received: {:?}", e.data());
+                debug!("message event, received: {:?}", e.data());
             }
         });
         ws.set_onmessage(Some(onmessage_callback.as_ref().unchecked_ref()));
@@ -249,7 +249,7 @@ impl GameLogic {
             match request.send().await {
                 Err(err) => error!("Rest API error trying to play card: {}", err),
                 Ok(response) => {
-                    info!("{} {}", response.status(), response.text().await.unwrap());
+                    debug!("{} {}", response.status(), response.text().await.unwrap());
                 }
             };
         });
@@ -288,7 +288,7 @@ impl GameLogic {
 
             let json = JsFuture::from(resp.json().unwrap()).await;
 
-            info!("API response from playing card: {:?}", json);
+            debug!("API response from playing card: {:?}", json);
         });
         task.detach();
         Ok(())
@@ -305,7 +305,7 @@ pub fn receive_client_notifications(mut game_logic: ResMut<GameLogic>, runtime: 
     if let Ok(receiver) = runtime.notification_receiver.lock() {
         let r = receiver.try_recv();
         if let Ok(client_notification) = r {
-            info!("received client notification: {:?}", client_notification);
+            debug!("received client notification: {:?}", client_notification);
             game_logic.handle_client_notification(client_notification);
         }
     } else {
