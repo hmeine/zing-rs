@@ -281,14 +281,20 @@
           // Using exceptions for control flow, don't mind me. This isn't actually an error!
         }
 
-        axios
+        setTimeout(() => {
+          axios
             .post("/table/" + table_id + "/game")
             .then(function (response) {
               // TODO: update status?
             })
             .catch(function (error) {
-              console.log("CAUGHT ERROR:", error);
+              // game may have been started already
+              if (error.response.status != 409) {
+                console.log("CAUGHT ERROR:", error);
+              }
             });
+        }, 2000);
+      }
       }
 
       const app = createApp({
@@ -326,8 +332,8 @@
               }
             });
 
-            await init();
-          },
+          await init();
+        },
       });
 
       app.use(Quasar);
