@@ -18,66 +18,96 @@
     <title>Zing</title>
   </head>
 
-  <body>
+  <body class="bg-brown-1">
     <div id="q-app">
-      <q-form
-        autofocus="true"
-        @submit="login"
-        v-if="!loggedin"
-        class="window-height window-width fit row justify-center items-center"
-      >
-        <q-input label="Name" v-model="loginname" :autofocus="true"></q-input>
-        <q-btn
-          color="primary"
-          label="Login"
-          icon="login"
-          type="submit"
-          class="q-ml-sm"
-        ></q-btn>
-      </q-form>
-      <div v-else class="fit column q-pa-md">
-        <div class="row q-mb-md">
-          <q-btn
-            color="primary"
-            icon="add"
-            label="Open New Table"
-            @click="create_table"
-          ></q-btn>
-          <q-space></q-space>
-          <q-form autofocus="true" @submit="logout">
-            <q-btn
-              color="primary"
-              icon="logout"
-              :label="logoutCaption"
-              type="submit"
-            ></q-btn>
-          </q-form>
-        </div>
-        <q-table
-          :rows="user_info.tables"
-          :columns="table_info_columns"
-          :pagination="{ rowsPerPage: 0 }"
-          hide-pagination
-          no-data-label="No table opened or joined yet"
-          ><template v-slot:body-cell-id="props">
-            <q-td :props="props">
-              <div>
+      <q-layout view="hHh lpR fFf">
+        <q-header elevated class="bg-brown-9 text-white">
+          <q-toolbar>
+            <q-toolbar-title> Zing </q-toolbar-title>
+            <q-space></q-space>
+            <q-form autofocus="true" @submit="logout" v-if="loggedin">
+              <q-btn
+                icon="logout"
+                :label="logoutCaption"
+                color="brown-10"
+                type="submit"
+              ></q-btn>
+            </q-form>
+          </q-toolbar>
+        </q-header>
+
+        <q-page-container>
+          <q-page v-if="!loggedin">
+            <q-form
+              autofocus="true"
+              @submit="login"
+              class="window-height window-width fit row justify-center items-center"
+            >
+              <q-input
+                label="Name"
+                v-model="loginname"
+                :autofocus="true"
+              ></q-input>
+              <q-btn
+                color="green-8"
+                label="Login"
+                icon="login"
+                type="submit"
+                class="q-ml-sm"
+              ></q-btn>
+            </q-form>
+          </q-page>
+
+          <q-page v-else-if="!current_table">
+            <div class="fit column q-pa-md">
+              <div class="row q-mb-md">
                 <q-btn
-                  label="Copy Share Link"
-                  icon="content_copy"
-                  @click="share(props)"
+                  color="green-8"
+                  icon="add"
+                  label="Open New Table"
+                  @click="create_table"
                 ></q-btn>
               </div>
-            </q-td>
-          </template>
-        </q-table>
-      </div>
+              <q-table
+                :rows="user_info.tables"
+                :columns="table_info_columns"
+                :pagination="{ rowsPerPage: 0 }"
+                hide-pagination
+                no-data-label="No table opened or joined yet"
+                ><template v-slot:body-cell-id="props">
+                  <q-td :props="props">
+                    <div>
+                      <q-btn
+                        label="Play"
+                        icon="play_arrow"
+                        @click="play(props)"
+                        class="q-mr-sm bg-green-8 text-white"
+                      ></q-btn>
+                      <q-btn
+                        label="Copy Share Link"
+                        icon="content_copy"
+                        @click="share(props)"
+                      ></q-btn>
+                    </div>
+                  </q-td>
+                </template>
+              </q-table>
+            </div>
+          </q-page>
+
+          <q-page v-else>
+            <canvas id="gamecanvas" class="fit"></canvas>
+          </q-page>
+        </q-page-container>
+      </q-layout>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/quasar@2.11.3/dist/quasar.umd.prod.js"></script>
 
-    <script>
+    <script type="module">
+      import init, { start_remote_game } from "./zing_ui_lib.js";
+
       const { ref, reactive, computed, createApp } = Vue;
 
       const loginname = ref("");
@@ -85,6 +115,7 @@
         name: "",
         tables: [],
       });
+      const current_table = ref("");
 
       function list_users(users, row) {
         return users.join(", ");
@@ -234,11 +265,38 @@
         table_info.ws = ws;
       }
 
+      function play(table_info) {
+        const table_id = table_info.key;
+        current_table.value = table_id;
+        setTimeout(start_bevy, 100);
+      }
+
+      function start_bevy() {
+        const table_id = current_table.value;
+        try {
+          start_remote_game("not_needed", table_id, "http://localhost:3000");
+        } catch (error) {
+          console.log("ERROR from start_remote_game(): " + error);
+          // TODO: winit yields the following, but I wonder if this is a good way to deal with it:
+          // Using exceptions for control flow, don't mind me. This isn't actually an error!
+        }
+
+        axios
+            .post("/table/" + table_id + "/game")
+            .then(function (response) {
+              // TODO: update status?
+            })
+            .catch(function (error) {
+              console.log("CAUGHT ERROR:", error);
+            });
+      }
+
       const app = createApp({
         setup() {
           return {
             loginname,
             user_info,
+            current_table,
             table_info_columns,
             loggedin,
             logoutCaption,
@@ -247,10 +305,12 @@
             create_table,
             query_tables,
             share,
+            play,
+            start_bevy,
           };
         },
 
-        mounted() {
+        async mounted() {
           axios
             .get("/login")
             .then(function (response) {
@@ -265,7 +325,9 @@
                 console.log("CAUGHT ERROR:", error);
               }
             });
-        },
+
+            await init();
+          },
       });
 
       app.use(Quasar);

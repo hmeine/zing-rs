@@ -17,7 +17,7 @@ pub fn start_remote_game(login_id: String, table_id: String, base_url: String) {
             primary_window: Some(Window {
                 title: "Zing".to_string(),
                 resolution: (1200., 900.).into(),
-                fit_canvas_to_parent: true,
+                canvas: Some("#gamecanvas".into()),
                 ..Default::default()
             }),
             ..Default::default()
