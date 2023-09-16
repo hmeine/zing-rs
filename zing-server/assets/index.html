@@ -274,7 +274,7 @@
       function start_bevy() {
         const table_id = current_table.value;
         try {
-          start_remote_game("not_needed", table_id, "http://localhost:3000");
+          start_remote_game("not_needed", table_id, "http://" + window.location.host);
         } catch (error) {
           console.log("ERROR from start_remote_game(): " + error);
           // TODO: winit yields the following, but I wonder if this is a good way to deal with it:
