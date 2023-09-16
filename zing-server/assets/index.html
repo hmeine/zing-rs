@@ -198,7 +198,7 @@
           .post("/table")
           .then(function (response) {
             user_info.tables.unshift(response.data);
-            open_table_connection(user_info.tables.slice(-1)[0]);
+            open_table_connection(user_info.tables[0]);
           })
           .catch(function (error) {
             console.log("CAUGHT ERROR:", error);
@@ -230,8 +230,8 @@
           return axios
             .post("/table/" + join)
             .then(function (response) {
-              user_info.tables.push(response.data);
-              open_table_connection(user_info.tables.slice(-1)[0]);
+              user_info.tables.unshift(response.data);
+              open_table_connection(user_info.tables[0]);
             })
             .catch(function (error) {
               // 404 is expected if table ID is invalid
