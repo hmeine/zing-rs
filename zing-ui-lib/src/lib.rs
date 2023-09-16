@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_mod_picking::DefaultPickingPlugins;
 use bevy_tweening::TweeningPlugin;
 #[cfg(target_family = "wasm")]
 use wasm_bindgen::prelude::*;
@@ -22,6 +23,7 @@ pub fn start_remote_game(login_id: String, table_id: String, base_url: String) {
             }),
             ..Default::default()
         }))
+        .add_plugins(DefaultPickingPlugins)
         .add_plugins(TweeningPlugin)
         .add_plugins(zing_layout::LayoutPlugin)
         .add_plugins(game_logic::GameLogicPlugin {

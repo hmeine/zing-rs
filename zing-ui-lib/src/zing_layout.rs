@@ -4,6 +4,7 @@ use crate::card_sprite::CardSprite;
 use crate::constants::*;
 use crate::game_logic::{GameLogic, StateChange, TasksRuntime};
 use bevy::{prelude::*, render::camera::ScalingMode};
+use bevy_mod_picking::prelude::*;
 use bevy_tweening::lens::TransformPositionLens;
 use bevy_tweening::{Animator, EaseFunction, Tween};
 use zing_game::card_action::CardAction;
@@ -80,7 +81,7 @@ impl Plugin for LayoutPlugin {
 
 /// Bevy component representing a stack or hand of cards.
 #[derive(Component)]
-struct CardStack {
+pub struct CardStack {
     /// CardStack may represent either a stack or a hand of cards
     location: CardLocation,
     /// Index of player ([CardLocation::PlayerHand]) or stack ([CardLocation::Stack])
@@ -101,22 +102,25 @@ impl CardStack {
         location: CardLocation,
         index: usize,
     ) -> Entity {
-        commands
-            .spawn(SpatialBundle {
-                transform: Transform {
-                    translation: top_left_position,
-                    scale,
-                    ..Default::default()
-                },
+        let mut stack = commands.spawn(SpatialBundle {
+            transform: Transform {
+                translation: top_left_position,
+                scale,
                 ..Default::default()
-            })
-            .insert(Self {
-                location,
-                index,
-                peeping_offset,
-                score_offset,
-            })
-            .id()
+            },
+            ..Default::default()
+        });
+        stack.insert(Self {
+            location,
+            index,
+            peeping_offset,
+            score_offset,
+        });
+        if location == CardLocation::PlayerHand {
+            stack.insert(On::<Pointer<Click>>::run(card_clicked));
+        }
+
+        stack.id()
     }
 
     fn card_states<'a>(&self, game: &'a GameState) -> &'a Vec<CardState> {
@@ -551,6 +555,43 @@ pub fn handle_keyboard_input(
     }
 
     if let Some(card_index) = play_card {
+        let _ = game_logic.play_card(runtime, card_index);
+    }
+}
+
+pub fn card_clicked(
+    click: Listener<Pointer<Click>>,
+    layout_state: ResMut<LayoutState>,
+    query_stacks: Query<(Entity, &Children, &CardStack)>,
+    mut game_logic: ResMut<GameLogic>,
+    runtime: ResMut<TasksRuntime>,
+) {
+    if !layout_state.step_animation_timer.finished() {
+        return;
+    }
+    if click.button != PointerButton::Primary {
+        return;
+    }
+
+    let mut play_card = None;
+
+    for (_entity, children, stack) in &query_stacks {
+        if stack.location != CardLocation::PlayerHand {
+            // should actually be an invariant due to the picking setup
+            continue;
+        }
+        if stack.index != layout_state.we_are_player {
+            continue
+        }
+        for (card_index, card) in children.iter().enumerate() {
+            if *card == click.target {
+                play_card = Some(card_index);
+            }
+        }
+    }
+
+    if let Some(card_index) = play_card {
+        debug!("clicked card {}", card_index);
         let _ = game_logic.play_card(runtime, card_index);
     }
 }

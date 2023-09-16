@@ -638,6 +638,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_eventlistener"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "233f729a5a2c7182f89b17c5d603cd604d095ee68d22c81b29be3cd30324f77d"
+dependencies = [
+ "bevy_eventlistener_core",
+ "bevy_eventlistener_derive",
+]
+
+[[package]]
+name = "bevy_eventlistener_core"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ccd344e21cb61878a24169bff3f2e0bc5584df77b06732b5223a13a96a92dfe9"
+dependencies = [
+ "bevy",
+]
+
+[[package]]
+name = "bevy_eventlistener_derive"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "407110082f2a861eb198c254226aa4a24c239fcff235f2aec41b0b0db5e8937f"
+dependencies = [
+ "bevy_eventlistener_core",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.30",
+]
+
+[[package]]
 name = "bevy_gilrs"
 version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -820,6 +851,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_mod_picking"
+version = "0.15.0"
+source = "git+https://github.com/hmeine/bevy_mod_picking?branch=scaled_sprites#5983aa3715e973b92505f21fa332886c644d2fba"
+dependencies = [
+ "bevy",
+ "bevy_eventlistener",
+ "bevy_picking_core",
+ "bevy_picking_highlight",
+ "bevy_picking_input",
+ "bevy_picking_raycast",
+ "bevy_picking_sprite",
+]
+
+[[package]]
+name = "bevy_mod_raycast"
+version = "0.13.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d9789907394dc92193e7a0123041de3bc302fd12ffc187c4fc2f365060aee941"
+dependencies = [
+ "bevy",
+ "crossbeam-channel",
+]
+
+[[package]]
 name = "bevy_pbr"
 version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -840,6 +895,53 @@ dependencies = [
  "bytemuck",
  "naga_oil",
  "radsort",
+]
+
+[[package]]
+name = "bevy_picking_core"
+version = "0.15.0"
+source = "git+https://github.com/hmeine/bevy_mod_picking?branch=scaled_sprites#5983aa3715e973b92505f21fa332886c644d2fba"
+dependencies = [
+ "bevy",
+ "bevy_eventlistener",
+]
+
+[[package]]
+name = "bevy_picking_highlight"
+version = "0.15.0"
+source = "git+https://github.com/hmeine/bevy_mod_picking?branch=scaled_sprites#5983aa3715e973b92505f21fa332886c644d2fba"
+dependencies = [
+ "bevy",
+ "bevy_picking_core",
+ "bevy_picking_input",
+]
+
+[[package]]
+name = "bevy_picking_input"
+version = "0.15.0"
+source = "git+https://github.com/hmeine/bevy_mod_picking?branch=scaled_sprites#5983aa3715e973b92505f21fa332886c644d2fba"
+dependencies = [
+ "bevy",
+ "bevy_picking_core",
+]
+
+[[package]]
+name = "bevy_picking_raycast"
+version = "0.15.0"
+source = "git+https://github.com/hmeine/bevy_mod_picking?branch=scaled_sprites#5983aa3715e973b92505f21fa332886c644d2fba"
+dependencies = [
+ "bevy",
+ "bevy_mod_raycast",
+ "bevy_picking_core",
+]
+
+[[package]]
+name = "bevy_picking_sprite"
+version = "0.15.0"
+source = "git+https://github.com/hmeine/bevy_mod_picking?branch=scaled_sprites#5983aa3715e973b92505f21fa332886c644d2fba"
+dependencies = [
+ "bevy",
+ "bevy_picking_core",
 ]
 
 [[package]]
@@ -5040,6 +5142,7 @@ version = "0.2.0"
 dependencies = [
  "bevy",
  "bevy-tokio-tasks",
+ "bevy_mod_picking",
  "bevy_tweening",
  "futures",
  "futures-util",
