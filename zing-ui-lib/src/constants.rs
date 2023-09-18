@@ -16,6 +16,8 @@ pub const HAND_CARD_OFFSET_X: f32 = CARD_WIDTH * 1.14;
 pub const FULL_HAND_WIDTH: f32 = CARD_WIDTH + 3. * HAND_CARD_OFFSET_X;
 /// additional scale factor > 1 for cards representing own player hand
 pub const OWN_CARD_ZOOM: f32 = 1.15;
+/// additional scale factor for card under mouse pointer
+pub const HOVER_ZOOM: f32 = 1.05;
 /// horizontal offset between (own) player hand and (own) score stack
 pub const SCORE_STACK_SPACING: f32 = MARGIN;
 /// horizontal offset for making card value visible, reduced for large scoring stacks

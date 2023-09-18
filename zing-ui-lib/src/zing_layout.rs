@@ -54,6 +54,9 @@ struct CardActionEvent {
     pub table_stack_spread_out: bool,
 }
 
+#[derive(Component, Clone)]
+struct ZoomedOnHover;
+
 impl Plugin for LayoutPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<InitialGameStateEvent>();
@@ -69,6 +72,8 @@ impl Plugin for LayoutPlugin {
                     .before(spawn_cards_for_initial_state)
                     .before(update_cards_from_action),
                 spawn_cards_for_initial_state,
+                zoom_on_hover,
+                unzoom_after_hover,
                 handle_keyboard_input.before(update_cards_from_action),
                 update_cards_from_action,
             ),
@@ -116,9 +121,6 @@ impl CardStack {
             peeping_offset,
             score_offset,
         });
-        if location == CardLocation::PlayerHand {
-            stack.insert(On::<Pointer<Click>>::run(card_clicked));
-        }
 
         stack.id()
     }
@@ -185,7 +187,7 @@ fn setup_card_stacks(mut commands: Commands, layout_state: Res<LayoutState>) {
     let own_hand_pos_y =
         PLAYING_CENTER_Y - 0.5 * CARD_HEIGHT - 0.5 * OWN_CARD_ZOOM * CARD_HEIGHT - VERTICAL_SPACING;
 
-    CardStack::spawn(
+    let own_hand = CardStack::spawn(
         &mut commands,
         Vec3::new(
             PLAYING_CENTER_X - FULL_HAND_WIDTH * OWN_CARD_ZOOM / 2.,
@@ -198,6 +200,11 @@ fn setup_card_stacks(mut commands: Commands, layout_state: Res<LayoutState>) {
         CardLocation::PlayerHand,
         we_are_player, // own hand
     );
+    commands.entity(own_hand).insert((
+        On::<Pointer<Over>>::target_insert(ZoomedOnHover {}),
+        On::<Pointer<Out>>::target_remove::<ZoomedOnHover>(),
+        On::<Pointer<Click>>::run(card_clicked),
+    ));
 
     // TODO: we need to know if we have two or four players
 
@@ -562,7 +569,7 @@ pub fn handle_keyboard_input(
 pub fn card_clicked(
     click: Listener<Pointer<Click>>,
     layout_state: ResMut<LayoutState>,
-    query_stacks: Query<(Entity, &Children, &CardStack)>,
+    query_stacks: Query<(Entity, &Children)>,
     mut game_logic: ResMut<GameLogic>,
     runtime: ResMut<TasksRuntime>,
 ) {
@@ -575,14 +582,7 @@ pub fn card_clicked(
 
     let mut play_card = None;
 
-    for (_entity, children, stack) in &query_stacks {
-        if stack.location != CardLocation::PlayerHand {
-            // should actually be an invariant due to the picking setup
-            continue;
-        }
-        if stack.index != layout_state.we_are_player {
-            continue
-        }
+    for (_entity, children) in &query_stacks {
         for (card_index, card) in children.iter().enumerate() {
             if *card == click.target {
                 play_card = Some(card_index);
@@ -593,5 +593,24 @@ pub fn card_clicked(
     if let Some(card_index) = play_card {
         debug!("clicked card {}", card_index);
         let _ = game_logic.play_card(runtime, card_index);
+    }
+}
+
+fn zoom_on_hover(
+    mut interaction_query: Query<&mut Transform, (Added<ZoomedOnHover>, With<CardSprite>)>,
+) {
+    for mut transform in &mut interaction_query {
+        transform.scale *= HOVER_ZOOM;
+    }
+}
+
+fn unzoom_after_hover(
+    mut transform_query: Query<&mut Transform>,
+    mut cards: RemovedComponents<ZoomedOnHover>,
+) {
+    for id in cards.iter() {
+        if let Ok(mut transform) = transform_query.get_mut(id) {
+            transform.scale /= HOVER_ZOOM;
+        }
     }
 }
