@@ -260,7 +260,7 @@ impl GameLogic {
         &mut self,
         _runtime: ResMut<TasksRuntime>,
         card_index: usize,
-    ) -> Result<(), JsValue> {
+    ) {
         use bevy::tasks::AsyncComputeTaskPool;
 
         let mut opts = RequestInit::new();
@@ -269,13 +269,12 @@ impl GameLogic {
             "{{ \"card_index\": {} }}",
             card_index
         ))));
-        //opts.mode(RequestMode::Cors);
 
-        let request = Request::new_with_str_and_init(&self.play_uri, &opts)?;
+        let request = Request::new_with_str_and_init(&self.play_uri, &opts).unwrap();
 
         request
             .headers()
-            .set(http::header::CONTENT_TYPE.as_str(), "application/json")?;
+            .set(http::header::CONTENT_TYPE.as_str(), "application/json").unwrap();
 
         let thread_pool = AsyncComputeTaskPool::get();
         let task = thread_pool.spawn(async move {
@@ -291,7 +290,6 @@ impl GameLogic {
             debug!("API response from playing card: {:?}", json);
         });
         task.detach();
-        Ok(())
     }
 }
 

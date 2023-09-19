@@ -562,7 +562,7 @@ pub fn handle_keyboard_input(
     }
 
     if let Some(card_index) = play_card {
-        let _ = game_logic.play_card(runtime, card_index);
+        game_logic.play_card(runtime, card_index);
     }
 }
 
@@ -592,7 +592,7 @@ pub fn card_clicked(
 
     if let Some(card_index) = play_card {
         debug!("clicked card {}", card_index);
-        let _ = game_logic.play_card(runtime, card_index);
+        game_logic.play_card(runtime, card_index);
     }
 }
 
