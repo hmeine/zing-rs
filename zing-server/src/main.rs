@@ -13,7 +13,7 @@ use axum::{
 };
 use cookie::SameSite;
 use serde::Deserialize;
-use state::{ErrorResponse, ZingState};
+use state::{GameError, ZingState};
 use tower_cookies::{Cookie, CookieManagerLayer, Cookies};
 use tower_http::services::{ServeDir, ServeFile};
 use tracing::info;
@@ -75,11 +75,11 @@ async fn login(
     State(state): State<Arc<RwLock<ZingState>>>,
     cookies: Cookies,
     Json(login_request): Json<LoginRequest>,
-) -> Result<String, ErrorResponse> {
+) -> Result<String, GameError> {
     let mut state = state.write().unwrap();
     let user_name = login_request.name;
     if user_name.is_empty() {
-        return Err((http::StatusCode::BAD_REQUEST, "name must not be empty"));
+        return Err(GameError::BadRequest("name must not be empty"));
     }
     let login_id = state.login(&user_name);
     info!("Logged in {} as {}", user_name, login_id);
@@ -96,7 +96,7 @@ async fn logout(
     State(state): State<Arc<RwLock<ZingState>>>,
     login_id: LoginID,
     cookies: Cookies,
-) -> Result<(), ErrorResponse> {
+) -> Result<(), GameError> {
     let mut state = state.write().unwrap();
     let user_name = state.whoami(&login_id.0);
     state.logout(&login_id.0)?;
@@ -149,18 +149,18 @@ async fn index() -> Result<Html<String>, http::StatusCode> {
 async fn whoami(
     State(state): State<Arc<RwLock<ZingState>>>,
     login_id: LoginID,
-) -> Result<String, ErrorResponse> {
+) -> Result<String, GameError> {
     let state = state.read().unwrap();
     match state.whoami(&login_id.0) {
         Some(user_name) => Ok(user_name),
-        None => Err((http::StatusCode::UNAUTHORIZED, "no valid login cookie")),
+        None => Err(GameError::Unauthorized("no valid login cookie")),
     }
 }
 
 async fn create_table(
     login_id: LoginID,
     State(state): State<Arc<RwLock<ZingState>>>,
-) -> Result<impl IntoResponse, ErrorResponse> {
+) -> Result<impl IntoResponse, GameError> {
     let mut state = state.write().unwrap();
     state.create_table(&login_id.0)
 }
@@ -168,7 +168,7 @@ async fn create_table(
 async fn list_tables(
     login_id: LoginID,
     State(state): State<Arc<RwLock<ZingState>>>,
-) -> Result<impl IntoResponse, ErrorResponse> {
+) -> Result<impl IntoResponse, GameError> {
     let state = state.read().unwrap();
     state.list_tables(&login_id.0)
 }
@@ -177,7 +177,7 @@ async fn get_table(
     login_id: LoginID,
     Path(table_id): Path<String>,
     State(state): State<Arc<RwLock<ZingState>>>,
-) -> Result<impl IntoResponse, ErrorResponse> {
+) -> Result<impl IntoResponse, GameError> {
     let state = state.read().unwrap();
     state.get_table(&login_id.0, &table_id)
 }
@@ -186,7 +186,7 @@ async fn join_table(
     login_id: LoginID,
     Path(table_id): Path<String>,
     State(state): State<Arc<RwLock<ZingState>>>,
-) -> Result<impl IntoResponse, ErrorResponse> {
+) -> Result<impl IntoResponse, GameError> {
     let mut state = state.write().unwrap();
     state.join_table(&login_id.0, &table_id)
 }
@@ -195,7 +195,7 @@ async fn leave_table(
     login_id: LoginID,
     Path(table_id): Path<String>,
     State(state): State<Arc<RwLock<ZingState>>>,
-) -> Result<(), ErrorResponse> {
+) -> Result<(), GameError> {
     let mut state = state.write().unwrap();
     state.leave_table(&login_id.0, &table_id)
 }
@@ -204,7 +204,7 @@ async fn start_game(
     login_id: LoginID,
     Path(table_id): Path<String>,
     State(state): State<Arc<RwLock<ZingState>>>,
-) -> Result<(), ErrorResponse> {
+) -> Result<(), GameError> {
     ZingState::start_game(state.deref(), &login_id.0, &table_id).await
 }
 
@@ -212,7 +212,7 @@ async fn game_status(
     login_id: LoginID,
     Path(table_id): Path<String>,
     State(state): State<Arc<RwLock<ZingState>>>,
-) -> Result<Json<GameState>, ErrorResponse> {
+) -> Result<Json<GameState>, GameError> {
     let state = state.read().unwrap();
     state.game_status(&login_id.0, &table_id)
 }
@@ -221,7 +221,7 @@ async fn finish_game(
     login_id: LoginID,
     Path(table_id): Path<String>,
     State(state): State<Arc<RwLock<ZingState>>>,
-) -> Result<(), ErrorResponse> {
+) -> Result<(), GameError> {
     let mut state = state.write().unwrap();
     state.finish_game(&login_id.0, &table_id)
 }
@@ -236,7 +236,7 @@ async fn play_card(
     Path(table_id): Path<String>,
     State(state): State<Arc<RwLock<ZingState>>>,
     Json(game_action): Json<GameAction>,
-) -> Result<(), ErrorResponse> {
+) -> Result<(), GameError> {
     ZingState::play_card(
         state.deref(),
         &login_id.0,
@@ -251,7 +251,7 @@ async fn ws_handler(
     Path(table_id): Path<String>,
     State(state): State<Arc<RwLock<ZingState>>>,
     ws: WebSocketUpgrade,
-) -> Result<impl IntoResponse, ErrorResponse> {
+) -> Result<impl IntoResponse, GameError> {
     state
         .read()
         .unwrap()

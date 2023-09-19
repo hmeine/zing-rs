@@ -1,4 +1,4 @@
-use axum::{http, Json};
+use axum::{http, response::IntoResponse, Json};
 use chrono::prelude::*;
 use rand::distributions::{Alphanumeric, DistString};
 use serde::{Serialize, Serializer};
@@ -15,7 +15,23 @@ use zing_game::{
 
 use crate::ws_notifications::NotificationSenderHandle;
 
-pub type ErrorResponse = (http::StatusCode, &'static str);
+pub enum GameError {
+    Unauthorized(&'static str),
+    NotFound(&'static str),
+    BadRequest(&'static str),
+    Conflict(&'static str),
+}
+
+impl IntoResponse for GameError {
+    fn into_response(self) -> axum::response::Response {
+        match self {
+            GameError::Unauthorized(msg) => (http::StatusCode::UNAUTHORIZED, msg).into_response(),
+            GameError::NotFound(msg) => (http::StatusCode::NOT_FOUND, msg).into_response(),
+            GameError::BadRequest(msg) => (http::StatusCode::BAD_REQUEST, msg).into_response(),
+            GameError::Conflict(msg) => (http::StatusCode::CONFLICT, msg).into_response(),
+        }
+    }
+}
 
 type TableNotification = (String, String, NotificationSenderHandle);
 type TableNotifications = Vec<TableNotification>;
@@ -83,15 +99,14 @@ impl Table {
             .position(|player| player.login_id == login_id)
     }
 
-    pub fn start_game(&mut self) -> Result<(), ErrorResponse> {
+    pub fn start_game(&mut self) -> Result<(), GameError> {
         if self.game.is_some() {
-            return Err((http::StatusCode::CONFLICT, "game already started"));
+            return Err(GameError::Conflict("game already started"));
         }
 
         let players_at_table = self.players.len();
         if (players_at_table != 2) && (players_at_table != 4) {
-            return Err((
-                http::StatusCode::CONFLICT,
+            return Err(GameError::Conflict(
                 "game can only start when there are exactly two or four players present",
             ));
         }
@@ -120,9 +135,9 @@ impl Table {
             .collect()
     }
 
-    pub fn setup_game(&mut self) -> Result<(), ErrorResponse> {
+    pub fn setup_game(&mut self) -> Result<(), GameError> {
         match &mut self.game {
-            None => Err((http::StatusCode::CONFLICT, "game not started yet")),
+            None => Err(GameError::Conflict("game not started yet")),
             Some(game) => {
                 game.setup_game();
                 Ok(())
@@ -171,13 +186,13 @@ impl Table {
             .map(|game| game.state().new_view_for_player(player_index))
     }
 
-    pub fn finish_game(&mut self) -> Result<(), ErrorResponse> {
+    pub fn finish_game(&mut self) -> Result<(), GameError> {
         let game = self
             .game
             .as_ref()
-            .ok_or((http::StatusCode::CONFLICT, "no active game"))?;
+            .ok_or(GameError::Conflict("no active game"))?;
         if !game.finished() {
-            return Err((http::StatusCode::CONFLICT, "game still running"));
+            return Err(GameError::Conflict("game still running"));
         }
         self.game_results.push(game.points());
         self.game = None;
@@ -233,25 +248,19 @@ impl ZingState {
         login_id
     }
 
-    pub fn logout(&mut self, login_id: &str) -> Result<(), ErrorResponse> {
+    pub fn logout(&mut self, login_id: &str) -> Result<(), GameError> {
         self.users
             .remove_entry(login_id)
-            .ok_or((
-                http::StatusCode::UNAUTHORIZED,
-                "user not found (bad id cookie)",
-            ))
+            .ok_or(GameError::Unauthorized("user not found (bad id cookie)"))
             .map(|(_, user)| {
                 *user.logged_in.write().expect("unexpected concurrency") = false;
                 // TODO: remove table if all users have left or logged out
             })
     }
 
-    pub fn get_user(&self, login_id: &str) -> Result<Arc<User>, ErrorResponse> {
+    pub fn get_user(&self, login_id: &str) -> Result<Arc<User>, GameError> {
         self.users.get(login_id).map_or(
-            Err((
-                http::StatusCode::UNAUTHORIZED,
-                "user not found (bad id cookie)",
-            )),
+            Err(GameError::Unauthorized("user not found (bad id cookie)")),
             |user| Ok(user.clone()),
         )
     }
@@ -269,7 +278,7 @@ impl ZingState {
         }
     }
 
-    pub fn create_table(&mut self, login_id: &str) -> Result<Json<TableInfo>, ErrorResponse> {
+    pub fn create_table(&mut self, login_id: &str) -> Result<Json<TableInfo>, GameError> {
         let table_id = random_id();
 
         let user = self.get_user(login_id)?;
@@ -292,7 +301,7 @@ impl ZingState {
         Ok(Json(result))
     }
 
-    pub fn list_tables(&self, login_id: &str) -> Result<Json<Vec<TableInfo>>, ErrorResponse> {
+    pub fn list_tables(&self, login_id: &str) -> Result<Json<Vec<TableInfo>>, GameError> {
         let user = self.get_user(login_id)?;
 
         let table_infos = user
@@ -306,17 +315,13 @@ impl ZingState {
         Ok(Json(table_infos))
     }
 
-    pub fn get_table(
-        &self,
-        login_id: &str,
-        table_id: &str,
-    ) -> Result<Json<TableInfo>, ErrorResponse> {
+    pub fn get_table(&self, login_id: &str, table_id: &str) -> Result<Json<TableInfo>, GameError> {
         self.get_user(login_id)?;
 
         let table = self
             .tables
             .get(table_id)
-            .ok_or((http::StatusCode::NOT_FOUND, "table id not found"))?;
+            .ok_or(GameError::NotFound("table id not found"))?;
 
         let result = self.table_info(table_id, table);
 
@@ -327,7 +332,7 @@ impl ZingState {
         &mut self,
         login_id: &str,
         table_id: &str,
-    ) -> Result<Json<TableInfo>, ErrorResponse> {
+    ) -> Result<Json<TableInfo>, GameError> {
         let user = self.get_user(login_id)?;
         let table_id = table_id.to_owned();
         if user
@@ -336,17 +341,16 @@ impl ZingState {
             .expect("unexpected concurrency")
             .contains(&table_id)
         {
-            return Err((http::StatusCode::CONFLICT, "trying to join table again"));
+            return Err(GameError::Conflict("trying to join table again"));
         }
 
         let table = self
             .tables
             .get_mut(&table_id)
-            .ok_or((http::StatusCode::NOT_FOUND, "table id not found"))?;
+            .ok_or(GameError::NotFound("table id not found"))?;
 
         if table.games_have_started() {
-            return Err((
-                http::StatusCode::CONFLICT,
+            return Err(GameError::Conflict(
                 "cannot join a table after games have started",
             ));
         }
@@ -363,7 +367,7 @@ impl ZingState {
         Ok(Json(result))
     }
 
-    pub fn leave_table(&mut self, login_id: &str, table_id: &str) -> Result<(), ErrorResponse> {
+    pub fn leave_table(&mut self, login_id: &str, table_id: &str) -> Result<(), GameError> {
         let user = self.get_user(login_id)?;
 
         let table_index_in_user = user
@@ -372,19 +376,17 @@ impl ZingState {
             .expect("unexpected concurrency")
             .iter()
             .position(|id| *id == table_id)
-            .ok_or((
-                http::StatusCode::UNAUTHORIZED,
+            .ok_or(GameError::Unauthorized(
                 "trying to leave table before joining",
             ))?;
 
         let table = self
             .tables
             .get_mut(table_id)
-            .ok_or((http::StatusCode::NOT_FOUND, "table id not found"))?;
+            .ok_or(GameError::NotFound("table id not found"))?;
 
         if table.games_have_started() {
-            return Err((
-                http::StatusCode::CONFLICT,
+            return Err(GameError::Conflict(
                 "cannot leave a table after games have started",
             ));
         }
@@ -409,7 +411,7 @@ impl ZingState {
         state: &RwLock<ZingState>,
         login_id: &str,
         table_id: &str,
-    ) -> Result<(), ErrorResponse> {
+    ) -> Result<(), GameError> {
         // start a game (sync code), collect initial game status notifications
         let notifications = {
             let self_ = state.read().unwrap();
@@ -418,10 +420,9 @@ impl ZingState {
             let table = self_
                 .tables
                 .get(table_id)
-                .ok_or((http::StatusCode::NOT_FOUND, "table id not found"))?;
+                .ok_or(GameError::NotFound("table id not found"))?;
 
-            table.user_index(login_id).ok_or((
-                http::StatusCode::NOT_FOUND,
+            table.user_index(login_id).ok_or(GameError::NotFound(
                 "user has not joined table at which game should start",
             ))?;
 
@@ -482,34 +483,34 @@ impl ZingState {
         &self,
         login_id: &str,
         table_id: &str,
-    ) -> Result<Json<GameState>, ErrorResponse> {
+    ) -> Result<Json<GameState>, GameError> {
         self.get_user(login_id)?;
 
         let table = self
             .tables
             .get(table_id)
-            .ok_or((http::StatusCode::NOT_FOUND, "table id not found"))?;
+            .ok_or(GameError::NotFound("table id not found"))?;
 
         table
             .user_index(login_id)
-            .ok_or((http::StatusCode::NOT_FOUND, "user has not joined table"))?;
+            .ok_or(GameError::NotFound("user has not joined table"))?;
 
-        table.game_status(login_id).map_or(
-            Err((http::StatusCode::NOT_FOUND, "no game active")),
-            |game| Ok(Json(game)),
-        )
+        table
+            .game_status(login_id)
+            .map_or(Err(GameError::NotFound("no game active")), |game| {
+                Ok(Json(game))
+            })
     }
 
-    pub fn finish_game(&mut self, login_id: &str, table_id: &str) -> Result<(), ErrorResponse> {
+    pub fn finish_game(&mut self, login_id: &str, table_id: &str) -> Result<(), GameError> {
         self.get_user(login_id)?;
 
         let table = self
             .tables
             .get_mut(table_id)
-            .ok_or((http::StatusCode::NOT_FOUND, "table id not found"))?;
+            .ok_or(GameError::NotFound("table id not found"))?;
 
-        table.user_index(login_id).ok_or((
-            http::StatusCode::NOT_FOUND,
+        table.user_index(login_id).ok_or(GameError::NotFound(
             "user has not joined table at which game should be finished",
         ))?;
 
@@ -520,18 +521,17 @@ impl ZingState {
         &self,
         login_id: &str,
         table_id: &str,
-    ) -> Result<bool, ErrorResponse> {
+    ) -> Result<bool, GameError> {
         self.get_user(login_id)?;
 
         let table = self
             .tables
             .get(table_id)
-            .ok_or((http::StatusCode::NOT_FOUND, "table id not found"))?;
+            .ok_or(GameError::NotFound("table id not found"))?;
 
-        table.user_index(login_id).ok_or((
-            http::StatusCode::NOT_FOUND,
-            "connecting user has not joined table",
-        ))?;
+        table
+            .user_index(login_id)
+            .ok_or(GameError::NotFound("connecting user has not joined table"))?;
 
         Ok(true)
     }
@@ -566,7 +566,7 @@ impl ZingState {
         login_id: &str,
         table_id: &str,
         card_index: usize,
-    ) -> Result<(), ErrorResponse> {
+    ) -> Result<(), GameError> {
         let notifications;
         let result;
 
@@ -578,21 +578,20 @@ impl ZingState {
             let table = self_
                 .tables
                 .get_mut(table_id)
-                .ok_or((http::StatusCode::NOT_FOUND, "table id not found"))?;
+                .ok_or(GameError::NotFound("table id not found"))?;
 
-            let player = table.user_index(login_id).ok_or((
-                http::StatusCode::NOT_FOUND,
+            let player = table.user_index(login_id).ok_or(GameError::NotFound(
                 "user has not joined table at which card should be played",
             ))?;
 
             let game = table
                 .game
                 .as_mut()
-                .ok_or((http::StatusCode::CONFLICT, "game not started yet"))?;
+                .ok_or(GameError::Conflict("game not started yet"))?;
 
             result = game
                 .play_card(player, card_index)
-                .map_err(|msg| (http::StatusCode::CONFLICT, msg));
+                .map_err(GameError::Conflict);
 
             notifications = table.action_notifications();
         }
