@@ -11,14 +11,13 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 zing_game = { path = "../zing-game" }
-
-bevy = { version = "0.11.2" }
+bevy = { version = "0.11.2", features = ["multi-threaded", "bevy_asset", "bevy_winit", "bevy_sprite", "png", "webgl2"], default-features = false }
 bevy_tweening = "0.8.0"
 futures = "0.3.28"
 futures-util = "0.3.28"
 serde_json = "1.0.105"
 http = "0.2.9"
-tracing = "0.1.37"
+tracing = { version = "0.1.37", features = ["release_max_level_off"] }
 #bevy_mod_picking = { version = "0.15.0", features = ["bevy_picking_raycast", "backend_sprite"], default-features = false }
 bevy_mod_picking = { git = "https://github.com/hmeine/bevy_mod_picking", branch = "scaled_sprites", features = ["bevy_picking_raycast", "backend_sprite", "highlight"], default-features = false }
 
