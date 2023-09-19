@@ -422,11 +422,11 @@ fn update_cards_from_action(
 
         layout_state.table_stack_spread_out = card_action_event.table_stack_spread_out;
 
-        // state update is finished; update entities accordingly:
+        // state update is finished; now update bevy entities accordingly:
 
+        // determine old and new parent CardStacks
         let mut source_parent = None;
         let mut target_parent = None;
-
         for (parent, card_stack, transform) in &query_stacks {
             if action.source_location.unwrap() == card_stack.location
                 && action.source_index == card_stack.index
@@ -453,6 +453,7 @@ fn update_cards_from_action(
             .map(|i| source_children[*i])
             .collect();
 
+        // remove from source_parent, reposition source stack if necessary
         commands
             .entity(source_parent)
             .remove_children(&source_cards);
