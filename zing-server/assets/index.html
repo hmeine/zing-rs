@@ -21,7 +21,7 @@
   <body class="bg-brown-1">
     <div id="q-app">
       <q-layout view="hHh lpR fFf">
-        <q-header elevated class="bg-brown-9 text-white">
+        <q-header elevated class="bg-brown-9 text-white" v-model="header_visible">
           <q-toolbar>
             <q-toolbar-title> Zing </q-toolbar-title>
             <q-space></q-space>
@@ -96,7 +96,7 @@
           </q-page>
 
           <q-page v-else>
-            <canvas id="gamecanvas" class="fit"></canvas>
+            <canvas id="gamecanvas"></canvas>
           </q-page>
         </q-page-container>
       </q-layout>
@@ -116,6 +116,7 @@
         tables: [],
       });
       const current_table = ref("");
+      const header_visible = ref(true);
 
       function list_users(users, row) {
         return users.join(", ");
@@ -268,6 +269,7 @@
       function play(table_info) {
         const table_id = table_info.key;
         current_table.value = table_id;
+        header_visible.value = false;
         setTimeout(start_bevy, 100);
       }
 
@@ -302,6 +304,7 @@
             loginname,
             user_info,
             current_table,
+            header_visible,
             table_info_columns,
             loggedin,
             logoutCaption,
