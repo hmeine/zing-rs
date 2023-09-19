@@ -58,4 +58,14 @@ impl CardSprite {
             .insert(Self(card_state.clone()))
             .id()
     }
+
+    pub fn change_state(
+        card_sprite: &mut Handle<Image>,
+        asset_server: &Res<AssetServer>,
+        card_state: &CardState,
+    )
+    {
+        let png_path = Self::png_path(card_state);
+        *card_sprite = asset_server.load(png_path);
+    }
 }

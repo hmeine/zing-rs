@@ -407,7 +407,7 @@ fn update_cards_from_action(
     mut action_events: EventReader<CardActionEvent>,
     query_stacks: Query<(Entity, &CardStack, &Transform)>,
     query_children: Query<&Children>,
-    mut query_cards: Query<(&CardSprite, &mut Transform), Without<CardStack>>,
+    mut query_cards: Query<(&CardSprite, &mut Handle<Image>, &mut Transform), Without<CardStack>>,
     asset_server: Res<AssetServer>,
 ) {
     for card_action_event in action_events.iter() {
@@ -447,7 +447,7 @@ fn update_cards_from_action(
 
         let source_children: Vec<_> = query_children.iter_descendants(source_parent).collect();
 
-        let mut source_cards: Vec<_> = action
+        let source_cards: Vec<_> = action
             .source_card_indices
             .iter()
             .map(|i| source_children[*i])
@@ -461,41 +461,17 @@ fn update_cards_from_action(
             commands.entity(source_parent).insert(StackRepositioning);
         }
 
-        let mut do_rotation = false;
-        let mut states_and_offsets = Vec::new();
-
         if action.rotation.is_some() {
             for (entity, card_state) in source_cards.iter().zip(&action.resulting_card_states) {
-                let (card, transform) = query_cards.get(*entity).unwrap();
-                states_and_offsets.push((card_state.clone(), transform.translation));
+                let (card, mut sprite, mut transform) = query_cards.get_mut(*entity).unwrap();
                 if card.0.face_up != card_state.face_up {
-                    do_rotation = true;
+                    CardSprite::change_state(&mut sprite, &asset_server, card_state);
                 }
+                transform.translation += stack_offset;
             }
-        }
-
-        if do_rotation {
-            for entity in source_cards {
-                // TODO: we should extend card_sprite::CardSprite to allow for
-                // changing the CardState and the corresponding sprite PNG, so
-                // that we do not have to despawn + spawn just for that...
-                commands.entity(entity).despawn();
-            }
-
-            source_cards = states_and_offsets
-                .iter()
-                .map(|(new_state, old_pos)| {
-                    CardSprite::spawn(
-                        &mut commands,
-                        &asset_server,
-                        new_state,
-                        *old_pos + stack_offset,
-                    )
-                })
-                .collect();
         } else {
             for card in &source_cards {
-                query_cards.get_mut(*card).unwrap().1.translation += stack_offset;
+                query_cards.get_mut(*card).unwrap().2.translation += stack_offset;
             }
         }
 
