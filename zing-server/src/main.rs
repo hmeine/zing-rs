@@ -260,15 +260,15 @@ async fn ws_handler(
     Ok(ws.on_upgrade(move |socket| {
         let sender = NotificationSenderHandle::new(socket);
 
-        add_user_connection(state, login_id.0, table_id, sender)
+        add_user_table_connection(state, login_id.0, table_id, sender)
     }))
 }
 
-async fn add_user_connection(
+async fn add_user_table_connection(
     state: Arc<RwLock<ZingState>>,
     login_id: String,
     table_id: String,
     sender: NotificationSenderHandle,
 ) {
-    ZingState::add_user_connection(state.deref(), login_id, table_id, sender).await
+    ZingState::add_user_table_connection(state.deref(), login_id, table_id, sender).await
 }

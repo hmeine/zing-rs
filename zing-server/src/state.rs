@@ -536,7 +536,7 @@ impl ZingState {
         Ok(true)
     }
 
-    pub async fn add_user_connection(
+    pub async fn add_user_table_connection(
         state: &RwLock<ZingState>,
         login_id: String,
         table_id: String,
