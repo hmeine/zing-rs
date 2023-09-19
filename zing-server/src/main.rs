@@ -54,7 +54,6 @@ async fn main() {
             "/zing_ui_lib_bg.wasm",
             ServeFile::new("zing-ui-lib/pkg/zing_ui_lib_bg.wasm"),
         )
-        .nest_service("/example.html", ServeFile::new("example.html"))
         .nest_service("/assets", ServeDir::new("zing-ui-lib/assets"))
         .with_state(state)
         .layer(CookieManagerLayer::new());
