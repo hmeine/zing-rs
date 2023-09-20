@@ -444,10 +444,10 @@ fn update_cards_from_action(
         // determine translation offset between the source and destination stacks
         let (source_parent, source_transform) = source_parent.unwrap();
         let (target_parent, target_transform) = target_parent.unwrap();
-        let stack_offset = source_transform.translation - target_transform.translation;
+        let source_offset = source_transform.translation - target_transform.translation;
 
+        // pick source card entities from source stack based on action indices
         let source_children: Vec<_> = query_children.iter_descendants(source_parent).collect();
-
         let source_cards: Vec<_> = action
             .source_card_indices
             .iter()
@@ -462,6 +462,7 @@ fn update_cards_from_action(
             commands.entity(source_parent).insert(StackRepositioning);
         }
 
+        // possibly change card state (face up/down rotation)
         if action.rotation.is_some() {
             for (entity, card_state) in source_cards.iter().zip(&action.resulting_card_states) {
                 let (card, mut sprite) = query_sprites.get_mut(*entity).unwrap();
@@ -471,10 +472,13 @@ fn update_cards_from_action(
             }
         }
 
+        // modify transform to reflect old position with new parent
         for card in &source_cards {
-            query_transforms.get_mut(*card).unwrap().translation += stack_offset;
+            let transform = &mut query_transforms.get_mut(*card).unwrap();
+            transform.translation += source_offset;
         }
 
+        // add below target_parent, reposition stack accordingly
         commands
             .entity(target_parent)
             .insert_children(*action.dest_card_indices.first().unwrap(), &source_cards)
@@ -498,18 +502,20 @@ fn reposition_cards_after_action(
         )
         .zip(children)
         {
-            let old_pos = &mut query_transform.get_mut(*card).unwrap().translation;
-            if old_pos.x != pos.x || old_pos.y != pos.y {
+            let old_transform = &mut query_transform.get_mut(*card).unwrap();
+
+            if old_transform.translation.x != pos.x || old_transform.translation.y != pos.y {
                 commands.entity(*card).insert(Animator::new(Tween::new(
                     EaseFunction::QuadraticInOut,
                     Duration::from_millis(ANIMATION_MILLIS),
                     TransformPositionLens {
-                        start: *old_pos,
+                        start: old_transform.translation,
                         end: pos,
                     },
                 )));
             } else {
-                old_pos.z = pos.z;
+                // we do not want to animate pure z changes:
+                old_transform.translation.z = pos.z;
             }
         }
 
