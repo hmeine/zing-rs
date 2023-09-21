@@ -344,7 +344,7 @@ fn get_next_action_after_animation_finished(
 
     match game_logic.get_next_state_change() {
         Some(StateChange::GameStarted(game_state, we_are_player)) => {
-            let table_stack_spread_out = game_state.phase() == GamePhase::Initial;
+            let table_stack_spread_out = game_state.phase() == GamePhase::Prepared;
             initial_state_events.send(InitialGameStateEvent {
                 game_state,
                 we_are_player,
