@@ -508,44 +508,29 @@ fn reposition_cards_after_action(
         {
             let old_transform = &mut query_transform.get_mut(*card).unwrap();
 
-            let mut tweens = Vec::new();
-
-            if old_transform.translation.x != pos.x || old_transform.translation.y != pos.y {
-                tweens.push(Tween::new(
-                    EaseFunction::QuadraticInOut,
-                    Duration::from_millis(ANIMATION_MILLIS),
-                    TransformPositionLens {
-                        start: old_transform.translation,
-                        end: pos,
-                    },
-                ));
+            if old_transform.translation.x != pos.x || old_transform.translation.y != pos.y || ((old_transform.scale.x / target_scale.x) - 1.0).abs() > 0.01 {
+                commands.entity(*card).insert(Animator::new(Tracks::new([
+                    Tween::new(
+                        EaseFunction::QuadraticInOut,
+                        Duration::from_millis(ANIMATION_MILLIS),
+                        TransformPositionLens {
+                            start: old_transform.translation,
+                            end: pos,
+                        },
+                    ),
+                    Tween::new(
+                        EaseFunction::QuadraticInOut,
+                        Duration::from_millis(ANIMATION_MILLIS),
+                        TransformScaleLens {
+                            start: old_transform.scale,
+                            end: target_scale,
+                        },
+                    ),
+                ])));
             } else {
                 // we do not want to animate pure z changes:
                 old_transform.translation.z = pos.z;
             }
-
-            if ((old_transform.scale.x / target_scale.x) - 1.0).abs() > 0.01 {
-                tweens.push(Tween::new(
-                    EaseFunction::QuadraticInOut,
-                    Duration::from_millis(ANIMATION_MILLIS),
-                    TransformScaleLens {
-                        start: old_transform.scale,
-                        end: target_scale,
-                    },
-                ));
-            }
-
-            match tweens.len() {
-                0 => {}
-                1 => {
-                    let tween = tweens.pop().unwrap();
-                    commands.entity(*card).insert(Animator::new(tween));
-                }
-                _ => {
-                    let tracks = Tracks::new(tweens);
-                    commands.entity(*card).insert(Animator::new(tracks));
-                }
-            };
         }
 
         commands.entity(entity).remove::<StackRepositioning>();
