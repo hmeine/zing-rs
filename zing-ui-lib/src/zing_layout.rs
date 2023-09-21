@@ -8,7 +8,7 @@ use bevy_mod_picking::prelude::*;
 use bevy_tweening::lens::{TransformPositionLens, TransformScaleLens};
 use bevy_tweening::{Animator, EaseFunction, Tracks, Tween};
 use zing_game::card_action::CardAction;
-use zing_game::game::GameState;
+use zing_game::game::{GameState, GamePhase};
 use zing_game::zing_game::ZingGame;
 use zing_game::{card_action::CardLocation, game::CardState};
 
@@ -344,10 +344,11 @@ fn get_next_action_after_animation_finished(
 
     match game_logic.get_next_state_change() {
         Some(StateChange::GameStarted(game_state, we_are_player)) => {
+            let table_stack_spread_out = game_state.phase() == GamePhase::Initial;
             initial_state_events.send(InitialGameStateEvent {
                 game_state,
                 we_are_player,
-                table_stack_spread_out: true,
+                table_stack_spread_out,
             })
         }
         Some(StateChange::CardAction(action)) => {
