@@ -78,12 +78,14 @@
                   <q-td :props="props">
                     <div>
                       <q-btn
+                        v-if="props.row.user_names.length == 2"
                         label="Play"
                         icon="play_arrow"
                         @click="play(props)"
                         class="q-mr-sm bg-green-8 text-white"
                       ></q-btn>
                       <q-btn
+                        v-else
                         label="Copy Share Link"
                         icon="content_copy"
                         @click="share(props)"
@@ -130,6 +132,39 @@
         return games.length;
       }
 
+      function format_ordinal(i) {
+          var j = i % 10,
+              k = i % 100;
+          if (j == 1 && k != 11) {
+              return i + "st";
+          }
+          if (j == 2 && k != 12) {
+              return i + "nd";
+          }
+          if (j == 3 && k != 13) {
+              return i + "rd";
+          }
+          return i + "th";
+      }
+
+      function display_state(state, row) {
+        if (row.user_names.length < 2) {
+          return "Waiting for Opponent";
+        }
+        const nth_game = format_ordinal(row.game_results.length + 1);
+        let result = "";
+        if (!state || state == 'Initial') {
+          result = "Ready to Start {nth_game} Game";
+        }
+        else if (state == 'Prepared' || state == 'Finished') {
+          result = state + " {nth_game} Game";
+        }
+        else if (state == 'InGame') {
+          result = "{nth_game} Game in Progress";
+        }
+        return result.replace('{nth_game}', nth_game);
+      }
+
       const table_info_columns = [
         {
           name: "created_at",
@@ -146,11 +181,11 @@
           format: list_users,
         },
         {
-          name: "games",
-          field: "game_results",
-          label: "#Games:",
-          align: "right",
-          format: count_games,
+          name: "state",
+          field: "game",
+          label: "State:",
+          align: "left",
+          format: display_state,
         },
         { name: "id", field: "id" },
       ];

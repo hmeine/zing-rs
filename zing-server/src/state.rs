@@ -9,7 +9,7 @@ use std::{
 use tracing::{debug, info};
 use zing_game::{
     client_notification::ClientNotification,
-    game::GameState,
+    game::{GameState, GamePhase},
     zing_game::{ZingGame, ZingGamePoints},
 };
 
@@ -75,6 +75,7 @@ pub struct TableInfo {
     created_at: DateTime<Utc>,
     user_names: Vec<String>,
     game_results: Vec<ZingGamePoints>,
+    game: Option<GamePhase>,
 }
 
 fn serialize_datetime_as_iso8601<S>(
@@ -275,6 +276,7 @@ impl ZingState {
             created_at: table.created_at,
             user_names: table.players.iter().map(|user| user.name.clone()).collect(),
             game_results: table.game_results.clone(),
+            game: table.game.as_ref().map(|game| game.state().phase()),
         }
     }
 
