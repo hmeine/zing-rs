@@ -515,7 +515,8 @@ fn reposition_cards_after_action(
                         EaseFunction::QuadraticInOut,
                         Duration::from_millis(ANIMATION_MILLIS),
                         TransformPositionLens {
-                            start: old_transform.translation,
+                            // ensure animated cards never "fly through" stacks, but are on top:
+                            start: old_transform.translation + Vec3::Z * 100.0,
                             end: pos,
                         },
                     ),
