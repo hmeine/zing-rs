@@ -5,8 +5,8 @@ use crate::constants::*;
 use crate::game_logic::{GameLogic, StateChange, TasksRuntime};
 use bevy::{prelude::*, render::camera::ScalingMode};
 use bevy_mod_picking::prelude::*;
-use bevy_tweening::lens::TransformPositionLens;
-use bevy_tweening::{Animator, EaseFunction, Tween};
+use bevy_tweening::lens::{TransformPositionLens, TransformScaleLens};
+use bevy_tweening::{Animator, EaseFunction, Tracks, Tween};
 use zing_game::card_action::CardAction;
 use zing_game::game::GameState;
 use zing_game::zing_game::ZingGame;
@@ -445,6 +445,7 @@ fn update_cards_from_action(
         let (source_parent, source_transform) = source_parent.unwrap();
         let (target_parent, target_transform) = target_parent.unwrap();
         let source_offset = source_transform.translation - target_transform.translation;
+        let source_scale = source_transform.scale / target_transform.scale;
 
         // pick source card entities from source stack based on action indices
         let source_children: Vec<_> = query_children.iter_descendants(source_parent).collect();
@@ -476,6 +477,7 @@ fn update_cards_from_action(
         for card in &source_cards {
             let transform = &mut query_transforms.get_mut(*card).unwrap();
             transform.translation += source_offset;
+            transform.scale *= source_scale;
         }
 
         // add below target_parent, reposition stack accordingly
@@ -494,6 +496,8 @@ fn reposition_cards_after_action(
     query_stacks: Query<(Entity, &Children, &CardStack), With<StackRepositioning>>,
     mut query_transform: Query<&mut Transform>,
 ) {
+    let target_scale = CardSprite::default_scale();
+
     for (entity, children, stack) in &query_stacks {
         for (pos, card) in card_offsets_for_stack(
             stack.card_states(layout_state.displayed_state.as_ref().unwrap()),
@@ -504,19 +508,44 @@ fn reposition_cards_after_action(
         {
             let old_transform = &mut query_transform.get_mut(*card).unwrap();
 
+            let mut tweens = Vec::new();
+
             if old_transform.translation.x != pos.x || old_transform.translation.y != pos.y {
-                commands.entity(*card).insert(Animator::new(Tween::new(
+                tweens.push(Tween::new(
                     EaseFunction::QuadraticInOut,
                     Duration::from_millis(ANIMATION_MILLIS),
                     TransformPositionLens {
                         start: old_transform.translation,
                         end: pos,
                     },
-                )));
+                ));
             } else {
                 // we do not want to animate pure z changes:
                 old_transform.translation.z = pos.z;
             }
+
+            if ((old_transform.scale.x / target_scale.x) - 1.0).abs() > 0.01 {
+                tweens.push(Tween::new(
+                    EaseFunction::QuadraticInOut,
+                    Duration::from_millis(ANIMATION_MILLIS),
+                    TransformScaleLens {
+                        start: old_transform.scale,
+                        end: target_scale,
+                    },
+                ));
+            }
+
+            match tweens.len() {
+                0 => {}
+                1 => {
+                    let tween = tweens.pop().unwrap();
+                    commands.entity(*card).insert(Animator::new(tween));
+                }
+                _ => {
+                    let tracks = Tracks::new(tweens);
+                    commands.entity(*card).insert(Animator::new(tracks));
+                }
+            };
         }
 
         commands.entity(entity).remove::<StackRepositioning>();

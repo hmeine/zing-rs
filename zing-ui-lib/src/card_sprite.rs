@@ -35,6 +35,11 @@ impl CardSprite {
         format!("vector_cards_3.2/{}.png", basename)
     }
 
+    pub fn default_scale() -> Vec3 {
+        let scale = CARD_HEIGHT / 559.;
+        Vec3::new(scale, scale, 1.0)
+    }
+
     pub fn spawn(
         commands: &mut Commands,
         asset_server: &Res<AssetServer>,
@@ -43,14 +48,13 @@ impl CardSprite {
     ) -> Entity {
         let png_path = Self::png_path(card_state);
         let png = asset_server.load(png_path);
-        let scale = CARD_HEIGHT / 559.;
 
         commands
             .spawn(SpriteBundle {
                 texture: png,
                 transform: Transform {
                     translation,
-                    scale: Vec3::new(scale, scale, 1.0),
+                    scale: Self::default_scale(),
                     ..Default::default()
                 },
                 ..Default::default()
