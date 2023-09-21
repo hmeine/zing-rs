@@ -121,6 +121,21 @@
       const header_visible = ref(true);
 
       function list_users(users, row) {
+        let scores = [0, 0];
+        for (const game_result of row.game_results) {
+          for (const point_type in game_result) {
+            const points = game_result[point_type];
+            for (const i in points) {
+              scores[i] += points[i];
+            }
+          }
+        }
+        if (row.game_results.length > 0) {
+          const users_with_scores = users.map(function (user, i) {
+            return user + " (" + scores[i] + ")";
+          })
+          return users_with_scores.join(", ");
+        }
         return users.join(", ");
       }
 
