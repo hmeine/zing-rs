@@ -5259,7 +5259,6 @@ dependencies = [
  "tokio",
  "tokio-tungstenite",
  "tracing",
- "tracing-wasm",
  "tungstenite",
  "wasm-bindgen",
  "wasm-bindgen-futures",
