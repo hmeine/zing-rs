@@ -2,7 +2,7 @@
 
 ## Origin
 
-This game obviously comes from Montenegro, but seems to be relatively unknown there as well. "Zing" is pronounced "sing".
+This game obviously comes from Montenegro, but seems to be relatively unknown there as well. "Zing" is pronounced like the end of "amazing".
 
 ## Deck and Players
 
