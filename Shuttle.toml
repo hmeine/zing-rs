@@ -1,4 +1,6 @@
 name = "zing"
+
 assets = [
-  "zing-ui-lib/pkg",
+  "zing-ui-lib/pkg/zing_ui_lib.js",
+  "zing-ui-lib/pkg/zing_ui_lib_bg.wasm",
 ]
