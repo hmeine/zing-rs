@@ -4,7 +4,7 @@ use clap::Parser;
 struct Cli {
     login_id: String,
     table_id: String,
-    #[arg(default_value = "http://localhost:3000")]
+    #[arg(default_value = "http://localhost:8000")]
     base_url: String,
 }
 
