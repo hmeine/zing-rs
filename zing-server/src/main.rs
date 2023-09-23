@@ -21,6 +21,7 @@ use tracing::info;
 use ws_notifications::NotificationSenderHandle;
 use zing_game::game::GameState;
 
+mod client_connection;
 mod game_error;
 mod state;
 mod user;

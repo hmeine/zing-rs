@@ -13,26 +13,15 @@ use zing_game::{
     zing_game::{ZingGame, ZingGamePoints},
 };
 
-use crate::{game_error::GameError, ws_notifications::NotificationSenderHandle, user::User};
-
-type TableNotification = (String, String, NotificationSenderHandle);
-type TableNotifications = Vec<TableNotification>;
+use crate::{
+    client_connection::{ClientConnection, SerializedNotification, SerializedNotifications},
+    game_error::GameError,
+    user::User,
+    ws_notifications::NotificationSenderHandle,
+};
 
 fn random_id() -> String {
     Alphanumeric.sample_string(&mut rand::thread_rng(), 16)
-}
-
-struct ClientConnection {
-    connection_id: String,
-    player: Arc<User>,
-    sender: NotificationSenderHandle,
-    actions_sent: RwLock<usize>,
-}
-
-impl ClientConnection {
-    pub fn notification(&self, msg: String) -> TableNotification {
-        (self.connection_id.clone(), msg, self.sender.clone())
-    }
 }
 
 pub struct Table {
@@ -93,7 +82,7 @@ impl Table {
         Ok(())
     }
 
-    fn game_status_notification(&self, c: &ClientConnection) -> TableNotification {
+    fn game_status_notification(&self, c: &ClientConnection) -> SerializedNotification {
         c.notification(
             serde_json::to_string(&ClientNotification::GameStatus(
                 self.game_status(&c.player.login_id)
@@ -104,7 +93,7 @@ impl Table {
         )
     }
 
-    pub fn initial_game_status_messages(&self) -> TableNotifications {
+    pub fn initial_game_status_messages(&self) -> SerializedNotifications {
         self.connections
             .iter()
             .map(|c| self.game_status_notification(c))
@@ -121,7 +110,7 @@ impl Table {
         }
     }
 
-    pub fn action_notifications(&self) -> TableNotifications {
+    pub fn action_notifications(&self) -> SerializedNotifications {
         let history = self
             .game
             .as_ref()
@@ -179,7 +168,7 @@ impl Table {
         &mut self,
         user: Arc<User>,
         connection: NotificationSenderHandle,
-    ) -> Option<TableNotification> {
+    ) -> Option<SerializedNotification> {
         self.connections.push(ClientConnection {
             connection_id: random_id(),
             player: user,
@@ -430,7 +419,7 @@ impl ZingState {
     }
 
     pub async fn send_notifications(
-        notifications: TableNotifications,
+        notifications: SerializedNotifications,
         state: &RwLock<ZingState>,
         table_id: &str,
     ) {
