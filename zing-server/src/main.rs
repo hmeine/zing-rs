@@ -14,20 +14,20 @@ use axum::{
 use cookie::SameSite;
 use game_error::GameError;
 use serde::Deserialize;
-use state::ZingState;
 use tower_cookies::{Cookie, CookieManagerLayer, Cookies};
 use tower_http::services::{ServeDir, ServeFile};
 use tracing::info;
 use ws_notifications::NotificationSenderHandle;
 use zing_game::game::GameState;
+use zing_state::ZingState;
 
 mod client_connection;
 mod game_error;
-mod state;
 mod table;
 mod user;
 mod util;
 mod ws_notifications;
+mod zing_state;
 
 #[shuttle_runtime::main]
 async fn axum() -> shuttle_axum::ShuttleAxum {
