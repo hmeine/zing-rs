@@ -85,9 +85,9 @@ impl Table {
     fn game_status_notification(&self, c: &ClientConnection) -> SerializedNotification {
         c.notification(
             serde_json::to_string(&ClientNotification::GameStatus(
-                self.game_status(&c.player.login_id)
+                self.game_status(&c.user.login_id)
                     .expect("game should be started, so must have valid state"),
-                self.user_index(&c.player.login_id).unwrap(),
+                self.user_index(&c.user.login_id).unwrap(),
             ))
             .unwrap(),
         )
@@ -123,7 +123,7 @@ impl Table {
             .filter_map(|c| {
                 let known_actions = *c.actions_sent.read().expect("unexpected concurrency");
                 if current_actions > known_actions {
-                    let player_index = self.user_index(&c.player.login_id).unwrap();
+                    let player_index = self.user_index(&c.user.login_id).unwrap();
                     *c.actions_sent.write().expect("unexpected concurrency") = current_actions;
                     Some(
                         c.notification(
@@ -167,14 +167,10 @@ impl Table {
     pub fn connection_opened(
         &mut self,
         user: Arc<User>,
-        connection: NotificationSenderHandle,
+        sender: NotificationSenderHandle,
     ) -> Option<SerializedNotification> {
-        self.connections.push(ClientConnection {
-            connection_id: random_id(),
-            player: user,
-            sender: connection,
-            actions_sent: RwLock::new(0),
-        });
+        self.connections
+            .push(ClientConnection::new(random_id(), user, sender));
         self.game.as_ref().map(|_game| {
             let new_conn = self.connections.last().unwrap();
             *new_conn.actions_sent.write().unwrap() = _game.history().len();
