@@ -304,7 +304,7 @@
             window.location.host +
             "/table/" +
             table_info.id +
-            "/game/ws"
+            "/ws"
         );
         ws.addEventListener("message", (event) => {
           var message = JSON.parse(event.data);

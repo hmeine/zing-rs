@@ -40,7 +40,7 @@ async fn axum() -> shuttle_axum::ShuttleAxum {
             post(start_game).get(game_status).delete(finish_game),
         )
         .route("/table/:table_id/game/play", post(play_card))
-        .route("/table/:table_id/game/ws", get(ws_handler)) // /game/ws or just /ws?
+        .route("/table/:table_id/ws", get(table_ws_handler))
         .nest_service(
             "/zing_ui_lib.js",
             ServeFile::new("zing-ui-lib/pkg/zing_ui_lib.js"),
@@ -238,7 +238,7 @@ async fn play_card(
     .await
 }
 
-async fn ws_handler(
+async fn table_ws_handler(
     login_id: LoginID,
     Path(table_id): Path<String>,
     State(state): State<Arc<RwLock<ZingState>>>,

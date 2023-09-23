@@ -105,7 +105,7 @@ impl GameLogic {
         let play_uri = format!("{}/table/{}/game/play", base_url, table_id);
 
         let ws_uri = format!(
-            "{}/table/{}/game/ws",
+            "{}/table/{}/ws",
             base_url.replace("http", "ws"),
             table_id
         )
@@ -131,7 +131,7 @@ impl GameLogic {
         let play_uri = format!("{}/table/{}/game/play", base_url, table_id);
 
         let ws_uri = format!(
-            "{}/table/{}/game/ws",
+            "{}/table/{}/ws",
             base_url.replace("http", "ws"),
             table_id
         );
