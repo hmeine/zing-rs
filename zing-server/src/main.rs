@@ -23,6 +23,7 @@ use zing_game::game::GameState;
 
 mod game_error;
 mod state;
+mod user;
 mod ws_notifications;
 
 #[shuttle_runtime::main]

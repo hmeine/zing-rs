@@ -13,20 +13,13 @@ use zing_game::{
     zing_game::{ZingGame, ZingGamePoints},
 };
 
-use crate::{game_error::GameError, ws_notifications::NotificationSenderHandle};
+use crate::{game_error::GameError, ws_notifications::NotificationSenderHandle, user::User};
 
 type TableNotification = (String, String, NotificationSenderHandle);
 type TableNotifications = Vec<TableNotification>;
 
 fn random_id() -> String {
     Alphanumeric.sample_string(&mut rand::thread_rng(), 16)
-}
-
-pub struct User {
-    login_id: String,
-    name: String,
-    logged_in: RwLock<bool>,
-    tables: RwLock<Vec<String>>,
 }
 
 struct ClientConnection {
