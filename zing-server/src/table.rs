@@ -9,7 +9,9 @@ use zing_game::{
 };
 
 use crate::{
-    client_connection::{ClientConnection, SerializedNotification, SerializedNotifications},
+    client_connection::{
+        ClientConnection, ClientConnections, SerializedNotification, SerializedNotifications,
+    },
     game_error::GameError,
     user::User,
     ws_notifications::NotificationSenderHandle,
@@ -18,7 +20,7 @@ use crate::{
 pub struct Table {
     pub created_at: DateTime<Utc>,
     pub players: Vec<Arc<User>>,
-    pub connections: Vec<ClientConnection>,
+    pub connections: ClientConnections,
     pub game_results: Vec<ZingGamePoints>,
     pub game: Option<ZingGame>,
 }
@@ -49,7 +51,7 @@ impl Table {
         Self {
             created_at: Utc::now(),
             players: vec![user],
-            connections: Vec::new(),
+            connections: ClientConnections::new(),
             game_results: Vec::new(),
             game: None,
         }
@@ -164,20 +166,12 @@ impl Table {
         user: Arc<User>,
         sender: NotificationSenderHandle,
     ) -> Option<SerializedNotification> {
-        self.connections.push(ClientConnection::new(user, sender));
+        self.connections.add(user, sender);
         self.game.as_ref().map(|_game| {
+            // add() cannot return this, because its self is mutable
             let new_conn = self.connections.last().unwrap();
             *new_conn.actions_sent.write().unwrap() = _game.history().len();
             self.game_status_notification(new_conn)
         })
-    }
-
-    pub fn connection_closed(&mut self, connection_id: String) {
-        for (i, c) in self.connections.iter().enumerate() {
-            if c.connection_id == connection_id {
-                self.connections.remove(i);
-                break;
-            }
-        }
     }
 }

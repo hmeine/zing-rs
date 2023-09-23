@@ -178,7 +178,7 @@ impl ZingState {
 
         // TODO: remove table if all remaining users are logged out
         table.players.remove(user_index_in_table);
-        table.connections.remove(user_index_in_table);
+        table.connections.remove_user(&user.login_id);
         if table.players.is_empty() {
             self.tables.remove(table_id);
         }
@@ -259,7 +259,7 @@ impl ZingState {
             let mut state = state.write().unwrap();
             let table = state.tables.get_mut(table_id).unwrap();
             for connection_id in broken_connections {
-                table.connection_closed(connection_id);
+                table.connections.remove(connection_id);
             }
         }
     }

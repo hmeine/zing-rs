@@ -37,3 +37,38 @@ impl ClientConnection {
         self.serialized_notification(serde_json::to_string(client_notification).unwrap())
     }
 }
+
+pub struct ClientConnections(
+    Vec<ClientConnection>
+);
+
+impl ClientConnections {
+    pub fn new() -> Self {
+        Self(Vec::new())
+    }
+
+    pub fn iter(&self) -> std::slice::Iter<'_, ClientConnection> {
+        self.0.iter()
+    }
+
+    pub fn add(&mut self, user: Arc<User>, sender: NotificationSenderHandle) {
+        self.0.push(ClientConnection::new(user, sender));
+    }
+
+    pub fn last(&self) -> std::option::Option<&'_ ClientConnection> {
+        self.0.last()
+    }
+
+    pub fn remove(&mut self, connection_id: String) {
+        for (i, c) in self.iter().enumerate() {
+            if c.connection_id == connection_id {
+                self.0.remove(i);
+                break;
+            }
+        }
+    }
+
+    pub fn remove_user(&mut self, login_id: &str) {
+        self.0.retain(|c| c.user.login_id != login_id);
+    }
+}
