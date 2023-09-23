@@ -1,4 +1,4 @@
-use axum::{http, response::IntoResponse, Json};
+use axum::Json;
 use chrono::prelude::*;
 use rand::distributions::{Alphanumeric, DistString};
 use serde::{Serialize, Serializer};
@@ -9,29 +9,11 @@ use std::{
 use tracing::{debug, info};
 use zing_game::{
     client_notification::ClientNotification,
-    game::{GameState, GamePhase},
+    game::{GamePhase, GameState},
     zing_game::{ZingGame, ZingGamePoints},
 };
 
-use crate::ws_notifications::NotificationSenderHandle;
-
-pub enum GameError {
-    Unauthorized(&'static str),
-    NotFound(&'static str),
-    BadRequest(&'static str),
-    Conflict(&'static str),
-}
-
-impl IntoResponse for GameError {
-    fn into_response(self) -> axum::response::Response {
-        match self {
-            GameError::Unauthorized(msg) => (http::StatusCode::UNAUTHORIZED, msg).into_response(),
-            GameError::NotFound(msg) => (http::StatusCode::NOT_FOUND, msg).into_response(),
-            GameError::BadRequest(msg) => (http::StatusCode::BAD_REQUEST, msg).into_response(),
-            GameError::Conflict(msg) => (http::StatusCode::CONFLICT, msg).into_response(),
-        }
-    }
-}
+use crate::{game_error::GameError, ws_notifications::NotificationSenderHandle};
 
 type TableNotification = (String, String, NotificationSenderHandle);
 type TableNotifications = Vec<TableNotification>;
@@ -296,11 +278,11 @@ impl ZingState {
             game_results: Vec::new(),
             game: None,
         };
-        let result = self.table_info(&table_id, &table);
+        let table_info = self.table_info(&table_id, &table);
 
         self.tables.insert(table_id, table);
 
-        Ok(Json(result))
+        Ok(Json(table_info))
     }
 
     pub fn list_tables(&self, login_id: &str) -> Result<Json<Vec<TableInfo>>, GameError> {

@@ -12,14 +12,16 @@ use axum::{
     Json, Router,
 };
 use cookie::SameSite;
+use game_error::GameError;
 use serde::Deserialize;
-use state::{GameError, ZingState};
+use state::ZingState;
 use tower_cookies::{Cookie, CookieManagerLayer, Cookies};
 use tower_http::services::{ServeDir, ServeFile};
 use tracing::info;
 use ws_notifications::NotificationSenderHandle;
 use zing_game::game::GameState;
 
+mod game_error;
 mod state;
 mod ws_notifications;
 
