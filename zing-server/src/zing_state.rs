@@ -221,13 +221,12 @@ impl ZingState {
         Self::send_notifications(notifications, state, table_id).await;
 
         // finally, perform first dealer card actions
-        let notifications;
-        {
-            let mut state = state.write().unwrap();
-            let table = state.tables.get_mut(table_id).unwrap();
+        let notifications = {
+            let mut self_ = state.write().unwrap();
+            let table = self_.tables.get_mut(table_id).unwrap();
             table.setup_game()?;
-            notifications = table.action_notifications();
-        }
+            table.action_notifications()
+        };
 
         // send notifications about dealer actions
         Self::send_notifications(notifications, state, table_id).await;
