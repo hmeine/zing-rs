@@ -242,15 +242,15 @@ impl ZingState {
     ) {
         // send notifications (async, we don't want to hold the state locked)
         let mut broken_connections = Vec::new();
-        for (connection_id, msg, connection) in notifications {
+        for notification in notifications {
             debug!(
                 "sending notification to {} ({})",
-                &connection_id,
-                &msg[..30]
+                &notification.connection_id,
+                &notification.msg[..30]
             );
-            if connection.send(msg).await.is_err() {
+            if notification.send().await.is_err() {
                 info!("removing broken client connection");
-                broken_connections.push(connection_id);
+                broken_connections.push(notification.connection_id);
             };
         }
 

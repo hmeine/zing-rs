@@ -4,7 +4,18 @@ use zing_game::client_notification::ClientNotification;
 
 use crate::{user::User, util::random_id, ws_notifications::NotificationSenderHandle};
 
-pub type SerializedNotification = (String, String, NotificationSenderHandle);
+pub struct SerializedNotification {
+    pub connection_id: String,
+    pub msg: String,
+    sender: NotificationSenderHandle,
+}
+
+impl SerializedNotification {
+    pub async fn send(&self) -> Result<(), &'static str> {
+        self.sender.send(self.msg.clone()).await
+    }
+}
+
 pub type SerializedNotifications = Vec<SerializedNotification>;
 
 pub struct ClientConnection {
@@ -27,7 +38,11 @@ impl ClientConnection {
 
 impl ClientConnection {
     pub fn serialized_notification(&self, msg: String) -> SerializedNotification {
-        (self.connection_id.clone(), msg, self.sender.clone())
+        SerializedNotification {
+            connection_id: self.connection_id.clone(),
+            msg,
+            sender: self.sender.clone(),
+        }
     }
 
     pub fn client_notification(
@@ -38,9 +53,7 @@ impl ClientConnection {
     }
 }
 
-pub struct ClientConnections(
-    Vec<ClientConnection>
-);
+pub struct ClientConnections(Vec<ClientConnection>);
 
 impl ClientConnections {
     pub fn new() -> Self {
