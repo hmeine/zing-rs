@@ -24,7 +24,9 @@ use zing_game::game::GameState;
 mod client_connection;
 mod game_error;
 mod state;
+mod table;
 mod user;
+mod util;
 mod ws_notifications;
 
 #[shuttle_runtime::main]

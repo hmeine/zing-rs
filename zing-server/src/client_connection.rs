@@ -1,6 +1,8 @@
 use std::sync::{Arc, RwLock};
 
-use crate::{ws_notifications::NotificationSenderHandle, user::User};
+use zing_game::client_notification::ClientNotification;
+
+use crate::{user::User, util::random_id, ws_notifications::NotificationSenderHandle};
 
 pub type SerializedNotification = (String, String, NotificationSenderHandle);
 pub type SerializedNotifications = Vec<SerializedNotification>;
@@ -13,9 +15,9 @@ pub struct ClientConnection {
 }
 
 impl ClientConnection {
-    pub fn new(connection_id: String, user: Arc<User>, sender: NotificationSenderHandle) -> Self {
+    pub fn new(user: Arc<User>, sender: NotificationSenderHandle) -> Self {
         Self {
-            connection_id,
+            connection_id: random_id(),
             user,
             sender,
             actions_sent: RwLock::new(0),
@@ -24,7 +26,14 @@ impl ClientConnection {
 }
 
 impl ClientConnection {
-    pub fn notification(&self, msg: String) -> SerializedNotification {
+    pub fn serialized_notification(&self, msg: String) -> SerializedNotification {
         (self.connection_id.clone(), msg, self.sender.clone())
+    }
+
+    pub fn client_notification(
+        &self,
+        client_notification: &ClientNotification,
+    ) -> SerializedNotification {
+        self.serialized_notification(serde_json::to_string(client_notification).unwrap())
     }
 }
