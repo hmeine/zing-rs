@@ -437,11 +437,13 @@ impl ZingState {
             };
         }
 
-        // lock the state again to remove broken connections:
-        let mut state = state.write().unwrap();
-        let table = state.tables.get_mut(table_id).unwrap();
-        for connection_id in broken_connections {
-            table.connection_closed(connection_id);
+        if !broken_connections.is_empty() {
+            // lock the state again to remove broken connections:
+            let mut state = state.write().unwrap();
+            let table = state.tables.get_mut(table_id).unwrap();
+            for connection_id in broken_connections {
+                table.connection_closed(connection_id);
+            }
         }
     }
 
