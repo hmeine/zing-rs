@@ -11,7 +11,8 @@ use zing_game::{
 use crate::{
     client_connection::{ClientConnection, SerializedNotification, SerializedNotifications},
     game_error::GameError,
-    user::User, ws_notifications::NotificationSenderHandle,
+    user::User,
+    ws_notifications::NotificationSenderHandle,
 };
 
 pub struct Table {
@@ -163,8 +164,7 @@ impl Table {
         user: Arc<User>,
         sender: NotificationSenderHandle,
     ) -> Option<SerializedNotification> {
-        self.connections
-            .push(ClientConnection::new(user, sender));
+        self.connections.push(ClientConnection::new(user, sender));
         self.game.as_ref().map(|_game| {
             let new_conn = self.connections.last().unwrap();
             *new_conn.actions_sent.write().unwrap() = _game.history().len();

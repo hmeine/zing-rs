@@ -1,14 +1,18 @@
 use axum::Json;
-use zing_game::game::GameState;
 use std::{
     collections::HashMap,
     sync::{Arc, RwLock},
 };
 use tracing::{debug, info};
+use zing_game::game::GameState;
 
 use crate::{
-    client_connection::SerializedNotifications, game_error::GameError, user::User,
-    ws_notifications::NotificationSenderHandle, table::{Table, TableInfo}, util::random_id,
+    client_connection::SerializedNotifications,
+    game_error::GameError,
+    table::{Table, TableInfo},
+    user::User,
+    util::random_id,
+    ws_notifications::NotificationSenderHandle,
 };
 
 #[derive(Default)]
