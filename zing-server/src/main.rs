@@ -186,8 +186,7 @@ async fn join_table(
     Path(table_id): Path<String>,
     State(state): State<Arc<RwLock<ZingState>>>,
 ) -> Result<impl IntoResponse, GameError> {
-    let mut state = state.write().unwrap();
-    state.join_table(&login_id.0, &table_id)
+    ZingState::join_table(state.deref(), &login_id.0, &table_id).await
 }
 
 async fn leave_table(

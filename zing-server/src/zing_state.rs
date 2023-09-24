@@ -112,41 +112,59 @@ impl ZingState {
         Ok(Json(result))
     }
 
-    pub fn join_table(
-        &mut self,
+    pub async fn join_table(
+        state: &RwLock<ZingState>,
         login_id: &str,
         table_id: &str,
     ) -> Result<Json<TableInfo>, GameError> {
-        let user = self.get_user(login_id)?;
-        let table_id = table_id.to_owned();
-        if user
-            .tables
-            .read()
-            .expect("unexpected concurrency")
-            .contains(&table_id)
-        {
-            return Err(GameError::Conflict("trying to join table again"));
-        }
+        let (notifications, result) = {
+            let mut self_ = state.write().unwrap();
 
-        let table = self
-            .tables
-            .get_mut(&table_id)
-            .ok_or(GameError::NotFound("table id not found"))?;
+            let user = self_.get_user(login_id)?;
+            let table_id = table_id.to_owned();
+            if user
+                .tables
+                .read()
+                .expect("unexpected concurrency")
+                .contains(&table_id)
+            {
+                return Err(GameError::Conflict("trying to join table again"));
+            }
 
-        if table.games_have_started() {
-            return Err(GameError::Conflict(
-                "cannot join a table after games have started",
-            ));
-        }
+            let table = self_
+                .tables
+                .get_mut(&table_id)
+                .ok_or(GameError::NotFound("table id not found"))?;
 
-        user.tables
-            .write()
-            .expect("unexpected concurrency")
-            .push(table_id.clone());
-        table.players.push(user);
+            if table.games_have_started() {
+                return Err(GameError::Conflict(
+                    "cannot join a table after games have started",
+                ));
+            }
 
-        let table = self.tables.get(&table_id).unwrap();
-        let result = self.table_info(&table_id, table);
+            user.tables
+                .write()
+                .expect("unexpected concurrency")
+                .push(table_id.clone());
+            table.players.push(user);
+
+            let table = self_.tables.get(&table_id).unwrap();
+            let result = self_.table_info(&table_id, table);
+
+            let notifications: SerializedNotifications = self_
+                .connections
+                .iter()
+                .filter_map(|c| {
+                    table
+                        .user_index(&c.user.login_id)
+                        .map(|_| c.serialized_notification(serde_json::to_string(&result).unwrap()))
+                })
+                .collect();
+
+            (notifications, result)
+        };
+
+        Self::send_notifications(notifications, state, None).await;
 
         Ok(Json(result))
     }
