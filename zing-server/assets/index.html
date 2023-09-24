@@ -323,6 +323,12 @@
 
       async function start_bevy() {
         const table_id = current_table.value;
+
+        const info = user_info.tables.find((row) => row.id == table_id);
+        if (info.game == "Finished") {
+          await axios.delete("/table/" + table_id + "/game");
+        }
+
         try {
           start_remote_game(
             "not_needed",
