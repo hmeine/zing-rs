@@ -295,7 +295,13 @@
       }
 
       function open_ws_connection(table_info) {
-        let ws = new WebSocket("ws://" + window.location.host + "/ws");
+        let ws = new WebSocket(
+          // decide about ws:// or wss://
+          window.location.protocol.replace("http", "ws") +
+            "//" +
+            window.location.host +
+            "/ws"
+        );
         ws.addEventListener("message", (event) => {
           const table_info = JSON.parse(event.data);
           const i = user_info.tables.findIndex(
