@@ -7,7 +7,7 @@ use tracing::{debug, info};
 use zing_game::game::GameState;
 
 use crate::{
-    client_connection::SerializedNotifications,
+    client_connection::{ClientConnections, SerializedNotifications},
     game_error::GameError,
     table::{Table, TableInfo},
     user::User,
@@ -19,6 +19,7 @@ use crate::{
 pub struct ZingState {
     users: HashMap<String, Arc<User>>,
     tables: HashMap<String, Table>,
+    connections: ClientConnections,
 }
 
 impl ZingState {
@@ -170,6 +171,7 @@ impl ZingState {
 
         if table.games_have_started() {
             return Err(GameError::Conflict(
+                // TODO: or should we allow this? it's less destructive than logging out.
                 "cannot leave a table after games have started",
             ));
         }
@@ -320,6 +322,17 @@ impl ZingState {
         Ok(true)
     }
 
+    pub async fn add_user_global_connection(
+        state: &RwLock<ZingState>,
+        login_id: String,
+        sender: NotificationSenderHandle,
+    ) {
+        let mut self_ = state.write().unwrap();
+        let _err = self_.get_user(&login_id).map(|user| {
+            self_.connections.add(user, sender);
+        });
+    }
+
     pub async fn add_user_table_connection(
         state: &RwLock<ZingState>,
         login_id: String,
@@ -330,11 +343,9 @@ impl ZingState {
         {
             let mut self_ = state.write().unwrap();
 
-            // it would be nice if we could socket.close() if the following expression is false:
-            self_.get_user(&login_id).map_or(false, |user| {
-                self_.tables.get_mut(&table_id).map_or(false, |table| {
+            let _err = self_.get_user(&login_id).map(|user| {
+                self_.tables.get_mut(&table_id).map(|table| {
                     notification = table.connection_opened(user, sender);
-                    true
                 })
             });
         }

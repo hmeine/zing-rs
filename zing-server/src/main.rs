@@ -37,6 +37,7 @@ async fn axum() -> shuttle_axum::ShuttleAxum {
         .route("/", get(index))
         .route("/login", post(login).get(whoami).delete(logout))
         .route("/table", post(create_table).get(list_tables))
+        .route("/ws", get(global_ws_handler))
         .route(
             "/table/:table_id",
             post(join_table).get(get_table).delete(leave_table),
@@ -242,6 +243,31 @@ async fn play_card(
         game_action.card_index,
     )
     .await
+}
+
+async fn global_ws_handler(
+    login_id: LoginID,
+    State(state): State<Arc<RwLock<ZingState>>>,
+    ws: WebSocketUpgrade,
+) -> Result<impl IntoResponse, GameError> {
+    state
+        .read()
+        .unwrap()
+        .get_user(&login_id.0)?;
+
+    Ok(ws.on_upgrade(move |socket| {
+        let sender = NotificationSenderHandle::new(socket);
+
+        add_user_global_connection(state, login_id.0, sender)
+    }))
+}
+
+async fn add_user_global_connection(
+    state: Arc<RwLock<ZingState>>,
+    login_id: String,
+    sender: NotificationSenderHandle,
+) {
+    ZingState::add_user_global_connection(state.deref(), login_id, sender).await
 }
 
 async fn table_ws_handler(

@@ -53,6 +53,7 @@ impl ClientConnection {
     }
 }
 
+#[derive(Default)]
 pub struct ClientConnections(Vec<ClientConnection>);
 
 impl ClientConnections {
