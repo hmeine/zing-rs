@@ -220,7 +220,7 @@ impl ZingState {
         };
 
         // send initial card notifications
-        Self::send_notifications(notifications, state, table_id).await;
+        Self::send_notifications(notifications, state, Some(table_id)).await;
 
         // finally, perform first dealer card actions
         let notifications = {
@@ -231,7 +231,7 @@ impl ZingState {
         };
 
         // send notifications about dealer actions
-        Self::send_notifications(notifications, state, table_id).await;
+        Self::send_notifications(notifications, state, Some(table_id)).await;
 
         Ok(())
     }
@@ -239,13 +239,13 @@ impl ZingState {
     pub async fn send_notifications(
         notifications: SerializedNotifications,
         state: &RwLock<ZingState>,
-        table_id: &str,
+        table_id: Option<&str>,
     ) {
         // send notifications (async, we don't want to hold the state locked)
         let mut broken_connections = Vec::new();
         for notification in notifications {
             debug!(
-                "sending notification to {} ({})",
+                "notifying connection {} ({})",
                 &notification.connection_id,
                 &notification.msg[..30]
             );
@@ -258,9 +258,15 @@ impl ZingState {
         if !broken_connections.is_empty() {
             // lock the state again to remove broken connections:
             let mut state = state.write().unwrap();
-            let table = state.tables.get_mut(table_id).unwrap();
-            for connection_id in broken_connections {
-                table.connections.remove(connection_id);
+            if let Some(table_id) = table_id {
+                let table = state.tables.get_mut(table_id).unwrap();
+                for connection_id in broken_connections {
+                    table.connections.remove(connection_id);
+                }
+            } else {
+                for connection_id in broken_connections {
+                    state.connections.remove(connection_id);
+                }
             }
         }
     }
@@ -352,7 +358,7 @@ impl ZingState {
 
         if let Some(notification) = notification {
             // send current state to newly connected user
-            Self::send_notifications(vec![notification], state, &table_id).await;
+            Self::send_notifications(vec![notification], state, Some(&table_id)).await;
         }
     }
 
@@ -392,7 +398,7 @@ impl ZingState {
         }
 
         // send notifications about performed actions
-        Self::send_notifications(notifications, state, table_id).await;
+        Self::send_notifications(notifications, state, Some(table_id)).await;
 
         result
     }
