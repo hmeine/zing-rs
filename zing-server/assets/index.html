@@ -21,7 +21,11 @@
   <body class="bg-brown-1">
     <div id="q-app">
       <q-layout view="hHh lpR fFf">
-        <q-header elevated class="bg-brown-9 text-white" v-model="header_visible">
+        <q-header
+          elevated
+          class="bg-brown-9 text-white"
+          v-model="header_visible"
+        >
           <q-toolbar>
             <q-toolbar-title> Zing </q-toolbar-title>
             <q-space></q-space>
@@ -116,6 +120,7 @@
       const user_info = reactive({
         name: "",
         tables: [],
+        ws: null,
       });
       const current_table = ref("");
       const header_visible = ref(true);
@@ -133,7 +138,7 @@
         if (row.game_results.length > 0) {
           const users_with_scores = users.map(function (user, i) {
             return user + " (" + scores[i] + ")";
-          })
+          });
           return users_with_scores.join(", ");
         }
         return users.join(", ");
@@ -148,18 +153,18 @@
       }
 
       function format_ordinal(i) {
-          var j = i % 10,
-              k = i % 100;
-          if (j == 1 && k != 11) {
-              return i + "st";
-          }
-          if (j == 2 && k != 12) {
-              return i + "nd";
-          }
-          if (j == 3 && k != 13) {
-              return i + "rd";
-          }
-          return i + "th";
+        var j = i % 10,
+          k = i % 100;
+        if (j == 1 && k != 11) {
+          return i + "st";
+        }
+        if (j == 2 && k != 12) {
+          return i + "nd";
+        }
+        if (j == 3 && k != 13) {
+          return i + "rd";
+        }
+        return i + "th";
       }
 
       function display_state(state, row) {
@@ -168,16 +173,14 @@
         }
         const nth_game = format_ordinal(row.game_results.length + 1);
         let result = "";
-        if (!state || state == 'Initial') {
+        if (!state || state == "Initial") {
           result = "Ready to Start {nth_game} Game";
-        }
-        else if (state == 'Prepared' || state == 'Finished') {
+        } else if (state == "Prepared" || state == "Finished") {
           result = state + " {nth_game} Game";
-        }
-        else if (state == 'InGame') {
+        } else if (state == "InGame") {
           result = "{nth_game} Game in Progress";
         }
-        return result.replace('{nth_game}', nth_game);
+        return result.replace("{nth_game}", nth_game);
       }
 
       const table_info_columns = [
@@ -221,6 +224,7 @@
           .then(function (response) {
             user_info.name = loginname.value;
             query_tables();
+            open_ws_connection();
             maybe_join_table();
           })
           .catch(function (error) {
@@ -233,6 +237,7 @@
           .delete("/login")
           .then(function (response) {
             user_info.name = "";
+            user_info.ws = null;
           })
           .catch(function (error) {
             if (error.response.status == 401) {
@@ -249,7 +254,6 @@
           .post("/table")
           .then(function (response) {
             user_info.tables.unshift(response.data);
-            open_table_connection(user_info.tables[0]);
           })
           .catch(function (error) {
             console.log("CAUGHT ERROR:", error);
@@ -276,13 +280,12 @@
       }
 
       function maybe_join_table() {
-        var join = new URLSearchParams(window.location.search).get("join");
+        const join = new URLSearchParams(window.location.search).get("join");
         if (join) {
           return axios
             .post("/table/" + join)
             .then(function (response) {
               user_info.tables.unshift(response.data);
-              open_table_connection(user_info.tables[0]);
             })
             .catch(function (error) {
               // 404 is expected if table ID is invalid
@@ -298,22 +301,25 @@
         }
       }
 
-      function open_table_connection(table_info) {
-        var ws = new WebSocket(
-          "ws://" +
-            window.location.host +
-            "/table/" +
-            table_info.id +
-            "/ws"
-        );
+      function open_ws_connection(table_info) {
+        let ws = new WebSocket("ws://" + window.location.host + "/ws");
         ws.addEventListener("message", (event) => {
-          var message = JSON.parse(event.data);
-          console.log("Message from server ", message);
+          let table_info = JSON.parse(event.data);
+          for (let i in user_info.tables) {
+            if (user_info.tables[i].id == table_info.id) {
+              user_info.tables.splice(i, 1, table_info);
+              table_info = null;
+              break;
+            }
+          }
+          if (table_info) {
+            user_info.tables.unshift(table_info);
+          }
         });
         ws.addEventListener("close", (event) => {
           console.log("Server connection closed");
         });
-        table_info.ws = ws;
+        user_info.ws = ws;
       }
 
       function play(table_info) {
@@ -326,7 +332,11 @@
       function start_bevy() {
         const table_id = current_table.value;
         try {
-          start_remote_game("not_needed", table_id, window.location.protocol + "//" + window.location.host);
+          start_remote_game(
+            "not_needed",
+            table_id,
+            window.location.protocol + "//" + window.location.host
+          );
         } catch (error) {
           console.log("ERROR from start_remote_game(): " + error);
           // TODO: winit yields the following, but I wonder if this is a good way to deal with it:
@@ -375,6 +385,7 @@
               user_info.name = response.data;
               loginname.value = response.data;
               query_tables();
+              open_ws_connection();
               maybe_join_table();
             })
             .catch(function (error) {
