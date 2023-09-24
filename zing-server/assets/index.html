@@ -304,16 +304,12 @@
       function open_ws_connection(table_info) {
         let ws = new WebSocket("ws://" + window.location.host + "/ws");
         ws.addEventListener("message", (event) => {
-          let table_info = JSON.parse(event.data);
-          for (let i in user_info.tables) {
-            if (user_info.tables[i].id == table_info.id) {
-              user_info.tables.splice(i, 1, table_info);
-              table_info = null;
-              break;
-            }
-          }
-          if (table_info) {
+          const table_info = JSON.parse(event.data);
+          const i = user_info.tables.findIndex(row => row.id == table_info.id);
+          if (i == undefined) {
             user_info.tables.unshift(table_info);
+          } else {
+            user_info.tables.splice(i, 1, table_info);
           }
         });
         ws.addEventListener("close", (event) => {
