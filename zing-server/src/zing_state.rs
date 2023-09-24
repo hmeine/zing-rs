@@ -42,8 +42,24 @@ impl ZingState {
             .remove_entry(login_id)
             .ok_or(GameError::Unauthorized("user not found (bad id cookie)"))
             .map(|(_, user)| {
+                // mark user as logged out
                 *user.logged_in.write().expect("unexpected concurrency") = false;
-                // TODO: remove table if all users have left or logged out
+
+                // close websocket connections
+                self.connections.remove_user(login_id);
+                for table in self.tables.values_mut() {
+                    table.connections.remove_user(login_id);
+                }
+                
+                // remove table if all users have logged out
+                self.tables.retain(|_table_id, table| {
+                    for user in &table.players {
+                        if *user.logged_in.read().expect("unexpected concurrency") {
+                            return true;
+                        }
+                    }
+                    false
+                })
             })
     }
 
