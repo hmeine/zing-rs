@@ -216,60 +216,55 @@
         return "Logout '" + user_info.name + "'";
       });
 
-      function login() {
-        return axios
-          .post("/login", {
+      async function login() {
+        try {
+          await axios.post("/login", {
             name: loginname.value,
-          })
-          .then(function (response) {
-            user_info.name = loginname.value;
-            query_tables();
-            open_ws_connection();
-            maybe_join_table();
-          })
-          .catch(function (error) {
-            console.log("CAUGHT ERROR:", error);
           });
+          user_info.name = loginname.value;
+          await query_tables();
+          open_ws_connection();
+          maybe_join_table();
+        } catch (error) {
+          console.log("CAUGHT ERROR:", error);
+        }
       }
 
-      function logout() {
-        return axios
-          .delete("/login")
-          .then(function (response) {
+      async function logout() {
+        try {
+          await axios.delete("/login");
+
+          user_info.name = "";
+          self.user_info.tables.splice(0);
+          user_info.ws = null;
+        } catch (error) {
+          if (error.response.status == 401) {
+            // illegal login cookie -> just clear user name
             user_info.name = "";
-            user_info.ws = null;
-          })
-          .catch(function (error) {
-            if (error.response.status == 401) {
-              // illegal login cookie -> just clear user name
-              user_info.name = "";
-            } else {
-              console.log("CAUGHT ERROR:", error);
-            }
-          });
+          } else {
+            console.log("CAUGHT ERROR:", error);
+          }
+        }
       }
 
-      function create_table() {
-        return axios
-          .post("/table")
-          .then(function (response) {
-            user_info.tables.unshift(response.data);
-          })
-          .catch(function (error) {
-            console.log("CAUGHT ERROR:", error);
-          });
+      async function create_table() {
+        try {
+          const response = await axios.post("/table");
+          user_info.tables.unshift(response.data);
+        } catch (error) {
+          console.log("CAUGHT ERROR:", error);
+        }
       }
 
       // TODO: we should maybe do this reactively?
-      function query_tables() {
-        axios
-          .get("/table")
-          .then(function (response) {
-            user_info.tables = response.data.reverse();
-          })
-          .catch(function (error) {
-            console.log("CAUGHT ERROR:", error);
-          });
+      async function query_tables() {
+        try {
+          const response = await axios.get("/table");
+
+          user_info.tables = response.data.reverse();
+        } catch (error) {
+          console.log("CAUGHT ERROR:", error);
+        }
       }
 
       function share(cell_props) {
@@ -279,25 +274,23 @@
         this.$q.notify("Share link copied to clipboard.");
       }
 
-      function maybe_join_table() {
+      async function maybe_join_table() {
         const join = new URLSearchParams(window.location.search).get("join");
         if (join) {
-          return axios
-            .post("/table/" + join)
-            .then(function (response) {
-              user_info.tables.unshift(response.data);
-            })
-            .catch(function (error) {
-              // 404 is expected if table ID is invalid
-              // 409 Conflict is expected if table is already joined
-              if (error.response.status == 404) {
-                Quasar.Notify.create(
-                  "Invalid table ID, cannot join – ask sender for valid share link!"
-                );
-              } else if (error.response.status != 409) {
-                console.log("CAUGHT ERROR:", error);
-              }
-            });
+          try {
+            const response = await axios.post("/table/" + join);
+            user_info.tables.unshift(response.data);
+          } catch (error) {
+            // 404 is expected if table ID is invalid
+            // 409 Conflict is expected if table is already joined
+            if (error.response.status == 404) {
+              Quasar.Notify.create(
+                "Invalid table ID, cannot join – ask sender for valid share link!"
+              );
+            } else if (error.response.status != 409) {
+              console.log("CAUGHT ERROR:", error);
+            }
+          }
         }
       }
 
@@ -305,7 +298,9 @@
         let ws = new WebSocket("ws://" + window.location.host + "/ws");
         ws.addEventListener("message", (event) => {
           const table_info = JSON.parse(event.data);
-          const i = user_info.tables.findIndex(row => row.id == table_info.id);
+          const i = user_info.tables.findIndex(
+            (row) => row.id == table_info.id
+          );
           if (i == undefined) {
             user_info.tables.unshift(table_info);
           } else {
@@ -314,6 +309,7 @@
         });
         ws.addEventListener("close", (event) => {
           console.log("Server connection closed");
+          user_info.ws = null;
         });
         user_info.ws = ws;
       }
@@ -325,7 +321,7 @@
         setTimeout(start_bevy, 100);
       }
 
-      function start_bevy() {
+      async function start_bevy() {
         const table_id = current_table.value;
         try {
           start_remote_game(
@@ -339,18 +335,19 @@
           // Using exceptions for control flow, don't mind me. This isn't actually an error!
         }
 
-        setTimeout(() => {
-          axios
-            .post("/table/" + table_id + "/game")
-            .then(function (response) {
-              // TODO: update status?
-            })
-            .catch(function (error) {
+        setTimeout(async () => {
+          const info = user_info.tables.find((row) => row.id == table_id);
+
+          if (!info.game) {
+            try {
+              await axios.post("/table/" + table_id + "/game");
+            } catch (error) {
               // game may have been started already
               if (error.response.status != 409) {
                 console.log("CAUGHT ERROR:", error);
               }
-            });
+            }
+          }
         }, 2000);
       }
 
@@ -375,21 +372,19 @@
         },
 
         async mounted() {
-          axios
-            .get("/login")
-            .then(function (response) {
-              user_info.name = response.data;
-              loginname.value = response.data;
-              query_tables();
-              open_ws_connection();
-              maybe_join_table();
-            })
-            .catch(function (error) {
-              // we do not have to log "not logged in" errors
-              if (error.response.status != 401) {
-                console.log("CAUGHT ERROR:", error);
-              }
-            });
+          try {
+            const response = await axios.get("/login");
+            user_info.name = response.data;
+            loginname.value = response.data;
+            await query_tables();
+            open_ws_connection();
+            maybe_join_table();
+          } catch (error) {
+            // we do not have to log "not logged in" errors
+            if (error.response.status != 401) {
+              console.log("CAUGHT ERROR:", error);
+            }
+          }
 
           await init();
         },
