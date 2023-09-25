@@ -5,10 +5,9 @@ use crate::constants::*;
 use crate::game_logic::{GameLogic, StateChange, TasksRuntime};
 use bevy::{prelude::*, render::camera::ScalingMode};
 use bevy_mod_picking::prelude::*;
-use bevy_tweening::lens::{TransformPositionLens, TransformScaleLens};
-use bevy_tweening::{Animator, EaseFunction, Tracks, Tween};
+use bevy_tweening::{Animator, EaseFunction, Lens, Tween};
 use zing_game::card_action::CardAction;
-use zing_game::game::{GameState, GamePhase};
+use zing_game::game::{GamePhase, GameState};
 use zing_game::zing_game::ZingGame;
 use zing_game::{card_action::CardLocation, game::CardState};
 
@@ -491,6 +490,27 @@ fn update_cards_from_action(
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct TransformPositionScaleLens {
+    /// Start value of the translation.
+    pub start_position: Vec3,
+    /// End value of the translation.
+    pub end_position: Vec3,
+    /// Start value of the scale.
+    pub start_scale: Vec3,
+    /// End value of the scale.
+    pub end_scale: Vec3,
+}
+
+impl Lens<Transform> for TransformPositionScaleLens {
+    fn lerp(&mut self, target: &mut Transform, ratio: f32) {
+        let value = self.start_position + (self.end_position - self.start_position) * ratio;
+        target.translation = value;
+        let value = self.start_scale + (self.end_scale - self.start_scale) * ratio;
+        target.scale = value;
+    }
+}
+
 fn reposition_cards_after_action(
     mut commands: Commands,
     layout_state: Res<LayoutState>,
@@ -509,26 +529,24 @@ fn reposition_cards_after_action(
         {
             let old_transform = &mut query_transform.get_mut(*card).unwrap();
 
-            if old_transform.translation.x != pos.x || old_transform.translation.y != pos.y || ((old_transform.scale.x / target_scale.x) - 1.0).abs() > 0.01 {
-                commands.entity(*card).insert(Animator::new(Tracks::new([
+            if old_transform.translation.x != pos.x
+                || old_transform.translation.y != pos.y
+                || ((old_transform.scale.x / target_scale.x) - 1.0).abs() > 0.01
+            {
+                // TODO: some cards "fly through" stacks, but should be on top
+                // (others must not get a large Z value, though)
+                commands.entity(*card).insert(Animator::new(
                     Tween::new(
                         EaseFunction::QuadraticInOut,
                         Duration::from_millis(ANIMATION_MILLIS),
-                        TransformPositionLens {
-                            // ensure animated cards never "fly through" stacks, but are on top:
-                            start: old_transform.translation + Vec3::Z * 100.0,
-                            end: pos,
+                        TransformPositionScaleLens {
+                            start_position: old_transform.translation,
+                            end_position: pos,
+                            start_scale: old_transform.scale,
+                            end_scale: target_scale,
                         },
                     ),
-                    Tween::new(
-                        EaseFunction::QuadraticInOut,
-                        Duration::from_millis(ANIMATION_MILLIS),
-                        TransformScaleLens {
-                            start: old_transform.scale,
-                            end: target_scale,
-                        },
-                    ),
-                ])));
+                ));
             } else {
                 // we do not want to animate pure z changes:
                 old_transform.translation.z = pos.z;
