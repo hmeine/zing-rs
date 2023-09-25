@@ -4,7 +4,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 use tracing::{debug, info};
-use zing_game::game::{GameState, GamePhase};
+use zing_game::game::{GamePhase, GameState};
 
 use crate::{
     client_connection::{ClientConnections, SerializedNotifications},
@@ -128,17 +128,24 @@ impl ZingState {
         Ok(Json(result))
     }
 
-    fn table_notifications(&self, table_id: &str, table: &Table) -> SerializedNotifications {
-        let result = self.table_info(table_id, table);
+    async fn send_table_notifications(state: &RwLock<ZingState>, table_id: &str) {
+        let notifications = {
+            let self_ = state.read().unwrap();
+            let table = self_.tables.get(table_id).unwrap();
+            let result = self_.table_info(table_id, table);
 
-        self.connections
-            .iter()
-            .filter_map(|c| {
-                table
-                    .user_index(&c.user.login_id)
-                    .map(|_| c.serialized_notification(serde_json::to_string(&result).unwrap()))
-            })
-            .collect()
+            self_
+                .connections
+                .iter()
+                .filter_map(|c| {
+                    table
+                        .user_index(&c.user.login_id)
+                        .map(|_| c.serialized_notification(serde_json::to_string(&result).unwrap()))
+                })
+                .collect()
+        };
+
+        Self::send_notifications(notifications, state, None).await;
     }
 
     pub async fn join_table(
@@ -146,7 +153,7 @@ impl ZingState {
         login_id: &str,
         table_id: &str,
     ) -> Result<Json<TableInfo>, GameError> {
-        let (notifications, result) = {
+        let result = {
             let mut self_ = state.write().unwrap();
 
             let user = self_.get_user(login_id)?;
@@ -180,12 +187,10 @@ impl ZingState {
             let table = self_.tables.get(&table_id).unwrap();
             let result = self_.table_info(&table_id, table);
 
-            let notifications = self_.table_notifications(&table_id, table);
-
-            (notifications, result)
+            result
         };
 
-        Self::send_notifications(notifications, state, None).await;
+        Self::send_table_notifications(state, table_id).await;
 
         Ok(Json(result))
     }
@@ -333,19 +338,33 @@ impl ZingState {
             })
     }
 
-    pub fn finish_game(&mut self, login_id: &str, table_id: &str) -> Result<(), GameError> {
-        self.get_user(login_id)?;
+    pub async fn finish_game(
+        state: &RwLock<ZingState>,
+        login_id: &str,
+        table_id: &str,
+    ) -> Result<(), GameError> {
+        let result = {
+            let mut self_ = state.write().unwrap();
 
-        let table = self
-            .tables
-            .get_mut(table_id)
-            .ok_or(GameError::NotFound("table id not found"))?;
+            self_.get_user(login_id)?;
 
-        table.user_index(login_id).ok_or(GameError::NotFound(
-            "user has not joined table at which game should be finished",
-        ))?;
+            let table = self_
+                .tables
+                .get_mut(table_id)
+                .ok_or(GameError::NotFound("table id not found"))?;
 
-        table.finish_game()
+            table.user_index(login_id).ok_or(GameError::NotFound(
+                "user has not joined table at which game should be finished",
+            ))?;
+
+            table.finish_game()
+        };
+
+        if result.is_ok() {
+            Self::send_table_notifications(state, table_id).await;
+        }
+
+        result
     }
 
     pub fn check_user_can_connect(
@@ -408,10 +427,9 @@ impl ZingState {
         card_index: usize,
     ) -> Result<(), GameError> {
         let table_notifications;
-        let mut global_notifications = SerializedNotifications::new();
         let result;
 
-        {
+        let phase_changed = {
             let mut self_ = state.write().unwrap();
 
             self_.get_user(login_id)?;
@@ -447,16 +465,16 @@ impl ZingState {
             let game = table.game.as_ref().unwrap();
             let new_phase = game.state().phase();
 
-            if new_phase != old_phase {
-                global_notifications = self_.table_notifications(&table_id, table);
-            }
-
             table_notifications = table.action_notifications();
-        }
+
+            new_phase != old_phase
+        };
 
         // send notifications about performed actions
         Self::send_notifications(table_notifications, state, Some(table_id)).await;
-        Self::send_notifications(global_notifications, state, None).await;
+        if phase_changed {
+            Self::send_table_notifications(state, table_id).await;
+        }
 
         result
     }

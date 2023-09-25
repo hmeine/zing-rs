@@ -220,8 +220,7 @@ async fn finish_game(
     Path(table_id): Path<String>,
     State(state): State<Arc<RwLock<ZingState>>>,
 ) -> Result<(), GameError> {
-    let mut state = state.write().unwrap();
-    state.finish_game(&login_id.0, &table_id)
+    ZingState::finish_game(state.deref(), &login_id.0, &table_id).await
 }
 
 #[derive(Deserialize)]
