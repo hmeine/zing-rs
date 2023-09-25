@@ -277,6 +277,8 @@ impl ZingState {
         // send notifications about dealer actions
         Self::send_notifications(notifications, state, Some(table_id)).await;
 
+        Self::send_table_notifications(state, table_id).await;
+
         Ok(())
     }
 
