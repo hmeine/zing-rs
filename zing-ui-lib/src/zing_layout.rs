@@ -227,13 +227,12 @@ fn setup_card_stacks(mut commands: Commands, layout_state: Res<LayoutState>) {
         1, // "table"
     );
 
+    const WINNING_STACK_X: f32 =
+        PLAYING_CENTER_X + FULL_HAND_WIDTH * OWN_CARD_ZOOM / 2. + CARD_WIDTH / 2.;
+
     CardStack::spawn(
         &mut commands,
-        Vec3::new(
-            PLAYING_CENTER_X + FULL_HAND_WIDTH * OWN_CARD_ZOOM / 2. + SCORE_STACK_SPACING,
-            opposite_hand_pos_y,
-            0.,
-        ),
+        Vec3::new(WINNING_STACK_X, opposite_hand_pos_y, 0.),
         Vec3::new(0., -VERTICAL_PEEPING, 0.),
         Vec3::ZERO,
         Vec3::ONE,
@@ -243,11 +242,7 @@ fn setup_card_stacks(mut commands: Commands, layout_state: Res<LayoutState>) {
 
     CardStack::spawn(
         &mut commands,
-        Vec3::new(
-            PLAYING_CENTER_X + FULL_HAND_WIDTH * OWN_CARD_ZOOM / 2. + SCORE_STACK_SPACING,
-            own_hand_pos_y,
-            0.,
-        ),
+        Vec3::new(WINNING_STACK_X, own_hand_pos_y, 0.),
         Vec3::new(0., VERTICAL_PEEPING, 0.),
         Vec3::ZERO,
         Vec3::ONE,
@@ -255,10 +250,12 @@ fn setup_card_stacks(mut commands: Commands, layout_state: Res<LayoutState>) {
         2 + we_are_player % 2, // own winning stack
     );
 
+    const SCORING_STACK_X: f32 = WINNING_STACK_X - SCORE_STACK_SPACING - CARD_WIDTH;
+
     CardStack::spawn(
         &mut commands,
         Vec3::new(
-            PLAYING_CENTER_X + FULL_HAND_WIDTH * OWN_CARD_ZOOM / 2.,
+            SCORING_STACK_X,
             opposite_hand_pos_y - 2. * VERTICAL_PEEPING,
             0.,
         ),
@@ -271,11 +268,7 @@ fn setup_card_stacks(mut commands: Commands, layout_state: Res<LayoutState>) {
 
     CardStack::spawn(
         &mut commands,
-        Vec3::new(
-            PLAYING_CENTER_X + FULL_HAND_WIDTH * OWN_CARD_ZOOM / 2.,
-            own_hand_pos_y,
-            0.,
-        ),
+        Vec3::new(SCORING_STACK_X, own_hand_pos_y, 0.),
         Vec3::new(-SCORE_PEEPING, 0., 0.),
         Vec3::new(0., VERTICAL_PEEPING, 0.),
         Vec3::ONE,
@@ -535,18 +528,16 @@ fn reposition_cards_after_action(
             {
                 // TODO: some cards "fly through" stacks, but should be on top
                 // (others must not get a large Z value, though)
-                commands.entity(*card).insert(Animator::new(
-                    Tween::new(
-                        EaseFunction::QuadraticInOut,
-                        Duration::from_millis(ANIMATION_MILLIS),
-                        TransformPositionScaleLens {
-                            start_position: old_transform.translation,
-                            end_position: pos,
-                            start_scale: old_transform.scale,
-                            end_scale: target_scale,
-                        },
-                    ),
-                ));
+                commands.entity(*card).insert(Animator::new(Tween::new(
+                    EaseFunction::QuadraticInOut,
+                    Duration::from_millis(ANIMATION_MILLIS),
+                    TransformPositionScaleLens {
+                        start_position: old_transform.translation,
+                        end_position: pos,
+                        start_scale: old_transform.scale,
+                        end_scale: target_scale,
+                    },
+                )));
             } else {
                 // we do not want to animate pure z changes:
                 old_transform.translation.z = pos.z;
