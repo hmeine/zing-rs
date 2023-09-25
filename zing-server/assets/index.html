@@ -171,7 +171,13 @@
         if (row.user_names.length < 2) {
           return "Waiting for Opponent";
         }
-        const nth_game = format_ordinal(row.game_results.length + 1);
+
+        let games_count = row.game_results.length;
+        if (state != "Finished") {
+          games_count += 1;
+        }
+        const nth_game = format_ordinal(games_count);
+
         let result = "";
         if (!state || state == "Initial") {
           result = "Ready to Start {nth_game} Game";

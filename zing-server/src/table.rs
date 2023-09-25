@@ -156,7 +156,6 @@ impl Table {
         if !game.finished() {
             return Err(GameError::Conflict("game still running"));
         }
-        self.game_results.push(game.points());
         self.game = None;
         Ok(())
     }

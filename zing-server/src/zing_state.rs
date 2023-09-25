@@ -4,7 +4,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 use tracing::{debug, info};
-use zing_game::game::GameState;
+use zing_game::game::{GameState, GamePhase};
 
 use crate::{
     client_connection::{ClientConnections, SerializedNotifications},
@@ -50,7 +50,7 @@ impl ZingState {
                 for table in self.tables.values_mut() {
                     table.connections.remove_user(login_id);
                 }
-                
+
                 // remove table if all users have logged out
                 self.tables.retain(|_table_id, table| {
                     for user in &table.players {
@@ -128,6 +128,19 @@ impl ZingState {
         Ok(Json(result))
     }
 
+    fn table_notifications(&self, table_id: &str, table: &Table) -> SerializedNotifications {
+        let result = self.table_info(table_id, table);
+
+        self.connections
+            .iter()
+            .filter_map(|c| {
+                table
+                    .user_index(&c.user.login_id)
+                    .map(|_| c.serialized_notification(serde_json::to_string(&result).unwrap()))
+            })
+            .collect()
+    }
+
     pub async fn join_table(
         state: &RwLock<ZingState>,
         login_id: &str,
@@ -167,15 +180,7 @@ impl ZingState {
             let table = self_.tables.get(&table_id).unwrap();
             let result = self_.table_info(&table_id, table);
 
-            let notifications: SerializedNotifications = self_
-                .connections
-                .iter()
-                .filter_map(|c| {
-                    table
-                        .user_index(&c.user.login_id)
-                        .map(|_| c.serialized_notification(serde_json::to_string(&result).unwrap()))
-                })
-                .collect();
+            let notifications = self_.table_notifications(&table_id, table);
 
             (notifications, result)
         };
@@ -402,7 +407,8 @@ impl ZingState {
         table_id: &str,
         card_index: usize,
     ) -> Result<(), GameError> {
-        let notifications;
+        let table_notifications;
+        let mut global_notifications = SerializedNotifications::new();
         let result;
 
         {
@@ -424,15 +430,33 @@ impl ZingState {
                 .as_mut()
                 .ok_or(GameError::Conflict("game not started yet"))?;
 
+            let old_phase = game.state().phase;
+
             result = game
                 .play_card(player, card_index)
                 .map_err(GameError::Conflict);
 
-            notifications = table.action_notifications();
+            if result.is_ok() && game.state().phase == GamePhase::Finished {
+                table.game_results.push(game.points());
+            }
+
+            drop(self_);
+
+            let self_ = state.read().unwrap();
+            let table = self_.tables.get(table_id).unwrap();
+            let game = table.game.as_ref().unwrap();
+            let new_phase = game.state().phase();
+
+            if new_phase != old_phase {
+                global_notifications = self_.table_notifications(&table_id, table);
+            }
+
+            table_notifications = table.action_notifications();
         }
 
         // send notifications about performed actions
-        Self::send_notifications(notifications, state, Some(table_id)).await;
+        Self::send_notifications(table_notifications, state, Some(table_id)).await;
+        Self::send_notifications(global_notifications, state, None).await;
 
         result
     }
