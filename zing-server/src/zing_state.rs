@@ -74,16 +74,6 @@ impl ZingState {
         self.users.get(login_id).map(|user| user.name.clone())
     }
 
-    pub fn table_info(&self, id: &str, table: &Table) -> TableInfo {
-        TableInfo {
-            id: id.to_owned(),
-            created_at: table.created_at,
-            user_names: table.players.iter().map(|user| user.name.clone()).collect(),
-            game_results: table.game_results.clone(),
-            game: table.game.as_ref().map(|game| game.state().phase()),
-        }
-    }
-
     pub fn create_table(&mut self, login_id: &str) -> Result<Json<TableInfo>, GameError> {
         let table_id = random_id();
 
@@ -94,7 +84,7 @@ impl ZingState {
             .push(table_id.clone());
 
         let table = Table::new(user);
-        let table_info = self.table_info(&table_id, &table);
+        let table_info = table.table_info(&table_id);
 
         self.tables.insert(table_id, table);
 
@@ -109,7 +99,7 @@ impl ZingState {
             .read()
             .expect("unexpected concurrency")
             .iter()
-            .map(|table_id| self.table_info(table_id, self.tables.get(table_id).unwrap()))
+            .map(|table_id| self.tables.get(table_id).unwrap().table_info(table_id))
             .collect::<Vec<_>>();
 
         Ok(Json(table_infos))
@@ -123,7 +113,7 @@ impl ZingState {
             .get(table_id)
             .ok_or(GameError::NotFound("table id not found"))?;
 
-        let result = self.table_info(table_id, table);
+        let result = table.table_info(table_id);
 
         Ok(Json(result))
     }
@@ -132,7 +122,7 @@ impl ZingState {
         let notifications = {
             let self_ = state.read().unwrap();
             let table = self_.tables.get(table_id).unwrap();
-            let result = self_.table_info(table_id, table);
+            let result = table.table_info(table_id);
 
             self_
                 .connections
@@ -185,7 +175,7 @@ impl ZingState {
             table.players.push(user);
 
             let table = self_.tables.get(&table_id).unwrap();
-            let result = self_.table_info(&table_id, table);
+            let result = table.table_info(&table_id);
 
             result
         };

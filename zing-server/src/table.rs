@@ -18,7 +18,7 @@ use crate::{
 };
 
 pub struct Table {
-    pub created_at: DateTime<Utc>,
+    created_at: DateTime<Utc>,
     pub players: Vec<Arc<User>>,
     pub connections: ClientConnections,
     pub game_results: Vec<ZingGamePoints>,
@@ -54,6 +54,16 @@ impl Table {
             connections: ClientConnections::new(),
             game_results: Vec::new(),
             game: None,
+        }
+    }
+
+    pub fn table_info(&self, id: &str) -> TableInfo {
+        TableInfo {
+            id: id.to_owned(),
+            created_at: self.created_at,
+            user_names: self.players.iter().map(|user| user.name.clone()).collect(),
+            game_results: self.game_results.clone(),
+            game: self.game.as_ref().map(|game| game.state().phase()),
         }
     }
 
