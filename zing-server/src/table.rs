@@ -19,7 +19,7 @@ use crate::{
 
 pub struct Table {
     created_at: DateTime<Utc>,
-    pub players: Vec<Arc<User>>,
+    players: Vec<Arc<User>>,
     pub connections: ClientConnections,
     pub game_results: Vec<ZingGamePoints>,
     pub game: Option<ZingGame>,
@@ -71,10 +71,31 @@ impl Table {
         self.game.is_some() || !self.game_results.is_empty()
     }
 
+    pub fn has_logged_in_users(&self) -> bool {
+        for user in &self.players {
+            if *user.logged_in.read().expect("unexpected concurrency") {
+                return true;
+            }
+        }
+        false
+    }
+
     pub fn user_index(&self, login_id: &str) -> Option<usize> {
         self.players
             .iter()
             .position(|player| player.login_id == login_id)
+    }
+
+    pub fn user_joined(&mut self, user: Arc<User>) {
+        self.players.push(user);
+    }
+
+    pub fn user_left(&mut self, login_id: &str) {
+        let user_index_in_table = self
+            .user_index(login_id)
+            .expect("user_left() requires user to be present");
+        self.players.remove(user_index_in_table);
+        self.connections.remove_user(login_id);
     }
 
     pub fn start_game(&mut self) -> Result<(), GameError> {

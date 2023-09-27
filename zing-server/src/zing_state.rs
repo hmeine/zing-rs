@@ -52,14 +52,8 @@ impl ZingState {
                 }
 
                 // remove table if all users have logged out
-                self.tables.retain(|_table_id, table| {
-                    for user in &table.players {
-                        if *user.logged_in.read().expect("unexpected concurrency") {
-                            return true;
-                        }
-                    }
-                    false
-                })
+                self.tables
+                    .retain(|_table_id, table| table.has_logged_in_users())
             })
     }
 
@@ -172,7 +166,7 @@ impl ZingState {
                 .write()
                 .expect("unexpected concurrency")
                 .push(table_id.clone());
-            table.players.push(user);
+            table.user_joined(user);
 
             let table = self_.tables.get(&table_id).unwrap();
             let result = table.table_info(&table_id);
@@ -210,12 +204,8 @@ impl ZingState {
             ));
         }
 
-        let user_index_in_table = table.user_index(login_id).expect("inconsistent state");
-
-        // TODO: remove table if all remaining users are logged out
-        table.players.remove(user_index_in_table);
-        table.connections.remove_user(&user.login_id);
-        if table.players.is_empty() {
+        table.user_left(login_id);
+        if !table.has_logged_in_users() {
             self.tables.remove(table_id);
         }
         user.tables
