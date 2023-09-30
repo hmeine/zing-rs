@@ -18,6 +18,7 @@ pub struct LayoutState {
     /// We need to know the index of the player to be displayed in front ("ourselves")
     pub we_are_player: usize,
     /// Timer suppressing interactions during active animations
+    /// (FIXME: should be a bevy app state, probably!)
     pub step_animation_timer: Timer,
     /// During the game, only the topmost card put to the table is visible, but
     /// initially, they are dealt spread out
@@ -607,6 +608,9 @@ pub fn card_clicked(
 fn zoom_on_hover(
     mut interaction_query: Query<&mut Transform, (Added<ZoomedOnHover>, With<CardSprite>)>,
 ) {
+    // if !layout_state.step_animation_timer.finished() {
+    //     return;
+    // }
     for mut transform in &mut interaction_query {
         transform.scale *= HOVER_ZOOM;
     }
@@ -616,6 +620,9 @@ fn unzoom_after_hover(
     mut transform_query: Query<&mut Transform>,
     mut cards: RemovedComponents<ZoomedOnHover>,
 ) {
+    // if !layout_state.step_animation_timer.finished() {
+    //     return;
+    // }
     for id in cards.iter() {
         if let Ok(mut transform) = transform_query.get_mut(id) {
             transform.scale /= HOVER_ZOOM;
