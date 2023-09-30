@@ -10,6 +10,9 @@ mod game_logic;
 mod zing_layout;
 mod debug;
 
+// The login_id is actually unused in wasm builds (because the .wasm re-uses the
+// browser cookies), but I don't know how to elegantly handle that here (so I
+// just pass some random string from JS for now).
 #[cfg_attr(target_family = "wasm", wasm_bindgen)]
 pub fn start_remote_game(login_id: String, table_id: String, base_url: String) {
     App::new()

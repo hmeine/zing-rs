@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use axum::{
     extract::{FromRequestParts, Path, State, WebSocketUpgrade},
     http::{self, request::Parts},
-    response::{Html, IntoResponse},
+    response::IntoResponse,
     routing::{get, post},
     Json, Router,
 };
@@ -34,7 +34,7 @@ async fn axum() -> shuttle_axum::ShuttleAxum {
     let state = Arc::new(RwLock::new(ZingState::default()));
 
     let app = Router::new()
-        .route("/", get(index))
+        .nest_service("/", ServeFile::new("zing-server/assets/index.html"))
         .route("/login", post(login).get(whoami).delete(logout))
         .route("/table", post(create_table).get(list_tables))
         .route("/ws", get(global_ws_handler))
@@ -130,19 +130,6 @@ where
 
         Ok(LoginID(login_id))
     }
-}
-
-#[cfg(not(debug_assertions))]
-async fn index() -> Html<&'static str> {
-    Html(std::include_str!("../assets/index.html"))
-}
-
-#[cfg(debug_assertions)]
-async fn index() -> Result<Html<String>, http::StatusCode> {
-    Ok(Html(
-        std::fs::read_to_string("zing-server/assets/index.html")
-            .or(Err(http::StatusCode::NOT_FOUND))?,
-    ))
 }
 
 async fn whoami(
@@ -248,10 +235,7 @@ async fn global_ws_handler(
     State(state): State<Arc<RwLock<ZingState>>>,
     ws: WebSocketUpgrade,
 ) -> Result<impl IntoResponse, GameError> {
-    state
-        .read()
-        .unwrap()
-        .get_user(&login_id.0)?;
+    state.read().unwrap().get_user(&login_id.0)?;
 
     Ok(ws.on_upgrade(move |socket| {
         let sender = NotificationSenderHandle::new(socket);
