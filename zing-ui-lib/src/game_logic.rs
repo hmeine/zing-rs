@@ -23,7 +23,6 @@ use {
     wasm_bindgen_futures::JsFuture,
     web_sys::{ErrorEvent, MessageEvent, WebSocket},
     web_sys::{Request, RequestInit, Response},
-    //ws_stream_wasm::*,
 };
 
 #[cfg(target_family = "wasm")]

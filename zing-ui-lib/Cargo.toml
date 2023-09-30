@@ -11,7 +11,14 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 zing_game = { path = "../zing-game" }
-bevy = { version = "0.11.2", features = ["multi-threaded", "bevy_asset", "bevy_winit", "bevy_sprite", "png", "webgl2"], default-features = false }
+bevy = { version = "0.11.2", features = [
+    "multi-threaded",
+    "bevy_asset",
+    "bevy_winit",
+    "bevy_sprite",
+    "png",
+    "webgl2",
+], default-features = false }
 bevy_tweening = "0.8.0"
 futures = "0.3.28"
 futures-util = "0.3.28"
@@ -19,7 +26,11 @@ serde_json = "1.0.105"
 http = "0.2.9"
 tracing = { version = "0.1.37", features = ["release_max_level_off"] }
 #bevy_mod_picking = { version = "0.15.0", features = ["bevy_picking_raycast", "backend_sprite"], default-features = false }
-bevy_mod_picking = { git = "https://github.com/hmeine/bevy_mod_picking", branch = "scaled_sprites", features = ["bevy_picking_raycast", "backend_sprite", "highlight"], default-features = false }
+bevy_mod_picking = { git = "https://github.com/hmeine/bevy_mod_picking", branch = "scaled_sprites", features = [
+    "bevy_picking_raycast",
+    "backend_sprite",
+    "highlight",
+], default-features = false }
 bevy-inspector-egui = { version = "0.19.0", optional = true }
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
@@ -33,7 +44,16 @@ bevy-tokio-tasks = "0.11.0"
 wasm-bindgen = "0.2.87"
 wasm-bindgen-futures = "0.4.37"
 js-sys = "0.3.64"
-web-sys = { version = "0.3.64", features = ['Headers', 'ErrorEvent', 'Request', 'RequestInit', 'RequestMode', 'Response', 'Window'] }
-ws_stream_wasm = "0.7.4"
+web-sys = { version = "0.3.64", features = [
+    'Headers',
+    'ErrorEvent',
+    'Request',
+    'RequestInit',
+    'RequestMode',
+    'Response',
+    'Window',
+    'MessageEvent',
+    'WebSocket',
+] }
 #tracing-wasm = "0.2.1"
 serde-wasm-bindgen = "0.6.0"
