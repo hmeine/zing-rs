@@ -64,6 +64,7 @@ impl CardSprite {
     }
 
     pub fn change_state(
+        &mut self,
         card_sprite: &mut Handle<Image>,
         asset_server: &Res<AssetServer>,
         card_state: &CardState,
@@ -71,5 +72,6 @@ impl CardSprite {
     {
         let png_path = Self::png_path(card_state);
         *card_sprite = asset_server.load(png_path);
+        self.0 = card_state.clone();
     }
 }

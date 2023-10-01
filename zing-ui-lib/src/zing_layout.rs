@@ -409,7 +409,7 @@ fn update_cards_from_action(
     mut action_events: EventReader<CardActionEvent>,
     query_stacks: Query<(Entity, &CardStack, &Transform)>,
     query_children: Query<&Children>,
-    mut query_sprites: Query<(&CardSprite, &mut Handle<Image>), Without<CardStack>>,
+    mut query_sprites: Query<(&mut CardSprite, &mut Handle<Image>), Without<CardStack>>,
     mut query_transforms: Query<&mut Transform, (With<CardSprite>, Without<CardStack>)>,
     asset_server: Res<AssetServer>,
 ) {
@@ -467,9 +467,9 @@ fn update_cards_from_action(
 
         // possibly change card state (face up/down rotation)
         for (entity, card_state) in source_cards.iter().zip(&action.resulting_card_states) {
-            let (card, mut sprite) = query_sprites.get_mut(*entity).unwrap();
+            let (mut card, mut sprite) = query_sprites.get_mut(*entity).unwrap();
             if card.0.face_up != card_state.face_up {
-                CardSprite::change_state(&mut sprite, &asset_server, card_state);
+                card.change_state(&mut sprite, &asset_server, card_state);
             }
         }
 
