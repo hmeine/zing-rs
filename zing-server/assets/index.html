@@ -78,6 +78,7 @@
                 :pagination="{ rowsPerPage: 0 }"
                 hide-pagination
                 no-data-label="No table opened or joined yet"
+                @row-click="table_clicked"
                 ><template v-slot:body-cell-id="props">
                   <q-td :props="props">
                     <div>
@@ -98,6 +99,24 @@
                   </q-td>
                 </template>
               </q-table>
+              
+              <q-card bordered class="q-mt-md" style="max-width: 80ex" v-if="game_results.length > 0">
+                <q-card-section>
+                  <div class="text-h6">Scores</div>
+                </q-card-section>
+
+                <q-card-section>
+                  <q-table
+                    :rows="game_results"
+                    :columns="game_results_columns"
+                    :pagination="{ rowsPerPage: 0 }"
+                    hide-pagination
+                    flat
+                    no-data-label="No game finished yet"
+                  >
+                  </q-table>
+                </q-card-section>
+              </q-card>
             </div>
           </q-page>
 
@@ -123,6 +142,7 @@
         ws: null,
       });
       const current_table = ref("");
+      const game_results = reactive([]);
       const header_visible = ref(true);
 
       function list_users(users, row) {
@@ -214,6 +234,33 @@
         { name: "id", field: "id" },
       ];
 
+      const game_results_players = reactive([]);
+
+      const game_results_columns = computed(function () {
+        let result = [];
+        const templates = [
+          {
+            field: "player#_total",
+            label: "Round (NAME)",
+          },
+          {
+            field: "player#_cumulative",
+            label: "Match (NAME)",
+          },
+        ];
+        for (const col of templates) {
+          game_results_players.map(function (name, i) {
+            result.push({
+              name: col.field.replace("#", i.toString()),
+              field: col.field.replace("#", i.toString()),
+              label: col.label.replace("NAME", name),
+              align: "center",
+            });
+          });
+        }
+        return result;
+      });
+
       const loggedin = computed(function () {
         return user_info.name.length > 0;
       });
@@ -270,6 +317,45 @@
           user_info.tables = response.data.reverse();
         } catch (error) {
           console.log("CAUGHT ERROR:", error);
+        }
+      }
+
+      function table_clicked(event, row) {
+        game_results_players.splice(
+          0,
+          game_results_players.length,
+          ...row.user_names
+        );
+
+        let cumulative = [0, 0];
+        game_results.splice(0);
+
+        for (let game_result of row.game_results) {
+          let flattened = {};
+          for (let i in [0, 1]) {
+            const cards = game_result.card_points[i];
+            const bonus = game_result.card_count_points[i];
+            const zing = game_result.zing_points[i];
+            const total = cards + bonus + zing;
+
+            let points_str = cards.toString();
+            if (bonus) {
+              points_str += "+" + bonus;
+            }
+            if (zing) {
+              points_str += "+" + zing;
+            }
+            if (bonus + zing) {
+              points_str += " = " + total;
+            }
+
+            flattened["player" + i + "_total"] = points_str;
+
+            cumulative[i] += total;
+            flattened["player" + i + "_cumulative"] = cumulative[i];
+          }
+
+          game_results.push(flattened);
         }
       }
 
@@ -375,14 +461,17 @@
             loginname,
             user_info,
             current_table,
+            game_results,
             header_visible,
             table_info_columns,
+            game_results_columns,
             loggedin,
             logoutCaption,
             login,
             logout,
             create_table,
             query_tables,
+            table_clicked,
             share,
             play,
             start_bevy,
