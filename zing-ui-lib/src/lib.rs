@@ -4,6 +4,7 @@ use bevy_tweening::TweeningPlugin;
 #[cfg(target_family = "wasm")]
 use wasm_bindgen::prelude::*;
 
+mod app_state;
 mod card_sprite;
 mod constants;
 mod game_logic;

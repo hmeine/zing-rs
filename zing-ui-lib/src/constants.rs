@@ -44,4 +44,4 @@ pub const PLAYING_CENTER_X: f32 = -0.1 * CARD_WIDTH;
 pub const PLAYING_CENTER_Y: f32 = (OWN_CARD_ZOOM - 1.) * CARD_HEIGHT / 2.;
 
 pub const ANIMATION_MILLIS: u64 = 500;
-pub const STEP_DURATION_MILLIS: u64 = 700;
+pub const STEP_DURATION_MILLIS: u64 = 550;

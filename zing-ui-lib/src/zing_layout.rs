@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use crate::app_state::AppState;
 use crate::card_sprite::CardSprite;
 use crate::constants::*;
 use crate::game_logic::{GameLogic, StateChange, TasksRuntime};
@@ -18,7 +19,6 @@ pub struct LayoutState {
     /// We need to know the index of the player to be displayed in front ("ourselves")
     pub we_are_player: usize,
     /// Timer suppressing interactions during active animations
-    /// (FIXME: should be a bevy app state, probably!)
     pub step_animation_timer: Timer,
     /// During the game, only the topmost card put to the table is visible, but
     /// initially, they are dealt spread out
@@ -61,6 +61,7 @@ impl Plugin for LayoutPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<InitialGameStateEvent>();
         app.add_event::<CardActionEvent>();
+        app.add_state::<AppState>();
         app.insert_resource(LayoutState::new());
 
         app.add_systems(Startup, (setup_camera, setup_card_stacks));
@@ -72,12 +73,15 @@ impl Plugin for LayoutPlugin {
                     .before(spawn_cards_for_initial_state)
                     .before(update_cards_from_action),
                 spawn_cards_for_initial_state,
-                zoom_on_hover,
-                unzoom_after_hover,
-                handle_keyboard_input.before(update_cards_from_action),
+                zoom_on_hover.run_if(in_state(AppState::Interaction)),
+                unzoom_after_hover.run_if(in_state(AppState::Interaction)),
+                handle_keyboard_input
+                    .run_if(in_state(AppState::Interaction))
+                    .before(update_cards_from_action),
                 update_cards_from_action,
             ),
         );
+
         app.add_systems(PostUpdate, reposition_cards_after_action);
     }
 }
@@ -328,6 +332,7 @@ fn get_next_action_after_animation_finished(
     mut layout_state: ResMut<LayoutState>,
     mut initial_state_events: EventWriter<InitialGameStateEvent>,
     mut card_events: EventWriter<CardActionEvent>,
+    mut next_state: ResMut<NextState<AppState>>,
     time: Res<Time>,
 ) {
     layout_state.step_animation_timer.tick(time.delta());
@@ -350,7 +355,9 @@ fn get_next_action_after_animation_finished(
                 table_stack_spread_out: false, // !game_logic.game_phase_is_ingame(),
             })
         }
-        None => {}
+        None => {
+            next_state.set(AppState::Interaction);
+        }
     }
 }
 
@@ -397,6 +404,7 @@ struct StackRepositioning;
 
 fn update_cards_from_action(
     mut commands: Commands,
+    mut next_state: ResMut<NextState<AppState>>,
     mut layout_state: ResMut<LayoutState>,
     mut action_events: EventReader<CardActionEvent>,
     query_stacks: Query<(Entity, &CardStack, &Transform)>,
@@ -479,6 +487,7 @@ fn update_cards_from_action(
             .insert(StackRepositioning);
 
         layout_state.step_animation_timer.reset();
+        next_state.set(AppState::AnimationActive);
     }
 }
 
@@ -548,15 +557,10 @@ fn reposition_cards_after_action(
 }
 
 pub fn handle_keyboard_input(
-    layout_state: ResMut<LayoutState>,
     mut game_logic: ResMut<GameLogic>,
     runtime: ResMut<TasksRuntime>,
     keyboard_input: Res<Input<KeyCode>>,
 ) {
-    if !layout_state.step_animation_timer.finished() {
-        return;
-    }
-
     let mut play_card = None;
     if keyboard_input.just_pressed(KeyCode::Key1) {
         play_card = Some(0);
