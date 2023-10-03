@@ -10,7 +10,9 @@ use axum::{
 };
 use cookie::SameSite;
 use game_error::GameError;
+use sea_orm::SqlxPostgresConnector;
 use serde::Deserialize;
+use sqlx::PgPool;
 use tower_cookies::{Cookie, CookieManagerLayer, Cookies};
 use tower_http::services::{ServeDir, ServeFile};
 use tracing::info;
@@ -28,7 +30,11 @@ mod ws_notifications;
 mod zing_state;
 
 #[shuttle_runtime::main]
-async fn axum() -> shuttle_axum::ShuttleAxum {
+async fn axum(
+    #[shuttle_shared_db::Postgres] pool: PgPool
+) -> shuttle_axum::ShuttleAxum {
+    let conn = SqlxPostgresConnector::from_sqlx_postgres_pool(pool);
+
     let state = Arc::new(ZingState::default());
 
     let app = Router::new()

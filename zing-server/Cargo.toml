@@ -12,6 +12,9 @@ zing_game = { path = "../zing-game" }
 axum = { version = "0.6.20", features = ["ws"] }
 shuttle-runtime = "0.27.0"
 shuttle-axum = "0.27.0"
+shuttle-shared-db = { version = "0.27.0", features = ["postgres"] }
+sea-orm = { version = "0.12", features = ["sqlx-postgres", "runtime-tokio-native-tls", "macros"] }
+sqlx = { version = "0.7.2", features = ["sqlx-postgres"] }
 chrono = "0.4.28"
 futures = "0.3.28"
 tokio = { version = "1.32.0", features = ["full"] }
