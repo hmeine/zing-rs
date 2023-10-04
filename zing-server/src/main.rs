@@ -83,7 +83,7 @@ async fn login(
     let login_id = state.login(&user_name);
     info!("Logged in {} as {}", user_name, login_id);
 
-    // TODO: log out if USERNAME_COOKIE is already set (and valid)
+    // TODO: report error if USERNAME_COOKIE is already set (and valid)?
 
     let mut login_cookie = Cookie::new(USERNAME_COOKIE, login_id);
     login_cookie.set_same_site(SameSite::Strict);

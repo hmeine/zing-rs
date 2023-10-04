@@ -73,7 +73,7 @@ impl Table {
 
     pub fn has_logged_in_users(&self) -> bool {
         for user in &self.players {
-            if *user.logged_in.read().expect("unexpected concurrency") {
+            if *user.logged_in.read().expect("RwLock poisoned through panic") {
                 return true;
             }
         }
@@ -152,10 +152,10 @@ impl Table {
         self.connections
             .iter()
             .filter_map(|c| {
-                let known_actions = *c.actions_sent.read().expect("unexpected concurrency");
+                let known_actions = *c.actions_sent.read().expect("RwLock poisoned through panic");
                 if current_actions > known_actions {
                     let player_index = self.user_index(&c.user.login_id).unwrap();
-                    *c.actions_sent.write().expect("unexpected concurrency") = current_actions;
+                    *c.actions_sent.write().expect("RwLock poisoned through panic") = current_actions;
                     Some(
                         c.client_notification(&ClientNotification::CardActions(
                             history[known_actions..current_actions]

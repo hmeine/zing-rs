@@ -43,7 +43,7 @@ impl ZingState {
             .ok_or(GameError::Unauthorized("user not found (bad id cookie)"))
             .map(|(_, user)| {
                 // mark user as logged out
-                *user.logged_in.write().expect("unexpected concurrency") = false;
+                *user.logged_in.write().expect("RwLock poisoned through panic") = false;
 
                 // close websocket connections
                 self.connections.remove_user(login_id);
@@ -74,7 +74,7 @@ impl ZingState {
         let user = self.get_user(login_id)?;
         user.tables
             .write()
-            .expect("unexpected concurrency")
+            .expect("RwLock poisoned through panic")
             .push(table_id.clone());
 
         let table = Table::new(user);
@@ -91,7 +91,7 @@ impl ZingState {
         let table_infos = user
             .tables
             .read()
-            .expect("unexpected concurrency")
+            .expect("RwLock poisoned through panic")
             .iter()
             .map(|table_id| self.tables.get(table_id).unwrap().table_info(table_id))
             .collect::<Vec<_>>();
@@ -145,7 +145,7 @@ impl ZingState {
             if user
                 .tables
                 .read()
-                .expect("unexpected concurrency")
+                .expect("RwLock poisoned through panic")
                 .contains(&table_id)
             {
                 return Err(GameError::Conflict("trying to join table again"));
@@ -164,7 +164,7 @@ impl ZingState {
 
             user.tables
                 .write()
-                .expect("unexpected concurrency")
+                .expect("RwLock poisoned through panic")
                 .push(table_id.clone());
             table.user_joined(user);
 
@@ -185,7 +185,7 @@ impl ZingState {
         let table_index_in_user = user
             .tables
             .read()
-            .expect("unexpected concurrency")
+            .expect("RwLock poisoned through panic")
             .iter()
             .position(|id| *id == table_id)
             .ok_or(GameError::Unauthorized(
@@ -210,7 +210,7 @@ impl ZingState {
         }
         user.tables
             .write()
-            .expect("unexpected concurrency")
+            .expect("RwLock poisoned through panic")
             .remove(table_index_in_user);
 
         Ok(())
