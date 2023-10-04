@@ -37,7 +37,7 @@ impl ZingState {
         login_id
     }
 
-    pub fn logout(&self, user: Arc<User>) -> Result<(), GameError> {
+    pub fn logout(&self, user: Arc<User>) -> Result<String, GameError> {
         self.users
             .write()
             .unwrap()
@@ -65,7 +65,7 @@ impl ZingState {
         // remove table if all users have logged out
         tables.retain(|_table_id, table| table.has_logged_in_users());
 
-        Ok(())
+        Ok(user.name.clone())
     }
 
     pub fn get_user(&self, login_id: &str) -> Result<Arc<User>, GameError> {
