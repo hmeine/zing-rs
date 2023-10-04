@@ -123,7 +123,7 @@ impl ZingState {
                 .iter()
                 .filter_map(|c| {
                     table
-                        .user_index(&c.user.login_id)
+                        .user_index(c.client_login_id())
                         .map(|_| c.serialized_notification(serde_json::to_string(&result).unwrap()))
                 })
                 .collect()

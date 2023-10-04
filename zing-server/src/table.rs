@@ -118,9 +118,9 @@ impl Table {
 
     fn game_status_notification(&self, c: &ClientConnection) -> SerializedNotification {
         c.client_notification(&ClientNotification::GameStatus(
-            self.game_status(&c.user.login_id)
+            self.game_status(c.client_login_id())
                 .expect("game should be started, so must have valid state"),
-            self.user_index(&c.user.login_id).unwrap(),
+            self.user_index(c.client_login_id()).unwrap(),
         ))
     }
 
@@ -154,7 +154,7 @@ impl Table {
             .filter_map(|c| {
                 let known_actions = *c.actions_sent.read().expect("RwLock poisoned through panic");
                 if current_actions > known_actions {
-                    let player_index = self.user_index(&c.user.login_id).unwrap();
+                    let player_index = self.user_index(c.client_login_id()).unwrap();
                     *c.actions_sent.write().expect("RwLock poisoned through panic") = current_actions;
                     Some(
                         c.client_notification(&ClientNotification::CardActions(

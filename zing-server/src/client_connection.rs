@@ -20,7 +20,7 @@ pub type SerializedNotifications = Vec<SerializedNotification>;
 
 pub struct ClientConnection {
     pub connection_id: String,
-    pub user: Arc<User>,
+    user: Arc<User>,
     pub sender: NotificationSenderHandle,
     pub actions_sent: RwLock<usize>,
 }
@@ -34,9 +34,11 @@ impl ClientConnection {
             actions_sent: RwLock::new(0),
         }
     }
-}
 
-impl ClientConnection {
+    pub fn client_login_id(&self) -> &str {
+        &self.user.login_id
+    }
+
     pub fn serialized_notification(&self, msg: String) -> SerializedNotification {
         SerializedNotification {
             connection_id: self.connection_id.clone(),
