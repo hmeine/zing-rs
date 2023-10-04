@@ -23,6 +23,7 @@ use zing_game::game::GameState;
 use zing_state::ZingState;
 
 mod client_connection;
+mod entities;
 mod game_error;
 mod table;
 mod user;
