@@ -10,6 +10,7 @@ use axum::{
 };
 use cookie::SameSite;
 use game_error::GameError;
+use migration::MigratorTrait;
 use sea_orm::SqlxPostgresConnector;
 use serde::Deserialize;
 use sqlx::PgPool;
@@ -30,13 +31,15 @@ mod ws_notifications;
 mod zing_state;
 
 #[shuttle_runtime::main]
-async fn axum(
-    #[shuttle_shared_db::Postgres] pool: PgPool
-) -> shuttle_axum::ShuttleAxum {
+async fn axum(#[shuttle_shared_db::Postgres] pool: PgPool) -> shuttle_axum::ShuttleAxum {
     let conn = SqlxPostgresConnector::from_sqlx_postgres_pool(pool);
 
-    let state = Arc::new(ZingState::default());
+    migration::Migrator::up(&conn, None)
+        .await
+        .expect("DB migration failed");
 
+    let state = Arc::new(ZingState::default());
+        
     let app = Router::new()
         .nest_service("/", ServeFile::new("zing-server/assets/index.html"))
         .route("/login", post(login).get(whoami).delete(logout))

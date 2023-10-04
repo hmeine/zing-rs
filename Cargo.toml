@@ -1,5 +1,5 @@
 [workspace]
-members = ["zing-game", "zing-ui", "zing-server"]
+members = ["zing-game", "zing-ui", "zing-server", "zing-server/migration"]
 resolver = "2"
 
 # Enable a small amount of optimization in debug mode

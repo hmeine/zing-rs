@@ -8,6 +8,7 @@ license = "MIT"
 
 [dependencies]
 zing_game = { path = "../zing-game" }
+migration = { path = "migration" }
 
 axum = { version = "0.6.20", features = ["ws"] }
 shuttle-runtime = "0.27.0"
