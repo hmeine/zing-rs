@@ -3,14 +3,11 @@
 use sea_orm::entity::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
-#[sea_orm(table_name = "user")]
+#[sea_orm(table_name = "table")]
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
-    pub token: String,
-    pub name: String,
-    pub logged_in: bool,
-    pub last_seen: DateTimeWithTimeZone,
+    pub created_at: DateTimeWithTimeZone,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -25,12 +22,12 @@ impl Related<super::table_join::Entity> for Entity {
     }
 }
 
-impl Related<super::table::Entity> for Entity {
+impl Related<super::user::Entity> for Entity {
     fn to() -> RelationDef {
-        super::table_join::Relation::Table.def()
+        super::table_join::Relation::User.def()
     }
     fn via() -> Option<RelationDef> {
-        Some(super::table_join::Relation::User.def().rev())
+        Some(super::table_join::Relation::Table.def().rev())
     }
 }
 

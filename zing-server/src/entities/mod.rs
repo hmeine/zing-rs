@@ -2,4 +2,6 @@
 
 pub mod prelude;
 
+pub mod table;
+pub mod table_join;
 pub mod user;
