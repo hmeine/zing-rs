@@ -79,7 +79,7 @@ impl MigrationTrait for Migration {
 }
 
 #[derive(DeriveIden)]
-enum Table {
+pub enum Table {
     Table,
     Id,
     CreatedAt,

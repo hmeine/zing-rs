@@ -2,6 +2,7 @@
 
 pub mod prelude;
 
+pub mod game_results;
 pub mod table;
 pub mod table_join;
 pub mod user;
