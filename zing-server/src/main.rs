@@ -68,7 +68,7 @@ struct LoginRequest {
     name: String,
 }
 
-const USERNAME_COOKIE: &str = "login_id";
+const LOGIN_COOKIE: &str = "login_id";
 
 async fn login(
     State(state): State<Arc<RwLock<ZingState>>>,
@@ -83,9 +83,9 @@ async fn login(
     let login_id = state.login(&user_name);
     info!("Logged in {} as {}", user_name, login_id);
 
-    // TODO: report error if USERNAME_COOKIE is already set (and valid)?
+    // TODO: report error if LOGIN_COOKIE is already set (and valid)?
 
-    let mut login_cookie = Cookie::new(USERNAME_COOKIE, login_id);
+    let mut login_cookie = Cookie::new(LOGIN_COOKIE, login_id);
     login_cookie.set_same_site(SameSite::Strict);
     cookies.add(login_cookie);
     Ok(user_name)
@@ -101,7 +101,7 @@ async fn logout(
     state.logout(&login_id.0)?;
     info!("Logged out {}", user_name.unwrap());
 
-    let mut login_cookie = Cookie::new(USERNAME_COOKIE, "");
+    let mut login_cookie = Cookie::new(LOGIN_COOKIE, "");
     login_cookie.set_same_site(SameSite::Strict);
     cookies.remove(login_cookie);
     Ok(())
@@ -120,7 +120,7 @@ where
         let cookies = Cookies::from_request_parts(req, state).await?;
 
         let login_id = cookies
-            .get(USERNAME_COOKIE)
+            .get(LOGIN_COOKIE)
             .ok_or((
                 http::StatusCode::UNAUTHORIZED,
                 "login first (id cookie missing)",

@@ -22,9 +22,8 @@ pub struct ZingGame {
     dealer: usize,
     /// number of cards actively played
     turn: usize,
-    /// index of the player who last scored a stack of cards (not won a full
-    /// game - better terminology needed!)
-    last_winner: usize,
+    /// index of the player who last scored a stack of cards
+    last_trick_winner: usize,
     /// outlier field - this is not a Zing-specific extension, but extends
     /// [GameState] via a generic history of actions performed, so it should
     /// possibly be moved
@@ -74,7 +73,7 @@ impl ZingGame {
             game_state,
             dealer,
             turn: 0,
-            last_winner: 999, // will always be overwritten; needs to be 0/1
+            last_trick_winner: 999, // will always be overwritten; needs to be 0/1
             history: Vec::new(),
         }
     }
@@ -294,7 +293,7 @@ impl ZingGame {
         if let [.., card1, card2] = &table_stack.cards[..] {
             if card1.card.rank == card2.card.rank {
                 let target_score_stack = 2 + self.current_player() % 2;
-                self.last_winner = target_score_stack;
+                self.last_trick_winner = target_score_stack;
 
                 if table_stack.cards.len() == 2 {
                     // Zing!
@@ -325,7 +324,7 @@ impl ZingGame {
         if let Some(top_card) = table_stack.cards.last() {
             if top_card.card.rank == Rank::Jack && table_stack.cards.len() > 1 {
                 let target_stack = 2 + self.current_player() % 2;
-                self.last_winner = target_stack;
+                self.last_trick_winner = target_stack;
 
                 self.perform_and_remember_action(
                     CardAction::new()
@@ -349,7 +348,7 @@ impl ZingGame {
                 self.perform_and_remember_action(
                     CardAction::new()
                         .from_stack_top(&self.game_state, 1, table_stack.cards.len())
-                        .to_stack_top(&self.game_state, self.last_winner)
+                        .to_stack_top(&self.game_state, self.last_trick_winner)
                         .rotate(CardRotation::FaceDown),
                 );
 
