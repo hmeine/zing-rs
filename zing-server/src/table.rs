@@ -80,22 +80,22 @@ impl Table {
         false
     }
 
-    pub fn user_index(&self, login_id: &str) -> Option<usize> {
+    pub fn user_index(&self, login_token: &str) -> Option<usize> {
         self.players
             .iter()
-            .position(|player| player.login_id == login_id)
+            .position(|player| player.login_token == login_token)
     }
 
     pub fn user_joined(&mut self, user: Arc<User>) {
         self.players.push(user);
     }
 
-    pub fn user_left(&mut self, login_id: &str) {
+    pub fn user_left(&mut self, login_token: &str) {
         let user_index_in_table = self
-            .user_index(login_id)
+            .user_index(login_token)
             .expect("user_left() requires user to be present");
         self.players.remove(user_index_in_table);
-        self.connections.remove_user(login_id);
+        self.connections.remove_user_with_token(login_token);
     }
 
     pub fn start_game(&mut self) -> Result<(), GameError> {
@@ -118,9 +118,9 @@ impl Table {
 
     fn game_status_notification(&self, c: &ClientConnection) -> SerializedNotification {
         c.client_notification(&ClientNotification::GameStatus(
-            self.game_status(c.client_login_id())
+            self.game_status(c.client_login_token())
                 .expect("game should be started, so must have valid state"),
-            self.user_index(c.client_login_id()).unwrap(),
+            self.user_index(c.client_login_token()).unwrap(),
         ))
     }
 
@@ -154,7 +154,7 @@ impl Table {
             .filter_map(|c| {
                 let known_actions = *c.actions_sent.read().expect("RwLock poisoned through panic");
                 if current_actions > known_actions {
-                    let player_index = self.user_index(c.client_login_id()).unwrap();
+                    let player_index = self.user_index(c.client_login_token()).unwrap();
                     *c.actions_sent.write().expect("RwLock poisoned through panic") = current_actions;
                     Some(
                         c.client_notification(&ClientNotification::CardActions(
@@ -171,8 +171,8 @@ impl Table {
             .collect()
     }
 
-    pub fn game_status(&self, login_id: &str) -> Option<GameState> {
-        let player_index = self.user_index(login_id).unwrap();
+    pub fn game_status(&self, login_token: &str) -> Option<GameState> {
+        let player_index = self.user_index(login_token).unwrap();
 
         self.game
             .as_ref()

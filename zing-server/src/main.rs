@@ -148,7 +148,7 @@ impl FromRequestParts<Arc<ZingState>> for AuthenticatedUser {
     ) -> Result<Self, Self::Rejection> {
         let LoginToken(login_token) = LoginToken::from_request_parts(parts, state).await?;
 
-        let user = state.get_user(&login_token).await?;
+        let user = state.get_user_with_token(&login_token).await?;
 
         Ok(AuthenticatedUser(user))
     }

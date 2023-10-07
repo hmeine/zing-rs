@@ -24,24 +24,24 @@ pub struct ZingState {
 
 impl ZingState {
     pub async fn login(&self, user_name: &str) -> String {
-        let login_id = random_id();
+        let login_token = random_id();
         self.users.write().unwrap().insert(
-            login_id.clone(),
+            login_token.clone(),
             Arc::new(User {
-                login_id: login_id.clone(),
+                login_token: login_token.clone(),
                 name: user_name.to_owned(),
                 logged_in: RwLock::new(true),
                 tables: RwLock::new(Vec::new()),
             }),
         );
-        login_id
+        login_token
     }
 
     pub async fn logout(&self, user: Arc<User>) -> Result<String, GameError> {
         self.users
             .write()
             .unwrap()
-            .remove_entry(&user.login_id)
+            .remove_entry(&user.login_token)
             .ok_or(GameError::Unauthorized("user not found (bad id cookie)"))
             .map(|(_, user)| {
                 // mark user as logged out
@@ -55,11 +55,11 @@ impl ZingState {
         self.connections
             .write()
             .unwrap()
-            .remove_user(&user.login_id);
+            .remove_user_with_token(&user.login_token);
 
         let mut tables = self.tables.write().unwrap();
         for table in tables.values_mut() {
-            table.connections.remove_user(&user.login_id);
+            table.connections.remove_user_with_token(&user.login_token);
         }
 
         // remove table if all users have logged out
@@ -68,8 +68,8 @@ impl ZingState {
         Ok(user.name.clone())
     }
 
-    pub async fn get_user(&self, login_id: &str) -> Result<Arc<User>, GameError> {
-        self.users.read().unwrap().get(login_id).map_or(
+    pub async fn get_user_with_token(&self, login_token: &str) -> Result<Arc<User>, GameError> {
+        self.users.read().unwrap().get(login_token).map_or(
             Err(GameError::Unauthorized("user not found (bad id cookie)")),
             |user| Ok(user.clone()),
         )
@@ -132,7 +132,7 @@ impl ZingState {
                 .iter()
                 .filter_map(|c| {
                     table
-                        .user_index(c.client_login_id())
+                        .user_index(c.client_login_token())
                         .map(|_| c.serialized_notification(serde_json::to_string(&result).unwrap()))
                 })
                 .collect()
@@ -207,7 +207,7 @@ impl ZingState {
                 ));
             }
 
-            table.user_left(&user.login_id);
+            table.user_left(&user.login_token);
             if !table.has_logged_in_users() {
                 tables.remove(table_id);
             }
@@ -231,7 +231,7 @@ impl ZingState {
                     .get(table_id)
                     .ok_or(GameError::NotFound("table id not found"))?;
 
-                table.user_index(&user.login_id).ok_or(GameError::NotFound(
+                table.user_index(&user.login_token).ok_or(GameError::NotFound(
                     "user has not joined table at which game should start",
                 ))?;
             }
@@ -310,11 +310,11 @@ impl ZingState {
             .ok_or(GameError::NotFound("table id not found"))?;
 
         table
-            .user_index(&user.login_id)
+            .user_index(&user.login_token)
             .ok_or(GameError::NotFound("user has not joined table"))?;
 
         table
-            .game_status(&user.login_id)
+            .game_status(&user.login_token)
             .map_or(Err(GameError::NotFound("no game active")), |game| {
                 Ok(Json(game))
             })
@@ -327,7 +327,7 @@ impl ZingState {
                 .get_mut(table_id)
                 .ok_or(GameError::NotFound("table id not found"))?;
 
-            table.user_index(&user.login_id).ok_or(GameError::NotFound(
+            table.user_index(&user.login_token).ok_or(GameError::NotFound(
                 "user has not joined table at which game should be finished",
             ))?;
 
@@ -352,7 +352,7 @@ impl ZingState {
             .ok_or(GameError::NotFound("table id not found"))?;
 
         table
-            .user_index(&user.login_id)
+            .user_index(&user.login_token)
             .ok_or(GameError::NotFound("connecting user has not joined table"))?;
 
         Ok(true)
@@ -406,7 +406,7 @@ impl ZingState {
                 .get_mut(table_id)
                 .ok_or(GameError::NotFound("table id not found"))?;
 
-            let player = table.user_index(&user.login_id).ok_or(GameError::NotFound(
+            let player = table.user_index(&user.login_token).ok_or(GameError::NotFound(
                 "user has not joined table at which card should be played",
             ))?;
 

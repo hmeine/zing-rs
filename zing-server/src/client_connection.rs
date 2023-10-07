@@ -35,8 +35,8 @@ impl ClientConnection {
         }
     }
 
-    pub fn client_login_id(&self) -> &str {
-        &self.user.login_id
+    pub fn client_login_token(&self) -> &str {
+        &self.user.login_token
     }
 
     pub fn serialized_notification(&self, msg: String) -> SerializedNotification {
@@ -84,7 +84,7 @@ impl ClientConnections {
         }
     }
 
-    pub fn remove_user(&mut self, login_id: &str) {
-        self.0.retain(|c| c.user.login_id != login_id);
+    pub fn remove_user_with_token(&mut self, login_token: &str) {
+        self.0.retain(|c| c.user.login_token != login_token);
     }
 }
