@@ -26,6 +26,7 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .default(Expr::current_timestamp()),
                     )
+                    .col(ColumnDef::new(Table::Token).string().not_null())
                     .to_owned(),
             )
             .await?;
@@ -63,7 +64,7 @@ impl MigrationTrait for Migration {
         manager
             .drop_table(
                 sea_orm_migration::prelude::Table::drop()
-                    .table(Table::Table)
+                    .table(TableJoin::Table)
                     .to_owned(),
             )
             .await?;
@@ -71,7 +72,7 @@ impl MigrationTrait for Migration {
         manager
             .drop_table(
                 sea_orm_migration::prelude::Table::drop()
-                    .table(TableJoin::Table)
+                    .table(Table::Table)
                     .to_owned(),
             )
             .await
@@ -83,6 +84,7 @@ pub enum Table {
     Table,
     Id,
     CreatedAt,
+    Token,
 }
 
 #[derive(DeriveIden)]

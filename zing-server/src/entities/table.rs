@@ -8,6 +8,7 @@ pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
     pub created_at: DateTimeWithTimeZone,
+    pub token: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
