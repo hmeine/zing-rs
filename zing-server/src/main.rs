@@ -6,7 +6,7 @@ use std::{
 use async_trait::async_trait;
 use axum::{
     extract::{FromRequestParts, Path, State, WebSocketUpgrade},
-    http::{self, request::Parts},
+    http::request::Parts,
     response::IntoResponse,
     routing::{get, post},
     Json, Router,
@@ -80,12 +80,12 @@ async fn login(
     if user_name.is_empty() {
         return Err(GameError::BadRequest("name must not be empty"));
     }
-    let login_id = state.login(&user_name);
-    info!("Logged in {} as {}", user_name, login_id);
+    let login_token = state.login(&user_name);
+    info!("Logged in {} as {}", user_name, login_token);
 
     // TODO: report error if LOGIN_COOKIE is already set (and valid)?
 
-    let mut login_cookie = Cookie::new(LOGIN_COOKIE, login_id);
+    let mut login_cookie = Cookie::new(LOGIN_COOKIE, login_token);
     login_cookie.set_same_site(SameSite::Strict);
     cookies.add(login_cookie);
     Ok(user_name)
@@ -93,12 +93,12 @@ async fn login(
 
 async fn logout(
     State(state): State<Arc<RwLock<ZingState>>>,
-    login_id: LoginID,
+    login_token: LoginToken,
     cookies: Cookies,
 ) -> Result<(), GameError> {
     let mut state = state.write().unwrap();
-    let user_name = state.whoami(&login_id.0);
-    state.logout(&login_id.0)?;
+    let user_name = state.whoami(&login_token.0);
+    state.logout(&login_token.0)?;
     info!("Logged out {}", user_name.unwrap());
 
     let mut login_cookie = Cookie::new(LOGIN_COOKIE, "");
@@ -107,107 +107,106 @@ async fn logout(
     Ok(())
 }
 
-struct LoginID(String);
+struct LoginToken(String);
 
 #[async_trait]
-impl<S> FromRequestParts<S> for LoginID
+impl<S> FromRequestParts<S> for LoginToken
 where
     S: Send + Sync,
 {
-    type Rejection = (http::StatusCode, &'static str);
+    type Rejection = GameError;
 
-    async fn from_request_parts(req: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-        let cookies = Cookies::from_request_parts(req, state).await?;
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        let cookies = Cookies::from_request_parts(parts, state)
+            .await
+            .map_err(|_| GameError::Unauthorized("internal error trying to extract cookies"))?;
 
-        let login_id = cookies
+        let login_token = cookies
             .get(LOGIN_COOKIE)
-            .ok_or((
-                http::StatusCode::UNAUTHORIZED,
-                "login first (id cookie missing)",
-            ))?
+            .ok_or(GameError::Unauthorized("login first (id cookie missing)"))?
             .value()
             .to_string();
 
-        Ok(LoginID(login_id))
+        Ok(LoginToken(login_token))
     }
 }
 
 async fn whoami(
     State(state): State<Arc<RwLock<ZingState>>>,
-    login_id: LoginID,
+    login_token: LoginToken,
 ) -> Result<String, GameError> {
     let state = state.read().unwrap();
-    match state.whoami(&login_id.0) {
+    match state.whoami(&login_token.0) {
         Some(user_name) => Ok(user_name),
         None => Err(GameError::Unauthorized("no valid login cookie")),
     }
 }
 
 async fn create_table(
-    login_id: LoginID,
+    login_token: LoginToken,
     State(state): State<Arc<RwLock<ZingState>>>,
 ) -> Result<impl IntoResponse, GameError> {
     let mut state = state.write().unwrap();
-    state.create_table(&login_id.0)
+    state.create_table(&login_token.0)
 }
 
 async fn list_tables(
-    login_id: LoginID,
+    login_token: LoginToken,
     State(state): State<Arc<RwLock<ZingState>>>,
 ) -> Result<impl IntoResponse, GameError> {
     let state = state.read().unwrap();
-    state.list_tables(&login_id.0)
+    state.list_tables(&login_token.0)
 }
 
 async fn get_table(
-    login_id: LoginID,
+    login_token: LoginToken,
     Path(table_id): Path<String>,
     State(state): State<Arc<RwLock<ZingState>>>,
 ) -> Result<impl IntoResponse, GameError> {
     let state = state.read().unwrap();
-    state.get_table(&login_id.0, &table_id)
+    state.get_table(&login_token.0, &table_id)
 }
 
 async fn join_table(
-    login_id: LoginID,
+    login_token: LoginToken,
     Path(table_id): Path<String>,
     State(state): State<Arc<RwLock<ZingState>>>,
 ) -> Result<impl IntoResponse, GameError> {
-    ZingState::join_table(state.deref(), &login_id.0, &table_id).await
+    ZingState::join_table(state.deref(), &login_token.0, &table_id).await
 }
 
 async fn leave_table(
-    login_id: LoginID,
+    login_token: LoginToken,
     Path(table_id): Path<String>,
     State(state): State<Arc<RwLock<ZingState>>>,
 ) -> Result<(), GameError> {
     let mut state = state.write().unwrap();
-    state.leave_table(&login_id.0, &table_id)
+    state.leave_table(&login_token.0, &table_id)
 }
 
 async fn start_game(
-    login_id: LoginID,
+    login_token: LoginToken,
     Path(table_id): Path<String>,
     State(state): State<Arc<RwLock<ZingState>>>,
 ) -> Result<(), GameError> {
-    ZingState::start_game(state.deref(), &login_id.0, &table_id).await
+    ZingState::start_game(state.deref(), &login_token.0, &table_id).await
 }
 
 async fn game_status(
-    login_id: LoginID,
+    login_token: LoginToken,
     Path(table_id): Path<String>,
     State(state): State<Arc<RwLock<ZingState>>>,
 ) -> Result<Json<GameState>, GameError> {
     let state = state.read().unwrap();
-    state.game_status(&login_id.0, &table_id)
+    state.game_status(&login_token.0, &table_id)
 }
 
 async fn finish_game(
-    login_id: LoginID,
+    login_token: LoginToken,
     Path(table_id): Path<String>,
     State(state): State<Arc<RwLock<ZingState>>>,
 ) -> Result<(), GameError> {
-    ZingState::finish_game(state.deref(), &login_id.0, &table_id).await
+    ZingState::finish_game(state.deref(), &login_token.0, &table_id).await
 }
 
 #[derive(Deserialize)]
@@ -216,14 +215,14 @@ struct GameAction {
 }
 
 async fn play_card(
-    login_id: LoginID,
+    login_token: LoginToken,
     Path(table_id): Path<String>,
     State(state): State<Arc<RwLock<ZingState>>>,
     Json(game_action): Json<GameAction>,
 ) -> Result<(), GameError> {
     ZingState::play_card(
         state.deref(),
-        &login_id.0,
+        &login_token.0,
         &table_id,
         game_action.card_index,
     )
@@ -231,29 +230,29 @@ async fn play_card(
 }
 
 async fn global_ws_handler(
-    login_id: LoginID,
+    login_token: LoginToken,
     State(state): State<Arc<RwLock<ZingState>>>,
     ws: WebSocketUpgrade,
 ) -> Result<impl IntoResponse, GameError> {
-    state.read().unwrap().get_user(&login_id.0)?;
+    state.read().unwrap().get_user(&login_token.0)?;
 
     Ok(ws.on_upgrade(move |socket| {
         let sender = NotificationSenderHandle::new(socket);
 
-        add_user_global_connection(state, login_id.0, sender)
+        add_user_global_connection(state, login_token.0, sender)
     }))
 }
 
 async fn add_user_global_connection(
     state: Arc<RwLock<ZingState>>,
-    login_id: String,
+    login_token: String,
     sender: NotificationSenderHandle,
 ) {
-    ZingState::add_user_global_connection(state.deref(), login_id, sender).await
+    ZingState::add_user_global_connection(state.deref(), login_token, sender).await
 }
 
 async fn table_ws_handler(
-    login_id: LoginID,
+    login_token: LoginToken,
     Path(table_id): Path<String>,
     State(state): State<Arc<RwLock<ZingState>>>,
     ws: WebSocketUpgrade,
@@ -261,20 +260,20 @@ async fn table_ws_handler(
     state
         .read()
         .unwrap()
-        .check_user_can_connect(&login_id.0, &table_id)?;
+        .check_user_can_connect(&login_token.0, &table_id)?;
 
     Ok(ws.on_upgrade(move |socket| {
         let sender = NotificationSenderHandle::new(socket);
 
-        add_user_table_connection(state, login_id.0, table_id, sender)
+        add_user_table_connection(state, login_token.0, table_id, sender)
     }))
 }
 
 async fn add_user_table_connection(
     state: Arc<RwLock<ZingState>>,
-    login_id: String,
+    login_token: String,
     table_id: String,
     sender: NotificationSenderHandle,
 ) {
-    ZingState::add_user_table_connection(state.deref(), login_id, table_id, sender).await
+    ZingState::add_user_table_connection(state.deref(), login_token, table_id, sender).await
 }
