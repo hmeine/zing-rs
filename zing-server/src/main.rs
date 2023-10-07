@@ -149,65 +149,65 @@ async fn whoami(AuthenticatedUser(user): AuthenticatedUser) -> Result<String, Ga
 }
 
 async fn create_table(
-    LoginToken(login_token): LoginToken,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(state): State<Arc<ZingState>>,
 ) -> Result<impl IntoResponse, GameError> {
-    state.create_table(&login_token)
+    state.create_table(user)
 }
 
 async fn list_tables(
-    LoginToken(login_token): LoginToken,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(state): State<Arc<ZingState>>,
 ) -> Result<impl IntoResponse, GameError> {
-    state.list_tables(&login_token)
+    state.list_tables(user)
 }
 
 async fn get_table_info(
-    LoginToken(login_token): LoginToken,
+    AuthenticatedUser(_user): AuthenticatedUser,
     Path(table_id): Path<String>,
     State(state): State<Arc<ZingState>>,
 ) -> Result<impl IntoResponse, GameError> {
-    state.get_table_info(&login_token, &table_id)
+    state.get_table_info(&table_id)
 }
 
 async fn join_table(
-    LoginToken(login_token): LoginToken,
+    AuthenticatedUser(user): AuthenticatedUser,
     Path(table_id): Path<String>,
     State(state): State<Arc<ZingState>>,
 ) -> Result<impl IntoResponse, GameError> {
-    state.join_table(&login_token, &table_id).await
+    state.join_table(user, &table_id).await
 }
 
 async fn leave_table(
-    LoginToken(login_token): LoginToken,
+    AuthenticatedUser(user): AuthenticatedUser,
     Path(table_id): Path<String>,
     State(state): State<Arc<ZingState>>,
 ) -> Result<(), GameError> {
-    state.leave_table(&login_token, &table_id)
+    state.leave_table(user, &table_id)
 }
 
 async fn start_game(
-    LoginToken(login_token): LoginToken,
+    AuthenticatedUser(user): AuthenticatedUser,
     Path(table_id): Path<String>,
     State(state): State<Arc<ZingState>>,
 ) -> Result<(), GameError> {
-    state.start_game(&login_token, &table_id).await
+    state.start_game(user, &table_id).await
 }
 
 async fn game_status(
-    LoginToken(login_token): LoginToken,
+    AuthenticatedUser(user): AuthenticatedUser,
     Path(table_id): Path<String>,
     State(state): State<Arc<ZingState>>,
 ) -> Result<Json<GameState>, GameError> {
-    state.game_status(&login_token, &table_id)
+    state.game_status(user, &table_id)
 }
 
 async fn finish_game(
-    LoginToken(login_token): LoginToken,
+    AuthenticatedUser(user): AuthenticatedUser,
     Path(table_id): Path<String>,
     State(state): State<Arc<ZingState>>,
 ) -> Result<(), GameError> {
-    state.finish_game(&login_token, &table_id).await
+    state.finish_game(user, &table_id).await
 }
 
 #[derive(Deserialize)]
@@ -216,44 +216,42 @@ struct GameAction {
 }
 
 async fn play_card(
-    LoginToken(login_token): LoginToken,
+    AuthenticatedUser(user): AuthenticatedUser,
     Path(table_id): Path<String>,
     State(state): State<Arc<ZingState>>,
     Json(game_action): Json<GameAction>,
 ) -> Result<(), GameError> {
     state
-        .play_card(&login_token, &table_id, game_action.card_index)
+        .play_card(user, &table_id, game_action.card_index)
         .await
 }
 
 async fn global_ws_handler(
-    LoginToken(login_token): LoginToken,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(state): State<Arc<ZingState>>,
     ws: WebSocketUpgrade,
 ) -> Result<impl IntoResponse, GameError> {
-    state.get_user(&login_token)?;
-
     Ok(ws.on_upgrade(move |socket| {
         let sender = NotificationSenderHandle::new(socket);
 
-        async move { state.add_user_global_connection(login_token, sender).await }
+        async move { state.add_user_global_connection(user, sender).await }
     }))
 }
 
 async fn table_ws_handler(
-    LoginToken(login_token): LoginToken,
+    AuthenticatedUser(user): AuthenticatedUser,
     Path(table_id): Path<String>,
     State(state): State<Arc<ZingState>>,
     ws: WebSocketUpgrade,
 ) -> Result<impl IntoResponse, GameError> {
-    state.check_user_can_connect(&login_token, &table_id)?;
+    state.check_user_can_connect(user.clone(), &table_id)?;
 
     Ok(ws.on_upgrade(move |socket| {
         let sender = NotificationSenderHandle::new(socket);
 
         async move {
             state
-                .add_user_table_connection(login_token, table_id, sender)
+                .add_user_table_connection(user, table_id, sender)
                 .await
         }
     }))

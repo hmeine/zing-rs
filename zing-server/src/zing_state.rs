@@ -52,7 +52,10 @@ impl ZingState {
             })?;
 
         // close websocket connections
-        self.connections.write().unwrap().remove_user(&user.login_id);
+        self.connections
+            .write()
+            .unwrap()
+            .remove_user(&user.login_id);
 
         let mut tables = self.tables.write().unwrap();
         for table in tables.values_mut() {
@@ -72,10 +75,9 @@ impl ZingState {
         )
     }
 
-    pub fn create_table(&self, login_id: &str) -> Result<Json<TableInfo>, GameError> {
+    pub fn create_table(&self, user: Arc<User>) -> Result<Json<TableInfo>, GameError> {
         let table_id = random_id();
 
-        let user = self.get_user(login_id)?;
         user.tables
             .write()
             .expect("RwLock poisoned through panic")
@@ -89,9 +91,7 @@ impl ZingState {
         Ok(Json(table_info))
     }
 
-    pub fn list_tables(&self, login_id: &str) -> Result<Json<Vec<TableInfo>>, GameError> {
-        let user = self.get_user(login_id)?;
-
+    pub fn list_tables(&self, user: Arc<User>) -> Result<Json<Vec<TableInfo>>, GameError> {
         let tables = self.tables.read().unwrap();
 
         let table_infos = user
@@ -107,11 +107,8 @@ impl ZingState {
 
     pub fn get_table_info(
         &self,
-        login_id: &str,
         table_id: &str,
     ) -> Result<Json<TableInfo>, GameError> {
-        self.get_user(login_id)?;
-
         let tables = self.tables.read().unwrap();
 
         let table = tables
@@ -146,11 +143,10 @@ impl ZingState {
 
     pub async fn join_table(
         &self,
-        login_id: &str,
+        user: Arc<User>,
         table_id: &str,
     ) -> Result<Json<TableInfo>, GameError> {
         let result = {
-            let user = self.get_user(login_id)?;
             let table_id = table_id.to_owned();
             if user
                 .tables
@@ -186,9 +182,7 @@ impl ZingState {
         Ok(Json(result))
     }
 
-    pub fn leave_table(&self, login_id: &str, table_id: &str) -> Result<(), GameError> {
-        let user = self.get_user(login_id)?;
-
+    pub fn leave_table(&self, user: Arc<User>, table_id: &str) -> Result<(), GameError> {
         let table_index_in_user = user
             .tables
             .read()
@@ -213,7 +207,7 @@ impl ZingState {
                 ));
             }
 
-            table.user_left(login_id);
+            table.user_left(&user.login_id);
             if !table.has_logged_in_users() {
                 tables.remove(table_id);
             }
@@ -227,11 +221,9 @@ impl ZingState {
         Ok(())
     }
 
-    pub async fn start_game(&self, login_id: &str, table_id: &str) -> Result<(), GameError> {
+    pub async fn start_game(&self, user: Arc<User>, table_id: &str) -> Result<(), GameError> {
         // start a game (sync code), collect initial game status notifications
         let notifications = {
-            self.get_user(login_id)?;
-
             {
                 // scope for locked self.tables
                 let tables = self.tables.read().unwrap();
@@ -239,7 +231,7 @@ impl ZingState {
                     .get(table_id)
                     .ok_or(GameError::NotFound("table id not found"))?;
 
-                table.user_index(login_id).ok_or(GameError::NotFound(
+                table.user_index(&user.login_id).ok_or(GameError::NotFound(
                     "user has not joined table at which game should start",
                 ))?;
             }
@@ -309,37 +301,33 @@ impl ZingState {
 
     pub fn game_status(
         &self,
-        login_id: &str,
+        user: Arc<User>,
         table_id: &str,
     ) -> Result<Json<GameState>, GameError> {
-        self.get_user(login_id)?;
-
         let tables = self.tables.read().unwrap();
         let table = tables
             .get(table_id)
             .ok_or(GameError::NotFound("table id not found"))?;
 
         table
-            .user_index(login_id)
+            .user_index(&user.login_id)
             .ok_or(GameError::NotFound("user has not joined table"))?;
 
         table
-            .game_status(login_id)
+            .game_status(&user.login_id)
             .map_or(Err(GameError::NotFound("no game active")), |game| {
                 Ok(Json(game))
             })
     }
 
-    pub async fn finish_game(&self, login_id: &str, table_id: &str) -> Result<(), GameError> {
+    pub async fn finish_game(&self, user: Arc<User>, table_id: &str) -> Result<(), GameError> {
         let result = {
-            self.get_user(login_id)?;
-
             let mut tables = self.tables.write().unwrap();
             let table = tables
                 .get_mut(table_id)
                 .ok_or(GameError::NotFound("table id not found"))?;
 
-            table.user_index(login_id).ok_or(GameError::NotFound(
+            table.user_index(&user.login_id).ok_or(GameError::NotFound(
                 "user has not joined table at which game should be finished",
             ))?;
 
@@ -355,18 +343,16 @@ impl ZingState {
 
     pub fn check_user_can_connect(
         &self,
-        login_id: &str,
+        user: Arc<User>,
         table_id: &str,
     ) -> Result<bool, GameError> {
-        self.get_user(login_id)?;
-
         let tables = self.tables.read().unwrap();
         let table = tables
             .get(table_id)
             .ok_or(GameError::NotFound("table id not found"))?;
 
         table
-            .user_index(login_id)
+            .user_index(&user.login_id)
             .ok_or(GameError::NotFound("connecting user has not joined table"))?;
 
         Ok(true)
@@ -374,31 +360,28 @@ impl ZingState {
 
     pub async fn add_user_global_connection(
         &self,
-        login_id: String,
+        user: Arc<User>,
         sender: NotificationSenderHandle,
     ) {
-        let _err = self.get_user(&login_id).map(|user| {
-            self.connections.write().unwrap().add(user, sender);
-        });
+        self.connections.write().unwrap().add(user, sender);
     }
 
     pub async fn add_user_table_connection(
         &self,
-        login_id: String,
+        user: Arc<User>,
         table_id: String,
         sender: NotificationSenderHandle,
     ) {
         let mut notification = None;
         {
-            let _err = self.get_user(&login_id).map(|user| {
-                self.tables
-                    .write()
-                    .unwrap()
-                    .get_mut(&table_id)
-                    .map(|table| {
-                        notification = table.connection_opened(user, sender);
-                    })
-            });
+            let _err = self
+                .tables
+                .write()
+                .unwrap()
+                .get_mut(&table_id)
+                .map(|table| {
+                    notification = table.connection_opened(user, sender);
+                });
         }
 
         if let Some(notification) = notification {
@@ -410,7 +393,7 @@ impl ZingState {
 
     pub async fn play_card(
         &self,
-        login_id: &str,
+        user: Arc<User>,
         table_id: &str,
         card_index: usize,
     ) -> Result<(), GameError> {
@@ -418,14 +401,12 @@ impl ZingState {
         let result;
 
         let phase_changed = {
-            self.get_user(login_id)?;
-
             let mut tables = self.tables.write().unwrap();
             let table = tables
                 .get_mut(table_id)
                 .ok_or(GameError::NotFound("table id not found"))?;
 
-            let player = table.user_index(login_id).ok_or(GameError::NotFound(
+            let player = table.user_index(&user.login_id).ok_or(GameError::NotFound(
                 "user has not joined table at which card should be played",
             ))?;
 
