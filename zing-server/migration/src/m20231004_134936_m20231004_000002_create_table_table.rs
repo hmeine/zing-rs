@@ -38,6 +38,7 @@ impl MigrationTrait for Migration {
                     .if_not_exists()
                     .col(ColumnDef::new(TableJoin::UserId).integer().not_null())
                     .col(ColumnDef::new(TableJoin::TableId).integer().not_null())
+                    .col(ColumnDef::new(TableJoin::TablePos).integer().not_null())
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk-tablejoin-user_id")
@@ -55,6 +56,19 @@ impl MigrationTrait for Migration {
                             .col(TableJoin::UserId)
                             .col(TableJoin::TableId),
                     )
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .if_not_exists()
+                    .name("idx-table_pos")
+                    .table(TableJoin::Table)
+                    .col(TableJoin::TableId)
+                    .col(TableJoin::TablePos)
+                    .unique()
                     .to_owned(),
             )
             .await
@@ -92,4 +106,5 @@ enum TableJoin {
     Table,
     UserId,
     TableId,
+    TablePos,
 }
