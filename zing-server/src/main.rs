@@ -1,7 +1,4 @@
-use std::{
-    ops::Deref,
-    sync::{Arc, RwLock},
-};
+use std::{ops::Deref, sync::Arc};
 
 use async_trait::async_trait;
 use axum::{
@@ -31,7 +28,7 @@ mod zing_state;
 
 #[shuttle_runtime::main]
 async fn axum() -> shuttle_axum::ShuttleAxum {
-    let state = Arc::new(RwLock::new(ZingState::default()));
+    let state = Arc::new(ZingState::default());
 
     let app = Router::new()
         .nest_service("/", ServeFile::new("zing-server/assets/index.html"))
@@ -40,7 +37,7 @@ async fn axum() -> shuttle_axum::ShuttleAxum {
         .route("/ws", get(global_ws_handler))
         .route(
             "/table/:table_id",
-            post(join_table).get(get_table).delete(leave_table),
+            post(join_table).get(get_table_info).delete(leave_table),
         )
         .route(
             "/table/:table_id/game",
@@ -71,11 +68,10 @@ struct LoginRequest {
 const LOGIN_COOKIE: &str = "login_id";
 
 async fn login(
-    State(state): State<Arc<RwLock<ZingState>>>,
+    State(state): State<Arc<ZingState>>,
     cookies: Cookies,
     Json(login_request): Json<LoginRequest>,
 ) -> Result<String, GameError> {
-    let mut state = state.write().unwrap();
     let user_name = login_request.name;
     if user_name.is_empty() {
         return Err(GameError::BadRequest("name must not be empty"));
@@ -92,11 +88,10 @@ async fn login(
 }
 
 async fn logout(
-    State(state): State<Arc<RwLock<ZingState>>>,
+    State(state): State<Arc<ZingState>>,
     LoginToken(login_token): LoginToken,
     cookies: Cookies,
 ) -> Result<(), GameError> {
-    let mut state = state.write().unwrap();
     let user_name = state.whoami(&login_token);
     state.logout(&login_token)?;
     info!("Logged out {}", user_name.unwrap());
@@ -132,10 +127,9 @@ where
 }
 
 async fn whoami(
-    State(state): State<Arc<RwLock<ZingState>>>,
+    State(state): State<Arc<ZingState>>,
     LoginToken(login_token): LoginToken,
 ) -> Result<String, GameError> {
-    let state = state.read().unwrap();
     match state.whoami(&login_token) {
         Some(user_name) => Ok(user_name),
         None => Err(GameError::Unauthorized("no valid login cookie")),
@@ -144,33 +138,30 @@ async fn whoami(
 
 async fn create_table(
     LoginToken(login_token): LoginToken,
-    State(state): State<Arc<RwLock<ZingState>>>,
+    State(state): State<Arc<ZingState>>,
 ) -> Result<impl IntoResponse, GameError> {
-    let mut state = state.write().unwrap();
     state.create_table(&login_token)
 }
 
 async fn list_tables(
     LoginToken(login_token): LoginToken,
-    State(state): State<Arc<RwLock<ZingState>>>,
+    State(state): State<Arc<ZingState>>,
 ) -> Result<impl IntoResponse, GameError> {
-    let state = state.read().unwrap();
     state.list_tables(&login_token)
 }
 
-async fn get_table(
+async fn get_table_info(
     LoginToken(login_token): LoginToken,
     Path(table_id): Path<String>,
-    State(state): State<Arc<RwLock<ZingState>>>,
+    State(state): State<Arc<ZingState>>,
 ) -> Result<impl IntoResponse, GameError> {
-    let state = state.read().unwrap();
-    state.get_table(&login_token, &table_id)
+    state.get_table_info(&login_token, &table_id)
 }
 
 async fn join_table(
     LoginToken(login_token): LoginToken,
     Path(table_id): Path<String>,
-    State(state): State<Arc<RwLock<ZingState>>>,
+    State(state): State<Arc<ZingState>>,
 ) -> Result<impl IntoResponse, GameError> {
     ZingState::join_table(state.deref(), &login_token, &table_id).await
 }
@@ -178,16 +169,15 @@ async fn join_table(
 async fn leave_table(
     LoginToken(login_token): LoginToken,
     Path(table_id): Path<String>,
-    State(state): State<Arc<RwLock<ZingState>>>,
+    State(state): State<Arc<ZingState>>,
 ) -> Result<(), GameError> {
-    let mut state = state.write().unwrap();
     state.leave_table(&login_token, &table_id)
 }
 
 async fn start_game(
     LoginToken(login_token): LoginToken,
     Path(table_id): Path<String>,
-    State(state): State<Arc<RwLock<ZingState>>>,
+    State(state): State<Arc<ZingState>>,
 ) -> Result<(), GameError> {
     ZingState::start_game(state.deref(), &login_token, &table_id).await
 }
@@ -195,16 +185,15 @@ async fn start_game(
 async fn game_status(
     LoginToken(login_token): LoginToken,
     Path(table_id): Path<String>,
-    State(state): State<Arc<RwLock<ZingState>>>,
+    State(state): State<Arc<ZingState>>,
 ) -> Result<Json<GameState>, GameError> {
-    let state = state.read().unwrap();
     state.game_status(&login_token, &table_id)
 }
 
 async fn finish_game(
     LoginToken(login_token): LoginToken,
     Path(table_id): Path<String>,
-    State(state): State<Arc<RwLock<ZingState>>>,
+    State(state): State<Arc<ZingState>>,
 ) -> Result<(), GameError> {
     ZingState::finish_game(state.deref(), &login_token, &table_id).await
 }
@@ -217,7 +206,7 @@ struct GameAction {
 async fn play_card(
     LoginToken(login_token): LoginToken,
     Path(table_id): Path<String>,
-    State(state): State<Arc<RwLock<ZingState>>>,
+    State(state): State<Arc<ZingState>>,
     Json(game_action): Json<GameAction>,
 ) -> Result<(), GameError> {
     ZingState::play_card(
@@ -231,10 +220,10 @@ async fn play_card(
 
 async fn global_ws_handler(
     LoginToken(login_token): LoginToken,
-    State(state): State<Arc<RwLock<ZingState>>>,
+    State(state): State<Arc<ZingState>>,
     ws: WebSocketUpgrade,
 ) -> Result<impl IntoResponse, GameError> {
-    state.read().unwrap().get_user(&login_token)?;
+    state.get_user(&login_token)?;
 
     Ok(ws.on_upgrade(move |socket| {
         let sender = NotificationSenderHandle::new(socket);
@@ -244,7 +233,7 @@ async fn global_ws_handler(
 }
 
 async fn add_user_global_connection(
-    state: Arc<RwLock<ZingState>>,
+    state: Arc<ZingState>,
     login_token: String,
     sender: NotificationSenderHandle,
 ) {
@@ -254,13 +243,10 @@ async fn add_user_global_connection(
 async fn table_ws_handler(
     LoginToken(login_token): LoginToken,
     Path(table_id): Path<String>,
-    State(state): State<Arc<RwLock<ZingState>>>,
+    State(state): State<Arc<ZingState>>,
     ws: WebSocketUpgrade,
 ) -> Result<impl IntoResponse, GameError> {
-    state
-        .read()
-        .unwrap()
-        .check_user_can_connect(&login_token, &table_id)?;
+    state.check_user_can_connect(&login_token, &table_id)?;
 
     Ok(ws.on_upgrade(move |socket| {
         let sender = NotificationSenderHandle::new(socket);
@@ -270,7 +256,7 @@ async fn table_ws_handler(
 }
 
 async fn add_user_table_connection(
-    state: Arc<RwLock<ZingState>>,
+    state: Arc<ZingState>,
     login_token: String,
     table_id: String,
     sender: NotificationSenderHandle,
