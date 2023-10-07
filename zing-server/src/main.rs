@@ -224,16 +224,10 @@ async fn global_ws_handler(
     Ok(ws.on_upgrade(move |socket| {
         let sender = NotificationSenderHandle::new(socket);
 
-        add_user_global_connection(state, login_token, sender)
+        async move {
+            state.add_user_global_connection(login_token, sender).await
+        }
     }))
-}
-
-async fn add_user_global_connection(
-    state: Arc<ZingState>,
-    login_token: String,
-    sender: NotificationSenderHandle,
-) {
-    state.add_user_global_connection(login_token, sender).await
 }
 
 async fn table_ws_handler(
@@ -247,17 +241,10 @@ async fn table_ws_handler(
     Ok(ws.on_upgrade(move |socket| {
         let sender = NotificationSenderHandle::new(socket);
 
-        add_user_table_connection(state, login_token, table_id, sender)
+        async move {
+            state
+                .add_user_table_connection(login_token, table_id, sender)
+                .await
+        }
     }))
-}
-
-async fn add_user_table_connection(
-    state: Arc<ZingState>,
-    login_token: String,
-    table_id: String,
-    sender: NotificationSenderHandle,
-) {
-    state
-        .add_user_table_connection(login_token, table_id, sender)
-        .await
 }
