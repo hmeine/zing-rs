@@ -87,7 +87,7 @@ async fn login(
     if user_name.is_empty() {
         return Err(GameError::BadRequest("name must not be empty"));
     }
-    let login_token = state.login(&user_name);
+    let login_token = state.login(&user_name).await;
     info!("Logged in {} as {}", user_name, login_token);
 
     // TODO: report error if LOGIN_COOKIE is already set (and valid)?
@@ -103,7 +103,7 @@ async fn logout(
     AuthenticatedUser(user): AuthenticatedUser,
     cookies: Cookies,
 ) -> Result<(), GameError> {
-    state.logout(user.clone())?;
+    state.logout(user.clone()).await?;
     info!("Logged out {}", user.name);
 
     let mut login_cookie = Cookie::new(LOGIN_COOKIE, "");
@@ -148,7 +148,7 @@ impl FromRequestParts<Arc<ZingState>> for AuthenticatedUser {
     ) -> Result<Self, Self::Rejection> {
         let LoginToken(login_token) = LoginToken::from_request_parts(parts, state).await?;
 
-        let user = state.get_user(&login_token)?;
+        let user = state.get_user(&login_token).await?;
 
         Ok(AuthenticatedUser(user))
     }
@@ -162,14 +162,14 @@ async fn create_table(
     AuthenticatedUser(user): AuthenticatedUser,
     State(state): State<Arc<ZingState>>,
 ) -> Result<impl IntoResponse, GameError> {
-    state.create_table(user)
+    state.create_table(user).await
 }
 
 async fn list_tables(
     AuthenticatedUser(user): AuthenticatedUser,
     State(state): State<Arc<ZingState>>,
 ) -> Result<impl IntoResponse, GameError> {
-    state.list_tables(user)
+    state.list_tables(user).await
 }
 
 async fn get_table_info(
@@ -177,7 +177,7 @@ async fn get_table_info(
     Path(table_id): Path<String>,
     State(state): State<Arc<ZingState>>,
 ) -> Result<impl IntoResponse, GameError> {
-    state.get_table_info(&table_id)
+    state.get_table_info(&table_id).await
 }
 
 async fn join_table(
@@ -193,7 +193,7 @@ async fn leave_table(
     Path(table_id): Path<String>,
     State(state): State<Arc<ZingState>>,
 ) -> Result<(), GameError> {
-    state.leave_table(user, &table_id)
+    state.leave_table(user, &table_id).await
 }
 
 async fn start_game(
@@ -209,7 +209,7 @@ async fn game_status(
     Path(table_id): Path<String>,
     State(state): State<Arc<ZingState>>,
 ) -> Result<Json<GameState>, GameError> {
-    state.game_status(user, &table_id)
+    state.game_status(user, &table_id).await
 }
 
 async fn finish_game(

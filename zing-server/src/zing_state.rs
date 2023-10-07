@@ -23,7 +23,7 @@ pub struct ZingState {
 }
 
 impl ZingState {
-    pub fn login(&self, user_name: &str) -> String {
+    pub async fn login(&self, user_name: &str) -> String {
         let login_id = random_id();
         self.users.write().unwrap().insert(
             login_id.clone(),
@@ -37,7 +37,7 @@ impl ZingState {
         login_id
     }
 
-    pub fn logout(&self, user: Arc<User>) -> Result<String, GameError> {
+    pub async fn logout(&self, user: Arc<User>) -> Result<String, GameError> {
         self.users
             .write()
             .unwrap()
@@ -68,14 +68,14 @@ impl ZingState {
         Ok(user.name.clone())
     }
 
-    pub fn get_user(&self, login_id: &str) -> Result<Arc<User>, GameError> {
+    pub async fn get_user(&self, login_id: &str) -> Result<Arc<User>, GameError> {
         self.users.read().unwrap().get(login_id).map_or(
             Err(GameError::Unauthorized("user not found (bad id cookie)")),
             |user| Ok(user.clone()),
         )
     }
 
-    pub fn create_table(&self, user: Arc<User>) -> Result<Json<TableInfo>, GameError> {
+    pub async fn create_table(&self, user: Arc<User>) -> Result<Json<TableInfo>, GameError> {
         let table_id = random_id();
 
         user.tables
@@ -91,7 +91,7 @@ impl ZingState {
         Ok(Json(table_info))
     }
 
-    pub fn list_tables(&self, user: Arc<User>) -> Result<Json<Vec<TableInfo>>, GameError> {
+    pub async fn list_tables(&self, user: Arc<User>) -> Result<Json<Vec<TableInfo>>, GameError> {
         let tables = self.tables.read().unwrap();
 
         let table_infos = user
@@ -105,7 +105,7 @@ impl ZingState {
         Ok(Json(table_infos))
     }
 
-    pub fn get_table_info(
+    pub async fn get_table_info(
         &self,
         table_id: &str,
     ) -> Result<Json<TableInfo>, GameError> {
@@ -182,7 +182,7 @@ impl ZingState {
         Ok(Json(result))
     }
 
-    pub fn leave_table(&self, user: Arc<User>, table_id: &str) -> Result<(), GameError> {
+    pub async fn leave_table(&self, user: Arc<User>, table_id: &str) -> Result<(), GameError> {
         let table_index_in_user = user
             .tables
             .read()
@@ -299,7 +299,7 @@ impl ZingState {
         }
     }
 
-    pub fn game_status(
+    pub async fn game_status(
         &self,
         user: Arc<User>,
         table_id: &str,
