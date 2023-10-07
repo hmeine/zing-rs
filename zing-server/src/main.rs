@@ -14,6 +14,7 @@ use serde::Deserialize;
 use tower_cookies::{Cookie, CookieManagerLayer, Cookies};
 use tower_http::services::{ServeDir, ServeFile};
 use tracing::info;
+use user::User;
 use ws_notifications::NotificationSenderHandle;
 use zing_game::game::GameState;
 use zing_state::ZingState;
@@ -89,12 +90,11 @@ async fn login(
 
 async fn logout(
     State(state): State<Arc<ZingState>>,
-    LoginToken(login_token): LoginToken,
+    AuthenticatedUser(user): AuthenticatedUser,
     cookies: Cookies,
 ) -> Result<(), GameError> {
-    let user_name = state.whoami(&login_token);
-    state.logout(&login_token)?;
-    info!("Logged out {}", user_name.unwrap());
+    state.logout(user.clone())?;
+    info!("Logged out {}", user.name);
 
     let mut login_cookie = Cookie::new(LOGIN_COOKIE, "");
     login_cookie.set_same_site(SameSite::Strict);
@@ -126,14 +126,26 @@ where
     }
 }
 
-async fn whoami(
-    State(state): State<Arc<ZingState>>,
-    LoginToken(login_token): LoginToken,
-) -> Result<String, GameError> {
-    match state.whoami(&login_token) {
-        Some(user_name) => Ok(user_name),
-        None => Err(GameError::Unauthorized("no valid login cookie")),
+struct AuthenticatedUser(Arc<User>);
+
+#[async_trait]
+impl FromRequestParts<Arc<ZingState>> for AuthenticatedUser {
+    type Rejection = GameError;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &Arc<ZingState>,
+    ) -> Result<Self, Self::Rejection> {
+        let LoginToken(login_token) = LoginToken::from_request_parts(parts, state).await?;
+
+        let user = state.get_user(&login_token)?;
+
+        Ok(AuthenticatedUser(user))
     }
+}
+
+async fn whoami(AuthenticatedUser(user): AuthenticatedUser) -> Result<String, GameError> {
+    Ok(user.name.clone())
 }
 
 async fn create_table(
@@ -224,9 +236,7 @@ async fn global_ws_handler(
     Ok(ws.on_upgrade(move |socket| {
         let sender = NotificationSenderHandle::new(socket);
 
-        async move {
-            state.add_user_global_connection(login_token, sender).await
-        }
+        async move { state.add_user_global_connection(login_token, sender).await }
     }))
 }
 

@@ -37,11 +37,11 @@ impl ZingState {
         login_id
     }
 
-    pub fn logout(&self, login_id: &str) -> Result<(), GameError> {
+    pub fn logout(&self, user: Arc<User>) -> Result<(), GameError> {
         self.users
             .write()
             .unwrap()
-            .remove_entry(login_id)
+            .remove_entry(&user.login_id)
             .ok_or(GameError::Unauthorized("user not found (bad id cookie)"))
             .map(|(_, user)| {
                 // mark user as logged out
@@ -52,11 +52,11 @@ impl ZingState {
             })?;
 
         // close websocket connections
-        self.connections.write().unwrap().remove_user(login_id);
+        self.connections.write().unwrap().remove_user(&user.login_id);
 
         let mut tables = self.tables.write().unwrap();
         for table in tables.values_mut() {
-            table.connections.remove_user(login_id);
+            table.connections.remove_user(&user.login_id);
         }
 
         // remove table if all users have logged out
@@ -70,14 +70,6 @@ impl ZingState {
             Err(GameError::Unauthorized("user not found (bad id cookie)")),
             |user| Ok(user.clone()),
         )
-    }
-
-    pub fn whoami(&self, login_id: &str) -> Option<String> {
-        self.users
-            .read()
-            .unwrap()
-            .get(login_id)
-            .map(|user| user.name.clone())
     }
 
     pub fn create_table(&self, login_id: &str) -> Result<Json<TableInfo>, GameError> {
@@ -186,10 +178,7 @@ impl ZingState {
                 .push(table_id.clone());
             table.user_joined(user);
 
-            //let table = self.tables.read().unwrap().get(&table_id).unwrap();
-            let result = table.table_info(&table_id);
-
-            result
+            table.table_info(&table_id)
         };
 
         self.send_table_notifications(table_id).await;
