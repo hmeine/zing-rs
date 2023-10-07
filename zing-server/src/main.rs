@@ -1,4 +1,4 @@
-use std::{ops::Deref, sync::Arc};
+use std::sync::Arc;
 
 use async_trait::async_trait;
 use axum::{
@@ -163,7 +163,7 @@ async fn join_table(
     Path(table_id): Path<String>,
     State(state): State<Arc<ZingState>>,
 ) -> Result<impl IntoResponse, GameError> {
-    ZingState::join_table(state.deref(), &login_token, &table_id).await
+    state.join_table(&login_token, &table_id).await
 }
 
 async fn leave_table(
@@ -179,7 +179,7 @@ async fn start_game(
     Path(table_id): Path<String>,
     State(state): State<Arc<ZingState>>,
 ) -> Result<(), GameError> {
-    ZingState::start_game(state.deref(), &login_token, &table_id).await
+    state.start_game(&login_token, &table_id).await
 }
 
 async fn game_status(
@@ -195,7 +195,7 @@ async fn finish_game(
     Path(table_id): Path<String>,
     State(state): State<Arc<ZingState>>,
 ) -> Result<(), GameError> {
-    ZingState::finish_game(state.deref(), &login_token, &table_id).await
+    state.finish_game(&login_token, &table_id).await
 }
 
 #[derive(Deserialize)]
@@ -209,13 +209,9 @@ async fn play_card(
     State(state): State<Arc<ZingState>>,
     Json(game_action): Json<GameAction>,
 ) -> Result<(), GameError> {
-    ZingState::play_card(
-        state.deref(),
-        &login_token,
-        &table_id,
-        game_action.card_index,
-    )
-    .await
+    state
+        .play_card(&login_token, &table_id, game_action.card_index)
+        .await
 }
 
 async fn global_ws_handler(
@@ -237,7 +233,7 @@ async fn add_user_global_connection(
     login_token: String,
     sender: NotificationSenderHandle,
 ) {
-    ZingState::add_user_global_connection(state.deref(), login_token, sender).await
+    state.add_user_global_connection(login_token, sender).await
 }
 
 async fn table_ws_handler(
@@ -261,5 +257,7 @@ async fn add_user_table_connection(
     table_id: String,
     sender: NotificationSenderHandle,
 ) {
-    ZingState::add_user_table_connection(state.deref(), login_token, table_id, sender).await
+    state
+        .add_user_table_connection(login_token, table_id, sender)
+        .await
 }
