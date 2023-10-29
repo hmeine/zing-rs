@@ -8,6 +8,8 @@ pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
     pub created_at: DateTimeWithTimeZone,
+    #[sea_orm(column_type = "JsonBinary", nullable)]
+    pub game: Option<Json>,
     pub token: String,
 }
 

@@ -26,6 +26,7 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .default(Expr::current_timestamp()),
                     )
+                    .col(ColumnDef::new(Table::Game).json_binary())
                     .col(ColumnDef::new(Table::Token).string().not_null())
                     .to_owned(),
             )
@@ -100,6 +101,7 @@ pub enum Table {
     Id,
     CreatedAt,
     Token,
+    Game,
 }
 
 #[derive(DeriveIden)]
