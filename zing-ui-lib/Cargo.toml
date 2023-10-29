@@ -26,7 +26,7 @@ serde_json = "1.0.105"
 http = "0.2.9"
 tracing = { version = "0.1.37", features = ["release_max_level_off"] }
 #bevy_mod_picking = { version = "0.15.0", features = ["bevy_picking_raycast", "backend_sprite"], default-features = false }
-bevy_mod_picking = { git = "https://github.com/hmeine/bevy_mod_picking", branch = "scaled_sprites", features = [
+bevy_mod_picking = { git = "https://github.com/aevyrie/bevy_mod_picking", branch = "main", features = [
     "bevy_picking_raycast",
     "backend_sprite",
     "highlight",
