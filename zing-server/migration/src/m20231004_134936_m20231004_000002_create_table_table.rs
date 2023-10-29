@@ -60,6 +60,7 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
+        // table constraint: TablePos must be unique per table
         manager
             .create_index(
                 Index::create()
