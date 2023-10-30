@@ -765,9 +765,9 @@ dependencies = [
 
 [[package]]
 name = "bevy_eventlistener"
-version = "0.3.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "233f729a5a2c7182f89b17c5d603cd604d095ee68d22c81b29be3cd30324f77d"
+checksum = "0b089d6bee5e75b1bc2793752ce94c461d4ce581281c15ca44cbd84bb7794073"
 dependencies = [
  "bevy_eventlistener_core",
  "bevy_eventlistener_derive",
@@ -775,20 +775,22 @@ dependencies = [
 
 [[package]]
 name = "bevy_eventlistener_core"
-version = "0.3.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ccd344e21cb61878a24169bff3f2e0bc5584df77b06732b5223a13a96a92dfe9"
+checksum = "f4c94b227693f271fd7dad522214f1a371c7856d88cedb6473d4c945e8169103"
 dependencies = [
- "bevy",
+ "bevy_app",
+ "bevy_ecs",
+ "bevy_hierarchy",
+ "bevy_utils",
 ]
 
 [[package]]
 name = "bevy_eventlistener_derive"
-version = "0.3.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "407110082f2a861eb198c254226aa4a24c239fcff235f2aec41b0b0db5e8937f"
+checksum = "3b88fc692e14d483c9aedd74958d1a39f5adbc6f94d97d87a2b330e27fa6a616"
 dependencies = [
- "bevy_eventlistener_core",
  "proc-macro2",
  "quote",
  "syn 2.0.37",
@@ -806,7 +808,6 @@ dependencies = [
  "bevy_core_pipeline",
  "bevy_ecs",
  "bevy_math",
- "bevy_pbr",
  "bevy_reflect",
  "bevy_render",
  "bevy_sprite",
@@ -927,23 +928,30 @@ dependencies = [
 
 [[package]]
 name = "bevy_mod_picking"
-version = "0.15.0"
-source = "git+https://github.com/hmeine/bevy_mod_picking?branch=scaled_sprites#a12ef235957f8f08ddb1aed26c9e7578812be01d"
+version = "0.16.0"
+source = "git+https://github.com/aevyrie/bevy_mod_picking?branch=main#9e221f77e711331fe793eef044879b0b2f5d2b98"
 dependencies = [
- "bevy",
+ "bevy_app",
+ "bevy_core",
+ "bevy_ecs",
  "bevy_eventlistener",
+ "bevy_math",
  "bevy_picking_core",
  "bevy_picking_highlight",
  "bevy_picking_input",
  "bevy_picking_raycast",
  "bevy_picking_sprite",
+ "bevy_reflect",
+ "bevy_render",
+ "bevy_utils",
+ "bevy_window",
 ]
 
 [[package]]
 name = "bevy_mod_raycast"
-version = "0.13.1"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9789907394dc92193e7a0123041de3bc302fd12ffc187c4fc2f365060aee941"
+checksum = "b833e94bd71d2ef27445f3e146b07da4a7922fdb7b464f0f1221521f85a5725a"
 dependencies = [
  "bevy",
  "crossbeam-channel",
@@ -974,49 +982,81 @@ dependencies = [
 
 [[package]]
 name = "bevy_picking_core"
-version = "0.15.0"
-source = "git+https://github.com/hmeine/bevy_mod_picking?branch=scaled_sprites#a12ef235957f8f08ddb1aed26c9e7578812be01d"
+version = "0.16.0"
+source = "git+https://github.com/aevyrie/bevy_mod_picking?branch=main#9e221f77e711331fe793eef044879b0b2f5d2b98"
 dependencies = [
- "bevy",
+ "bevy_app",
+ "bevy_derive",
+ "bevy_ecs",
  "bevy_eventlistener",
+ "bevy_math",
+ "bevy_reflect",
+ "bevy_render",
+ "bevy_utils",
+ "bevy_window",
 ]
 
 [[package]]
 name = "bevy_picking_highlight"
-version = "0.15.0"
-source = "git+https://github.com/hmeine/bevy_mod_picking?branch=scaled_sprites#a12ef235957f8f08ddb1aed26c9e7578812be01d"
+version = "0.16.0"
+source = "git+https://github.com/aevyrie/bevy_mod_picking?branch=main#9e221f77e711331fe793eef044879b0b2f5d2b98"
 dependencies = [
- "bevy",
+ "bevy_app",
+ "bevy_asset",
+ "bevy_ecs",
+ "bevy_pbr",
  "bevy_picking_core",
- "bevy_picking_input",
+ "bevy_reflect",
+ "bevy_render",
+ "bevy_sprite",
 ]
 
 [[package]]
 name = "bevy_picking_input"
-version = "0.15.0"
-source = "git+https://github.com/hmeine/bevy_mod_picking?branch=scaled_sprites#a12ef235957f8f08ddb1aed26c9e7578812be01d"
+version = "0.16.0"
+source = "git+https://github.com/aevyrie/bevy_mod_picking?branch=main#9e221f77e711331fe793eef044879b0b2f5d2b98"
 dependencies = [
- "bevy",
+ "bevy_app",
+ "bevy_ecs",
+ "bevy_hierarchy",
+ "bevy_input",
+ "bevy_math",
  "bevy_picking_core",
+ "bevy_reflect",
+ "bevy_render",
+ "bevy_utils",
+ "bevy_window",
 ]
 
 [[package]]
 name = "bevy_picking_raycast"
-version = "0.15.0"
-source = "git+https://github.com/hmeine/bevy_mod_picking?branch=scaled_sprites#a12ef235957f8f08ddb1aed26c9e7578812be01d"
+version = "0.16.0"
+source = "git+https://github.com/aevyrie/bevy_mod_picking?branch=main#9e221f77e711331fe793eef044879b0b2f5d2b98"
 dependencies = [
- "bevy",
+ "bevy_app",
+ "bevy_ecs",
  "bevy_mod_raycast",
  "bevy_picking_core",
+ "bevy_reflect",
+ "bevy_render",
+ "bevy_transform",
+ "bevy_window",
 ]
 
 [[package]]
 name = "bevy_picking_sprite"
-version = "0.15.0"
-source = "git+https://github.com/hmeine/bevy_mod_picking?branch=scaled_sprites#a12ef235957f8f08ddb1aed26c9e7578812be01d"
+version = "0.16.0"
+source = "git+https://github.com/aevyrie/bevy_mod_picking?branch=main#9e221f77e711331fe793eef044879b0b2f5d2b98"
 dependencies = [
- "bevy",
+ "bevy_app",
+ "bevy_asset",
+ "bevy_ecs",
+ "bevy_math",
  "bevy_picking_core",
+ "bevy_render",
+ "bevy_sprite",
+ "bevy_transform",
+ "bevy_window",
 ]
 
 [[package]]
