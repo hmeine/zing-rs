@@ -1,6 +1,5 @@
 use axum::Json;
 use entities::prelude::*;
-use futures::stream::{self, StreamExt};
 use sea_orm::{prelude::*, ActiveValue, QueryOrder};
 use std::{collections::HashMap, sync::RwLock};
 use tracing::debug;
@@ -175,17 +174,18 @@ impl ZingState {
                 // loaded_table_info() will have loaded the table
                 // FIXME: isn't it dangerous to lock both tables and connections at the same time?!
                 // (it would not be if we made sure that every time this happens, the order is the same)
-                // FIXME: async no longer necessary?!
                 let tables = self.tables.read().unwrap();
                 let loaded = tables.get(token).unwrap();
-                stream::iter(self.connections.read().unwrap().iter())
-                    .filter_map(|c| async {
+                self.connections
+                    .read()
+                    .unwrap()
+                    .iter()
+                    .filter_map(|c| {
                         loaded.player_index(c.client_login_token()).map(|_| {
                             c.serialized_notification(serde_json::to_string(&table_info).unwrap())
                         })
                     })
                     .collect()
-                    .await
             };
 
             self.send_notifications(notifications, None).await;
