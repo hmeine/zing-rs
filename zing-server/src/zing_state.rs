@@ -126,7 +126,8 @@ impl ZingState {
     ) -> Result<Json<Vec<TableInfo>>, GameError> {
         let mut result = Vec::new();
 
-        for table in Table::find()
+        for (table, _table_join) in Table::find()
+            .find_also_related(TableJoin)
             .filter(entities::table_join::Column::UserId.eq(user.id))
             .order_by_asc(entities::table::Column::CreatedAt)
             .all(&self.db_conn)
