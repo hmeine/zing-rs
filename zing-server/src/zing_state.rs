@@ -220,8 +220,6 @@ impl ZingState {
             .await
             .map_err(|_| GameError::DBError("DB query failed unexpectedly"))?;
 
-        let table_token = table_token.to_owned();
-
         TableJoin::insert(entities::table_join::ActiveModel {
             user_id: ActiveValue::Set(user.id),
             table_id: ActiveValue::Set(table.id),
@@ -231,6 +229,12 @@ impl ZingState {
         .await
         // TODO: discriminate between a generic DB error vs. a constraint violation?
         .map_err(|_| GameError::Conflict("trying to join table again"))?;
+
+        {
+            let mut tables = self.tables.write().unwrap();
+            let loaded_table = tables.get_mut(table_token).expect("must be loaded now");
+            loaded_table.user_joined(user);
+        }
 
         self.send_table_notifications(&table_token).await;
 
@@ -404,7 +408,7 @@ impl ZingState {
 
         // scope for locked self.tables
         let mut tables = self.tables.write().unwrap();
-        let mut loaded = tables
+        let loaded = tables
             .get_mut(table_token)
             .expect("we have just loaded the table");
 

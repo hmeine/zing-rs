@@ -139,6 +139,10 @@ impl LoadedTable {
             .is_some()
     }
 
+    pub fn user_joined(&mut self, user: &entities::user::Model) {
+        self.players.push(user.clone());
+    }
+
     pub fn start_game(&mut self) -> Result<(), GameError> {
         if self.game.is_some() {
             return Err(GameError::Conflict("game already started"));
@@ -194,9 +198,7 @@ impl LoadedTable {
         }
     }
 
-    pub async fn action_notifications(
-        &self,
-    ) -> SerializedNotifications {
+    pub async fn action_notifications(&self) -> SerializedNotifications {
         let history = self
             .game
             .as_ref()
