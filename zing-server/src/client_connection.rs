@@ -1,8 +1,8 @@
-use std::sync::{Arc, RwLock};
+use std::sync::RwLock;
 
 use zing_game::client_notification::ClientNotification;
 
-use crate::{user::User, util::random_id, ws_notifications::NotificationSenderHandle};
+use crate::{entities, util::random_id, ws_notifications::NotificationSenderHandle};
 
 pub struct SerializedNotification {
     pub connection_id: String,
@@ -20,13 +20,13 @@ pub type SerializedNotifications = Vec<SerializedNotification>;
 
 pub struct ClientConnection {
     pub connection_id: String,
-    user: Arc<User>,
+    user: entities::user::Model, // FIXME: should probably be just id/token?
     pub sender: NotificationSenderHandle,
     pub actions_sent: RwLock<usize>,
 }
 
 impl ClientConnection {
-    pub fn new(user: Arc<User>, sender: NotificationSenderHandle) -> Self {
+    pub fn new(user: entities::user::Model, sender: NotificationSenderHandle) -> Self {
         Self {
             connection_id: random_id(),
             user,
@@ -36,7 +36,7 @@ impl ClientConnection {
     }
 
     pub fn client_login_token(&self) -> &str {
-        &self.user.login_token
+        &self.user.token
     }
 
     pub fn serialized_notification(&self, msg: String) -> SerializedNotification {
@@ -67,7 +67,7 @@ impl ClientConnections {
         self.0.iter()
     }
 
-    pub fn add(&mut self, user: Arc<User>, sender: NotificationSenderHandle) {
+    pub fn add(&mut self, user: entities::user::Model, sender: NotificationSenderHandle) {
         self.0.push(ClientConnection::new(user, sender));
     }
 
@@ -85,6 +85,6 @@ impl ClientConnections {
     }
 
     pub fn remove_user_with_token(&mut self, login_token: &str) {
-        self.0.retain(|c| c.user.login_token != login_token);
+        self.0.retain(|c| c.user.token != login_token);
     }
 }

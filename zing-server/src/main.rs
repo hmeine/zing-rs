@@ -17,7 +17,6 @@ use sqlx::PgPool;
 use tower_cookies::{Cookie, CookieManagerLayer, Cookies};
 use tower_http::services::{ServeDir, ServeFile};
 use tracing::info;
-use user::User;
 use ws_notifications::NotificationSenderHandle;
 use zing_game::game::GameState;
 use zing_state::ZingState;
@@ -26,7 +25,6 @@ mod client_connection;
 mod entities;
 mod game_error;
 mod table;
-mod user;
 mod util;
 mod ws_notifications;
 mod zing_state;
@@ -39,8 +37,8 @@ async fn axum(#[shuttle_shared_db::Postgres] pool: PgPool) -> shuttle_axum::Shut
         .await
         .expect("DB migration failed");
 
-    let state = Arc::new(ZingState::default());
-        
+    let state = Arc::new(ZingState::new(conn).await);
+
     let app = Router::new()
         .nest_service("/", ServeFile::new("zing-server/assets/index.html"))
         .route("/login", post(login).get(whoami).delete(logout))
@@ -48,7 +46,7 @@ async fn axum(#[shuttle_shared_db::Postgres] pool: PgPool) -> shuttle_axum::Shut
         .route("/ws", get(global_ws_handler))
         .route(
             "/table/:table_id",
-            post(join_table).get(get_table_info).delete(leave_table),
+            post(join_table).get(get_table_info) // .delete(leave_table),
         )
         .route(
             "/table/:table_id/game",
@@ -87,7 +85,7 @@ async fn login(
     if user_name.is_empty() {
         return Err(GameError::BadRequest("name must not be empty"));
     }
-    let login_token = state.login(&user_name).await;
+    let login_token = state.login(&user_name).await?;
     info!("Logged in {} as {}", user_name, login_token);
 
     // TODO: report error if LOGIN_COOKIE is already set (and valid)?
@@ -136,7 +134,7 @@ where
     }
 }
 
-struct AuthenticatedUser(Arc<User>);
+struct AuthenticatedUser(entities::user::Model);
 
 #[async_trait]
 impl FromRequestParts<Arc<ZingState>> for AuthenticatedUser {
@@ -185,23 +183,23 @@ async fn join_table(
     Path(table_id): Path<String>,
     State(state): State<Arc<ZingState>>,
 ) -> Result<impl IntoResponse, GameError> {
-    state.join_table(user, &table_id).await
+    state.join_table(&user, &table_id).await
 }
 
-async fn leave_table(
-    AuthenticatedUser(user): AuthenticatedUser,
-    Path(table_id): Path<String>,
-    State(state): State<Arc<ZingState>>,
-) -> Result<(), GameError> {
-    state.leave_table(user, &table_id).await
-}
+// async fn leave_table(
+//     AuthenticatedUser(user): AuthenticatedUser,
+//     Path(table_id): Path<String>,
+//     State(state): State<Arc<ZingState>>,
+// ) -> Result<(), GameError> {
+//     state.leave_table(&user, &table_id).await
+// }
 
 async fn start_game(
     AuthenticatedUser(user): AuthenticatedUser,
     Path(table_id): Path<String>,
     State(state): State<Arc<ZingState>>,
 ) -> Result<(), GameError> {
-    state.start_game(user, &table_id).await
+    state.start_game(&user, &table_id).await
 }
 
 async fn game_status(
@@ -209,7 +207,7 @@ async fn game_status(
     Path(table_id): Path<String>,
     State(state): State<Arc<ZingState>>,
 ) -> Result<Json<GameState>, GameError> {
-    state.game_status(user, &table_id).await
+    state.game_status(&user, &table_id).await
 }
 
 async fn finish_game(
@@ -217,7 +215,7 @@ async fn finish_game(
     Path(table_id): Path<String>,
     State(state): State<Arc<ZingState>>,
 ) -> Result<(), GameError> {
-    state.finish_game(user, &table_id).await
+    state.finish_game(&user, &table_id).await
 }
 
 #[derive(Deserialize)]
@@ -232,7 +230,7 @@ async fn play_card(
     Json(game_action): Json<GameAction>,
 ) -> Result<(), GameError> {
     state
-        .play_card(user, &table_id, game_action.card_index)
+        .play_card(&user, &table_id, game_action.card_index)
         .await
 }
 
@@ -254,7 +252,7 @@ async fn table_ws_handler(
     State(state): State<Arc<ZingState>>,
     ws: WebSocketUpgrade,
 ) -> Result<impl IntoResponse, GameError> {
-    state.check_user_can_connect(user.clone(), &table_id)?;
+    state.user_index_at_table(&user.clone(), &table_id).await?;
 
     Ok(ws.on_upgrade(move |socket| {
         let sender = NotificationSenderHandle::new(socket);

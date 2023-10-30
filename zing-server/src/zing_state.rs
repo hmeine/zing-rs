@@ -1,237 +1,303 @@
 use axum::Json;
-use std::{
-    collections::HashMap,
-    sync::{Arc, RwLock},
-};
+use entities::prelude::*;
+use futures::stream::{self, StreamExt};
+use sea_orm::{prelude::*, ActiveValue, QueryOrder};
+use std::{collections::HashMap, sync::RwLock};
 use tracing::debug;
 use zing_game::game::{GamePhase, GameState};
 
 use crate::{
     client_connection::{ClientConnections, SerializedNotifications},
+    entities::{self, table},
     game_error::GameError,
-    table::{Table, TableInfo},
-    user::User,
+    table::{LoadedTable, TableInfo},
     util::random_id,
     ws_notifications::NotificationSenderHandle,
 };
 
 #[derive(Default)]
 pub struct ZingState {
-    users: RwLock<HashMap<String, Arc<User>>>,
-    tables: RwLock<HashMap<String, Table>>,
+    tables: RwLock<HashMap<String, LoadedTable>>,
     connections: RwLock<ClientConnections>,
+    db_conn: DatabaseConnection,
 }
 
 impl ZingState {
-    pub async fn login(&self, user_name: &str) -> String {
-        let login_token = random_id();
-        self.users.write().unwrap().insert(
-            login_token.clone(),
-            Arc::new(User {
-                login_token: login_token.clone(),
-                name: user_name.to_owned(),
-                logged_in: RwLock::new(true),
-                tables: RwLock::new(Vec::new()),
-            }),
-        );
-        login_token
+    pub async fn new(db_conn: DatabaseConnection) -> Self {
+        Self {
+            db_conn,
+            ..Default::default()
+        }
     }
 
-    pub async fn logout(&self, user: Arc<User>) -> Result<String, GameError> {
-        self.users
-            .write()
-            .unwrap()
-            .remove_entry(&user.login_token)
-            .ok_or(GameError::Unauthorized("user not found (bad id cookie)"))
-            .map(|(_, user)| {
-                // mark user as logged out
-                *user
-                    .logged_in
-                    .write()
-                    .expect("RwLock poisoned through panic") = false;
-            })?;
+    pub async fn get_user_with_token(
+        &self,
+        login_token: &str,
+    ) -> Result<entities::user::Model, GameError> {
+        let user = User::find()
+            .filter(entities::user::Column::Token.eq(login_token))
+            .one(&self.db_conn)
+            .await
+            .map_err(|_| GameError::DBError("DB error"))?;
+
+        user.ok_or(GameError::Unauthorized("user not found (bad id cookie)"))
+    }
+
+    pub async fn login(&self, user_name: &str) -> Result<String, GameError> {
+        let login_token = random_id();
+
+        User::insert(entities::user::ActiveModel {
+            name: ActiveValue::Set(user_name.to_owned()),
+            token: ActiveValue::Set(login_token.clone()),
+            logged_in: ActiveValue::Set(true),
+            ..Default::default()
+        })
+        .exec_without_returning(&self.db_conn)
+        .await
+        .map_err(|_| GameError::DBError("DB insert failed unexpectedly"))?;
+
+        Ok(login_token)
+    }
+
+    pub async fn logout(&self, user: entities::user::Model) -> Result<String, GameError> {
+        let token = user.token.clone();
+        let user_name = user.name.clone();
+
+        // mark as logged out
+        let mut user: entities::user::ActiveModel = user.into();
+        user.logged_in = ActiveValue::Set(false);
+        user.update(&self.db_conn)
+            .await
+            .map_err(|_| GameError::DBError("DB update failed unexpectedly"))?;
 
         // close websocket connections
         self.connections
             .write()
             .unwrap()
-            .remove_user_with_token(&user.login_token);
+            .remove_user_with_token(&token);
 
         let mut tables = self.tables.write().unwrap();
-        for table in tables.values_mut() {
-            table.connections.remove_user_with_token(&user.login_token);
+        for tc in tables.values_mut() {
+            tc.connections.remove_user_with_token(&token);
         }
 
-        // remove table if all users have logged out
-        tables.retain(|_table_id, table| table.has_logged_in_users());
+        // FIXME: remove table if all users have logged out (taking into account loaded tables)
 
-        Ok(user.name.clone())
+        Ok(user_name)
     }
 
-    pub async fn get_user_with_token(&self, login_token: &str) -> Result<Arc<User>, GameError> {
-        self.users.read().unwrap().get(login_token).map_or(
-            Err(GameError::Unauthorized("user not found (bad id cookie)")),
-            |user| Ok(user.clone()),
-        )
-    }
+    pub async fn create_table(
+        &self,
+        user: entities::user::Model,
+    ) -> Result<Json<TableInfo>, GameError> {
+        let table = LoadedTable::create_for_user(user, &self.db_conn).await?;
 
-    pub async fn create_table(&self, user: Arc<User>) -> Result<Json<TableInfo>, GameError> {
-        let table_id = random_id();
+        let table_info = table.table_info();
 
-        user.tables
-            .write()
-            .expect("RwLock poisoned through panic")
-            .push(table_id.clone());
-
-        let table = Table::new(user);
-        let table_info = table.table_info(&table_id);
-
-        self.tables.write().unwrap().insert(table_id, table);
+        self.tables.write().unwrap().insert(table.token(), table);
 
         Ok(Json(table_info))
     }
 
-    pub async fn list_tables(&self, user: Arc<User>) -> Result<Json<Vec<TableInfo>>, GameError> {
-        let tables = self.tables.read().unwrap();
+    async fn ensure_loaded_table(&self, table: entities::table::Model) {
+        let loaded = self.tables.read().unwrap().get(&table.token).is_some();
 
-        let table_infos = user
-            .tables
-            .read()
-            .expect("RwLock poisoned through panic")
-            .iter()
-            .map(|table_id| tables.get(table_id).unwrap().table_info(table_id))
-            .collect::<Vec<_>>();
-
-        Ok(Json(table_infos))
+        if !loaded {
+            let token = table.token.clone();
+            let loaded = LoadedTable::new_from_db(table, &self.db_conn).await;
+            let mut tables = self.tables.write().unwrap();
+            tables.insert(token.clone(), loaded);
+        }
     }
 
-    pub async fn get_table_info(
-        &self,
-        table_id: &str,
-    ) -> Result<Json<TableInfo>, GameError> {
+    async fn table_info(&self, table: entities::table::Model) -> TableInfo {
+        let token = table.token.clone();
+
+        self.ensure_loaded_table(table).await;
+
         let tables = self.tables.read().unwrap();
+        let loaded = tables.get(&token).expect("we have just loaded the table");
+        loaded.table_info()
+    }
 
-        let table = tables
-            .get(table_id)
-            .ok_or(GameError::NotFound("table id not found"))?;
+    pub async fn list_tables(
+        &self,
+        user: entities::user::Model,
+    ) -> Result<Json<Vec<TableInfo>>, GameError> {
+        let mut result = Vec::new();
 
-        let result = table.table_info(table_id);
+        for table in Table::find()
+            .filter(entities::table_join::Column::UserId.eq(user.id))
+            .order_by_asc(entities::table::Column::CreatedAt)
+            .all(&self.db_conn)
+            .await
+            .map_err(|_| GameError::DBError("DB query failed unexpectedly"))?
+        {
+            result.push(self.table_info(table).await);
+        }
 
         Ok(Json(result))
     }
 
-    async fn send_table_notifications(&self, table_id: &str) {
-        let notifications = {
+    async fn find_table_with_token(
+        &self,
+        token: &str,
+    ) -> Result<entities::table::Model, GameError> {
+        {
             let tables = self.tables.read().unwrap();
-            let table = tables.get(table_id).unwrap();
-            let result = table.table_info(table_id);
+            if let Some(loaded) = tables.get(token) {
+                return Ok(loaded.table());
+            }
+        }
 
-            self.connections
-                .read()
-                .unwrap()
-                .iter()
-                .filter_map(|c| {
-                    table
-                        .user_index(c.client_login_token())
-                        .map(|_| c.serialized_notification(serde_json::to_string(&result).unwrap()))
-                })
-                .collect()
-        };
+        Table::find()
+            .filter(entities::table::Column::Token.eq(token))
+            .one(&self.db_conn)
+            .await
+            .map_err(|_| GameError::DBError("DB query failed unexpectedly"))?
+            .ok_or(GameError::NotFound("table not found by token"))
+    }
 
-        self.send_notifications(notifications, None).await;
+    pub async fn get_table_info(&self, token: &str) -> Result<Json<TableInfo>, GameError> {
+        let table = self.find_table_with_token(token).await?;
+
+        let result = self.table_info(table).await;
+
+        Ok(Json(result))
+    }
+
+    async fn send_table_notifications(&self, token: &str) {
+        if let Ok(table) = self.find_table_with_token(token).await {
+            let table_info = self.table_info(table).await;
+
+            let notifications = {
+                // loaded_table_info() will have loaded the table
+                // FIXME: isn't it dangerous to lock both tables and connections at the same time?!
+                // (it would not be if we made sure that every time this happens, the order is the same)
+                // FIXME: async no longer necessary?!
+                let tables = self.tables.read().unwrap();
+                let loaded = tables.get(token).unwrap();
+                stream::iter(self.connections.read().unwrap().iter())
+                    .filter_map(|c| async {
+                        loaded.player_index(c.client_login_token()).map(|_| {
+                            c.serialized_notification(serde_json::to_string(&table_info).unwrap())
+                        })
+                    })
+                    .collect()
+                    .await
+            };
+
+            self.send_notifications(notifications, None).await;
+        }
     }
 
     pub async fn join_table(
         &self,
-        user: Arc<User>,
-        table_id: &str,
+        user: &entities::user::Model,
+        table_token: &str,
     ) -> Result<Json<TableInfo>, GameError> {
-        let result = {
-            let table_id = table_id.to_owned();
-            if user
-                .tables
-                .read()
-                .expect("RwLock poisoned through panic")
-                .contains(&table_id)
+        let table = self.find_table_with_token(table_token).await?;
+
+        {
+            self.ensure_loaded_table(table.clone()).await;
+
+            let tables = self.tables.read().unwrap();
+            if tables
+                .get(table_token)
+                .expect("must be loaded now")
+                .games_have_started()
             {
-                return Err(GameError::Conflict("trying to join table again"));
-            }
-
-            let mut tables = self.tables.write().unwrap();
-            let table = tables
-                .get_mut(&table_id)
-                .ok_or(GameError::NotFound("table id not found"))?;
-
-            if table.games_have_started() {
                 return Err(GameError::Conflict(
                     "cannot join a table after games have started",
                 ));
             }
-
-            user.tables
-                .write()
-                .expect("RwLock poisoned through panic")
-                .push(table_id.clone());
-            table.user_joined(user);
-
-            table.table_info(&table_id)
-        };
-
-        self.send_table_notifications(table_id).await;
-
-        Ok(Json(result))
-    }
-
-    pub async fn leave_table(&self, user: Arc<User>, table_id: &str) -> Result<(), GameError> {
-        let table_index_in_user = user
-            .tables
-            .read()
-            .expect("RwLock poisoned through panic")
-            .iter()
-            .position(|id| *id == table_id)
-            .ok_or(GameError::Unauthorized(
-                "trying to leave table before joining",
-            ))?;
-
-        {
-            // scope for locked self.tables
-            let mut tables = self.tables.write().unwrap();
-            let table = tables
-                .get_mut(table_id)
-                .ok_or(GameError::NotFound("table id not found"))?;
-
-            if table.games_have_started() {
-                return Err(GameError::Conflict(
-                    // TODO: or should we allow this? it's less destructive than logging out.
-                    "cannot leave a table after games have started",
-                ));
-            }
-
-            table.user_left(&user.login_token);
-            if !table.has_logged_in_users() {
-                tables.remove(table_id);
-            }
         }
 
-        user.tables
-            .write()
-            .expect("RwLock poisoned through panic")
-            .remove(table_index_in_user);
+        let table_pos = table
+            .find_related(TableJoin)
+            .count(&self.db_conn)
+            .await
+            .map_err(|_| GameError::DBError("DB query failed unexpectedly"))?;
 
-        Ok(())
+        let table_token = table_token.to_owned();
+
+        TableJoin::insert(entities::table_join::ActiveModel {
+            user_id: ActiveValue::Set(user.id),
+            table_id: ActiveValue::Set(table.id),
+            table_pos: ActiveValue::Set(table_pos.try_into().unwrap()),
+        })
+        .exec_without_returning(&self.db_conn)
+        .await
+        // TODO: discriminate between a generic DB error vs. a constraint violation?
+        .map_err(|_| GameError::Conflict("trying to join table again"))?;
+
+        self.send_table_notifications(&table_token).await;
+
+        self.get_table_info(&table_token).await
     }
 
-    pub async fn start_game(&self, user: Arc<User>, table_id: &str) -> Result<(), GameError> {
+    // pub async fn leave_table(
+    //     &self,
+    //     user: &entities::user::Model,
+    //     table_id: &str,
+    // ) -> Result<(), GameError> {
+    //     let table_index_in_user = user
+    //         .tables
+    //         .read()
+    //         .expect("RwLock poisoned through panic")
+    //         .iter()
+    //         .position(|id| *id == table_id)
+    //         .ok_or(GameError::Unauthorized(
+    //             "trying to leave table before joining",
+    //         ))?;
+
+    //     {
+    //         // scope for locked self.tables
+    //         let mut tables = self.tables.write().unwrap();
+    //         let table = tables
+    //             .get_mut(table_id)
+    //             .ok_or(GameError::NotFound("table id not found"))?;
+
+    //         if table.games_have_started() {
+    //             return Err(GameError::Conflict(
+    //                 // TODO: or should we allow this? it's less destructive than logging out.
+    //                 "cannot leave a table after games have started",
+    //             ));
+    //         }
+
+    //         table.user_left(&user.login_token);
+    //         if !table.has_logged_in_users() {
+    //             tables.remove(table_id);
+    //         }
+    //     }
+
+    //     user.tables
+    //         .write()
+    //         .expect("RwLock poisoned through panic")
+    //         .remove(table_index_in_user);
+
+    //     Ok(())
+    // }
+
+    pub async fn start_game(
+        &self,
+        user: &entities::user::Model,
+        table_token: &str,
+    ) -> Result<(), GameError> {
+        let table = self.find_table_with_token(table_token).await?;
+
+        self.ensure_loaded_table(table).await;
+
         // start a game (sync code), collect initial game status notifications
         let notifications = {
             {
                 // scope for locked self.tables
                 let tables = self.tables.read().unwrap();
-                let table = tables
-                    .get(table_id)
-                    .ok_or(GameError::NotFound("table id not found"))?;
+                let loaded = tables
+                    .get(table_token)
+                    .expect("we have just loaded the table");
 
-                table.user_index(&user.login_token).ok_or(GameError::NotFound(
+                loaded.player_index(&user.token).ok_or(GameError::NotFound(
                     "user has not joined table at which game should start",
                 ))?;
             }
@@ -239,27 +305,29 @@ impl ZingState {
             {
                 // scope for locked self.tables
                 let mut tables = self.tables.write().unwrap();
-                let table = tables.get_mut(table_id).unwrap();
-                table.start_game()?;
-                table.initial_game_status_messages()
+                let loaded = tables.get_mut(table_token).unwrap();
+                loaded.start_game()?;
+                loaded.initial_game_status_messages()
             }
         };
 
         // send initial card notifications
-        self.send_notifications(notifications, Some(table_id)).await;
+        self.send_notifications(notifications, Some(table_token))
+            .await;
 
         // finally, perform first dealer card actions
         let notifications = {
             let mut tables = self.tables.write().unwrap();
-            let table = tables.get_mut(table_id).unwrap();
-            table.setup_game()?;
-            table.action_notifications()
+            let loaded = tables.get_mut(table_token).unwrap();
+            loaded.setup_game()?;
+            loaded.action_notifications().await
         };
 
         // send notifications about dealer actions
-        self.send_notifications(notifications, Some(table_id)).await;
+        self.send_notifications(notifications, Some(table_token))
+            .await;
 
-        self.send_table_notifications(table_id).await;
+        self.send_table_notifications(table_token).await;
 
         Ok(())
     }
@@ -301,66 +369,82 @@ impl ZingState {
 
     pub async fn game_status(
         &self,
-        user: Arc<User>,
-        table_id: &str,
+        user: &entities::user::Model,
+        table_token: &str,
     ) -> Result<Json<GameState>, GameError> {
-        let tables = self.tables.read().unwrap();
-        let table = tables
-            .get(table_id)
-            .ok_or(GameError::NotFound("table id not found"))?;
+        let table = self.find_table_with_token(table_token).await?;
 
-        table
-            .user_index(&user.login_token)
+        self.ensure_loaded_table(table).await;
+
+        let tables = self.tables.read().unwrap();
+        let loaded = tables
+            .get(table_token)
+            .expect("we have just loaded the table");
+
+        loaded
+            .player_index(&user.token)
             .ok_or(GameError::NotFound("user has not joined table"))?;
 
-        table
-            .game_status(&user.login_token)
+        loaded
+            .game_status(&user.token)
             .map_or(Err(GameError::NotFound("no game active")), |game| {
                 Ok(Json(game))
             })
     }
 
-    pub async fn finish_game(&self, user: Arc<User>, table_id: &str) -> Result<(), GameError> {
-        let result = {
-            let mut tables = self.tables.write().unwrap();
-            let table = tables
-                .get_mut(table_id)
-                .ok_or(GameError::NotFound("table id not found"))?;
+    pub async fn finish_game(
+        &self,
+        user: &entities::user::Model,
+        table_token: &str,
+    ) -> Result<(), GameError> {
+        let table = self.find_table_with_token(table_token).await?;
 
-            table.user_index(&user.login_token).ok_or(GameError::NotFound(
-                "user has not joined table at which game should be finished",
-            ))?;
+        self.ensure_loaded_table(table).await;
 
-            table.finish_game()
-        };
+        // scope for locked self.tables
+        let mut tables = self.tables.write().unwrap();
+        let mut loaded = tables
+            .get_mut(table_token)
+            .expect("we have just loaded the table");
+
+        // loaded
+        //     .player_index(&user.token, &self.db_conn)
+        //     .await
+        //     .ok_or(GameError::NotFound(
+        //         "user has not joined table at which game should start",
+        //     ))?;
+
+        let result = loaded.finish_game();
 
         if result.is_ok() {
-            self.send_table_notifications(table_id).await;
+            self.send_table_notifications(table_token).await;
         }
 
         result
     }
 
-    pub fn check_user_can_connect(
+    pub async fn user_index_at_table(
         &self,
-        user: Arc<User>,
-        table_id: &str,
-    ) -> Result<bool, GameError> {
+        user: &entities::user::Model,
+        table_token: &str,
+    ) -> Result<usize, GameError> {
+        let table = self.find_table_with_token(table_token).await?;
+
+        self.ensure_loaded_table(table).await;
+
         let tables = self.tables.read().unwrap();
         let table = tables
-            .get(table_id)
-            .ok_or(GameError::NotFound("table id not found"))?;
+            .get(table_token)
+            .expect("we have just loaded the table");
 
         table
-            .user_index(&user.login_token)
-            .ok_or(GameError::NotFound("connecting user has not joined table"))?;
-
-        Ok(true)
+            .player_index(&user.token)
+            .ok_or(GameError::NotFound("user has not joined table"))
     }
 
     pub async fn add_user_global_connection(
         &self,
-        user: Arc<User>,
+        user: entities::user::Model,
         sender: NotificationSenderHandle,
     ) {
         self.connections.write().unwrap().add(user, sender);
@@ -368,20 +452,13 @@ impl ZingState {
 
     pub async fn add_user_table_connection(
         &self,
-        user: Arc<User>,
+        user: entities::user::Model,
         table_id: String,
         sender: NotificationSenderHandle,
     ) {
         let mut notification = None;
-        {
-            let _err = self
-                .tables
-                .write()
-                .unwrap()
-                .get_mut(&table_id)
-                .map(|table| {
-                    notification = table.connection_opened(user, sender);
-                });
+        if let Some(table) = self.tables.write().unwrap().get_mut(&table_id) {
+            notification = table.connection_opened(user, sender);
         }
 
         if let Some(notification) = notification {
@@ -393,22 +470,20 @@ impl ZingState {
 
     pub async fn play_card(
         &self,
-        user: Arc<User>,
-        table_id: &str,
+        user: &entities::user::Model,
+        table_token: &str,
         card_index: usize,
     ) -> Result<(), GameError> {
         let table_notifications;
         let result;
 
         let phase_changed = {
+            let player_index = self.user_index_at_table(user, table_token).await?;
+
             let mut tables = self.tables.write().unwrap();
             let table = tables
-                .get_mut(table_id)
+                .get_mut(table_token)
                 .ok_or(GameError::NotFound("table id not found"))?;
-
-            let player = table.user_index(&user.login_token).ok_or(GameError::NotFound(
-                "user has not joined table at which card should be played",
-            ))?;
 
             let game = table
                 .game
@@ -418,7 +493,7 @@ impl ZingState {
             let old_phase = game.state().phase;
 
             result = game
-                .play_card(player, card_index)
+                .play_card(player_index, card_index)
                 .map_err(GameError::Conflict);
 
             if result.is_ok() && game.state().phase == GamePhase::Finished {
@@ -427,20 +502,20 @@ impl ZingState {
             drop(tables);
 
             let tables = self.tables.read().unwrap();
-            let table = tables.get(table_id).unwrap();
+            let table = tables.get(table_token).unwrap();
             let game = table.game.as_ref().unwrap();
             let new_phase = game.state().phase();
 
-            table_notifications = table.action_notifications();
+            table_notifications = table.action_notifications().await;
 
             new_phase != old_phase
         };
 
         // send notifications about performed actions
-        self.send_notifications(table_notifications, Some(table_id))
+        self.send_notifications(table_notifications, Some(table_token))
             .await;
         if phase_changed {
-            self.send_table_notifications(table_id).await;
+            self.send_table_notifications(table_token).await;
         }
 
         result
