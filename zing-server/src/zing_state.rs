@@ -289,9 +289,7 @@ impl ZingState {
         user: &entities::user::Model,
         table_token: &str,
     ) -> Result<(), GameError> {
-        let table = self.find_table_with_token(table_token).await?;
-
-        self.ensure_loaded_table(table).await;
+        self.user_index_at_table(user, table_token).await?;
 
         // start a game (sync code), collect initial game status notifications
         let notifications = {
@@ -402,24 +400,17 @@ impl ZingState {
         user: &entities::user::Model,
         table_token: &str,
     ) -> Result<(), GameError> {
-        let table = self.find_table_with_token(table_token).await?;
-
-        self.ensure_loaded_table(table).await;
+        self.user_index_at_table(user, table_token).await?;
 
         // scope for locked self.tables
-        let mut tables = self.tables.write().unwrap();
-        let loaded = tables
-            .get_mut(table_token)
-            .expect("we have just loaded the table");
+        let result = {
+            let mut tables = self.tables.write().unwrap();
+            let loaded = tables
+                .get_mut(table_token)
+                .expect("we have just loaded the table");
 
-        // loaded
-        //     .player_index(&user.token, &self.db_conn)
-        //     .await
-        //     .ok_or(GameError::NotFound(
-        //         "user has not joined table at which game should start",
-        //     ))?;
-
-        let result = loaded.finish_game();
+                loaded.finish_game()
+        };
 
         if result.is_ok() {
             self.send_table_notifications(table_token).await;
