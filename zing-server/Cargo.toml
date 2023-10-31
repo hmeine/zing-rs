@@ -22,7 +22,6 @@ tokio = { version = "1.32.0", features = ["full"] }
 tower = { version = "0.4.13", features = ["util"] }
 async-trait = "0.1.73"
 tower-cookies = "0.9.0"
-cookie = "0.17.0"
 tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 rand = "0.8.5"

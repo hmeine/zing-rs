@@ -8,7 +8,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use cookie::SameSite;
+use tower_cookies::cookie::SameSite;
 use game_error::GameError;
 use migration::MigratorTrait;
 use sea_orm::SqlxPostgresConnector;
