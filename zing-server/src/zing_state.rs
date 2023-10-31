@@ -325,7 +325,7 @@ impl ZingState {
             let mut tables = self.tables.write().unwrap();
             let loaded = tables.get_mut(table_token).unwrap();
             loaded.setup_game()?;
-            loaded.action_notifications().await
+            loaded.action_notifications()
         };
 
         // send notifications about dealer actions
@@ -511,7 +511,7 @@ impl ZingState {
             let game = table.game.as_ref().unwrap();
             let new_phase = game.state().phase();
 
-            table_notifications = table.action_notifications().await;
+            table_notifications = table.action_notifications();
 
             new_phase != old_phase
         };

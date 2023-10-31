@@ -1,5 +1,3 @@
-use futures::future::join_all;
-use futures::stream::{self, StreamExt};
 use sea_orm::{prelude::*, ActiveValue, Order, QueryOrder};
 
 use serde::{Serialize, Serializer};
@@ -198,7 +196,7 @@ impl LoadedTable {
         }
     }
 
-    pub async fn action_notifications(&self) -> SerializedNotifications {
+    pub fn action_notifications(&self) -> SerializedNotifications {
         let history = self
             .game
             .as_ref()
@@ -206,14 +204,13 @@ impl LoadedTable {
             .history();
         let current_actions = history.len();
 
-        // FIXME: async no longer necessary?!
-        stream::iter(self.connections.iter())
+        self.connections.iter()
             .filter_map(|c| {
                 let known_actions = *c
                     .actions_sent
                     .read()
                     .expect("RwLock poisoned through panic");
-                async move {
+                {
                     if current_actions > known_actions {
                         let player_index = self.player_index(c.client_login_token()).unwrap();
                         *c.actions_sent
@@ -233,7 +230,6 @@ impl LoadedTable {
                 }
             })
             .collect()
-            .await
     }
 
     pub fn game_status(&self, login_token: &str) -> Option<GameState> {
