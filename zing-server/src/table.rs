@@ -92,12 +92,17 @@ impl LoadedTable {
             .await
             .unwrap();
 
+        let game = table
+            .game
+            .clone()
+            .map(|game_json| serde_json::from_value(game_json).unwrap());
+
         Self {
             table,
             players,
             connections: ClientConnections::new(),
             game_results: Vec::new(), // FIXME: load results from db
-            game: None,               // FIXME: load game from db
+            game: game,
         }
     }
 
@@ -107,6 +112,12 @@ impl LoadedTable {
 
     pub fn token(&self) -> String {
         self.table.token.clone()
+    }
+
+    pub fn game_json(&self) -> Option<Json> {
+        self.game
+            .as_ref()
+            .map(|game| serde_json::to_value(game).expect("JSON conversion should not be fallible"))
     }
 
     fn player_names(&self) -> Vec<String> {
@@ -166,8 +177,7 @@ impl LoadedTable {
         c.client_notification(&ClientNotification::GameStatus(
             self.game_status(c.client_login_token())
                 .expect("game should be started, so must have valid state"),
-            self.player_index(c.client_login_token())
-                .unwrap(), // FIXME: include in game status result?
+            self.player_index(c.client_login_token()).unwrap(), // FIXME: include in game status result?
         ))
     }
 
@@ -196,7 +206,8 @@ impl LoadedTable {
             .history();
         let current_actions = history.len();
 
-        self.connections.iter()
+        self.connections
+            .iter()
             .filter_map(|c| {
                 let known_actions = *c
                     .actions_sent
@@ -227,10 +238,9 @@ impl LoadedTable {
     pub fn game_status(&self, login_token: &str) -> Option<GameState> {
         let player_index = self.player_index(login_token);
 
-        self.game.as_ref().map(|game| {
-            game.state()
-                .new_view_for_player(player_index.unwrap())
-        })
+        self.game
+            .as_ref()
+            .map(|game| game.state().new_view_for_player(player_index.unwrap()))
     }
 
     pub fn finish_game(&mut self) -> Result<(), GameError> {

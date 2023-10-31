@@ -22,7 +22,7 @@ bevy = { version = "0.11.2", features = [
 bevy_tweening = "0.8.0"
 futures = "0.3.28"
 futures-util = "0.3.28"
-serde_json = "1.0.105"
+serde_json = "1.0.108"
 http = "0.2.9"
 tracing = { version = "0.1.37", features = ["release_max_level_off"] }
 #bevy_mod_picking = { version = "0.15.0", features = ["bevy_picking_raycast", "backend_sprite"], default-features = false }

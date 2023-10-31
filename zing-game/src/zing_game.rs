@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 
 use itertools::Itertools;
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 
 use crate::{
     card_action::{CardAction, CardLocation, CardRotation},
@@ -16,6 +16,7 @@ use crate::{
 /// of game "phases", dealers etc. can be put into GameState eventually.  For
 /// now, this is catching all the rule-specific state until a more generic
 /// version can be properly modeled.
+#[derive(Serialize, Deserialize)]
 pub struct ZingGame {
     game_state: GameState,
     /// index of player who deals/dealt cards in this game

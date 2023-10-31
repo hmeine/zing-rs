@@ -257,7 +257,6 @@ impl ZingState {
 
             if table.games_have_started() {
                 return Err(GameError::Conflict(
-                    // TODO: or should we allow this? it's less destructive than logging out.
                     "cannot leave a table after games have started",
                 ));
             }
@@ -332,7 +331,7 @@ impl ZingState {
         self.user_index_at_table(user, table_token).await?;
 
         // start a game (sync code), collect initial game status notifications
-        let notifications = {
+        let (game_json, notifications) = {
             {
                 // scope for locked self.tables
                 let tables = self.tables.read().unwrap();
@@ -350,7 +349,8 @@ impl ZingState {
                 let mut tables = self.tables.write().unwrap();
                 let loaded = tables.get_mut(table_token).unwrap();
                 loaded.start_game()?;
-                loaded.initial_game_status_messages()
+
+                (loaded.game_json(), loaded.initial_game_status_messages())
             }
         };
 
@@ -371,6 +371,13 @@ impl ZingState {
             .await;
 
         self.send_table_notifications(table_token).await;
+
+        Table::update_many()
+            .col_expr(entities::table::Column::Game, Expr::value(game_json))
+            .filter(entities::table::Column::Token.eq(table_token))
+            .exec(&self.db_conn)
+            .await
+            .map_err(|_| GameError::DBError("DB error (UPDATE table.game)"))?;
 
         Ok(())
     }
@@ -456,6 +463,16 @@ impl ZingState {
             self.send_table_notifications(table_token).await;
         }
 
+        Table::update_many()
+            .col_expr(
+                entities::table::Column::Game,
+                Expr::value(None::<sea_orm::prelude::Json>),
+            )
+            .filter(entities::table::Column::Token.eq(table_token))
+            .exec(&self.db_conn)
+            .await
+            .map_err(|_| GameError::DBError("DB error (UPDATE table.game)"))?;
+
         result
     }
 
@@ -513,7 +530,7 @@ impl ZingState {
         let table_notifications;
         let result;
 
-        let phase_changed = {
+        let (game_json, phase_changed) = {
             let player_index = self.user_index_at_table(user, table_token).await?;
 
             let mut tables = self.tables.write().unwrap();
@@ -544,7 +561,7 @@ impl ZingState {
 
             table_notifications = table.action_notifications();
 
-            new_phase != old_phase
+            (table.game_json(), new_phase != old_phase)
         };
 
         // send notifications about performed actions
@@ -553,6 +570,13 @@ impl ZingState {
         if phase_changed {
             self.send_table_notifications(table_token).await;
         }
+
+        Table::update_many()
+            .col_expr(entities::table::Column::Game, Expr::value(game_json))
+            .filter(entities::table::Column::Token.eq(table_token))
+            .exec(&self.db_conn)
+            .await
+            .map_err(|_| GameError::DBError("DB error (UPDATE table.game)"))?;
 
         result
     }
