@@ -127,14 +127,8 @@ impl LoadedTable {
         self.game.is_some() || !self.game_results.is_empty()
     }
 
-    pub async fn has_logged_in_users(&self, db_conn: &DatabaseConnection) -> bool {
-        self.table
-            .find_related(User)
-            .filter(entities::user::Column::LoggedIn.eq(true))
-            .one(db_conn)
-            .await
-            .unwrap()
-            .is_some()
+    pub fn user_left(&mut self, player_index: usize) {
+        self.players.remove(player_index);
     }
 
     pub fn user_joined(&mut self, user: &entities::user::Model) {
@@ -173,8 +167,6 @@ impl LoadedTable {
             self.game_status(c.client_login_token())
                 .expect("game should be started, so must have valid state"),
             self.player_index(c.client_login_token())
-                .unwrap()
-                .try_into()
                 .unwrap(), // FIXME: include in game status result?
         ))
     }
@@ -237,7 +229,7 @@ impl LoadedTable {
 
         self.game.as_ref().map(|game| {
             game.state()
-                .new_view_for_player(player_index.unwrap().try_into().unwrap())
+                .new_view_for_player(player_index.unwrap())
         })
     }
 

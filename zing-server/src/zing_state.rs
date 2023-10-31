@@ -1,13 +1,13 @@
 use axum::Json;
 use entities::prelude::*;
-use sea_orm::{prelude::*, ActiveValue, QueryOrder};
+use sea_orm::{prelude::*, ActiveValue, Condition, QueryOrder};
 use std::{collections::HashMap, sync::RwLock};
 use tracing::debug;
 use zing_game::game::{GamePhase, GameState};
 
 use crate::{
     client_connection::{ClientConnections, SerializedNotifications},
-    entities::{self, table},
+    entities,
     game_error::GameError,
     table::{LoadedTable, TableInfo},
     util::random_id,
@@ -236,53 +236,93 @@ impl ZingState {
             loaded_table.user_joined(user);
         }
 
-        self.send_table_notifications(&table_token).await;
+        self.send_table_notifications(table_token).await;
 
-        self.get_table_info(&table_token).await
+        self.get_table_info(table_token).await
     }
 
-    // pub async fn leave_table(
-    //     &self,
-    //     user: &entities::user::Model,
-    //     table_id: &str,
-    // ) -> Result<(), GameError> {
-    //     let table_index_in_user = user
-    //         .tables
-    //         .read()
-    //         .expect("RwLock poisoned through panic")
-    //         .iter()
-    //         .position(|id| *id == table_id)
-    //         .ok_or(GameError::Unauthorized(
-    //             "trying to leave table before joining",
-    //         ))?;
+    pub async fn leave_table(
+        &self,
+        user: &entities::user::Model,
+        table_token: &str,
+    ) -> Result<(), GameError> {
+        let player_index = self.user_index_at_table(user, table_token).await?;
 
-    //     {
-    //         // scope for locked self.tables
-    //         let mut tables = self.tables.write().unwrap();
-    //         let table = tables
-    //             .get_mut(table_id)
-    //             .ok_or(GameError::NotFound("table id not found"))?;
+        let table_id = {
+            // scope for locked self.tables
+            let mut tables = self.tables.write().unwrap();
+            let table = tables
+                .get_mut(table_token)
+                .ok_or(GameError::NotFound("table id not found"))?;
 
-    //         if table.games_have_started() {
-    //             return Err(GameError::Conflict(
-    //                 // TODO: or should we allow this? it's less destructive than logging out.
-    //                 "cannot leave a table after games have started",
-    //             ));
-    //         }
+            if table.games_have_started() {
+                return Err(GameError::Conflict(
+                    // TODO: or should we allow this? it's less destructive than logging out.
+                    "cannot leave a table after games have started",
+                ));
+            }
 
-    //         table.user_left(&user.login_token);
-    //         if !table.has_logged_in_users() {
-    //             tables.remove(table_id);
-    //         }
-    //     }
+            table.user_left(player_index);
 
-    //     user.tables
-    //         .write()
-    //         .expect("RwLock poisoned through panic")
-    //         .remove(table_index_in_user);
+            table.table().id
+        };
 
-    //     Ok(())
-    // }
+        // remove user from table
+        TableJoin::delete_many()
+            .filter(
+                Condition::all()
+                    .add(entities::table_join::Column::TableId.eq(table_id))
+                    .add(entities::table_join::Column::UserId.eq(user.id)),
+            )
+            .exec(&self.db_conn)
+            .await
+            .map_err(|_| GameError::DBError("DB error (DELETE from table_join)"))?;
+
+        // correct table positions of other users if necessary
+        // FIXME: could we use an auto_increment value in order to make this
+        // unnecessary (we only require orderable values, and currently
+        // the below would even have a theoretical bug w.r.t. concurrency /
+        // non-atomicity with the above)? another improvement would be a
+        // single update statement that uses an appropriate decrement expression!
+        let positions_to_change = TableJoin::find()
+            .filter(
+                Condition::all()
+                    .add(entities::table_join::Column::TableId.eq(table_id))
+                    .add(
+                        entities::table_join::Column::TablePos
+                            .gt(i32::try_from(player_index).unwrap()),
+                    ),
+            )
+            .all(&self.db_conn)
+            .await
+            .map_err(|_| GameError::DBError("DB error (SELECT from table_join)"))?;
+        for table_join in positions_to_change {
+            let old_pos = table_join.table_pos;
+            let mut table_join: entities::table_join::ActiveModel = table_join.into();
+            table_join.table_pos = ActiveValue::Set(old_pos - 1);
+            table_join.update(&self.db_conn).await.map_err(|_| {
+                GameError::DBError("DB error (UPDATE table_join, decreasing table_pos)")
+            })?;
+        }
+
+        // finally, remove tables that no longer have logged in users
+        let table = self.find_table_with_token(table_token).await?;
+        let table_has_logged_in_users = table
+            .find_related(User)
+            .filter(entities::user::Column::LoggedIn.eq(true))
+            .one(&self.db_conn)
+            .await
+            .unwrap()
+            .is_some();
+
+        if !table_has_logged_in_users {
+            table.delete(&self.db_conn).await.map_err(|_| {
+                GameError::DBError("DB error (DELETE table without logged in users)")
+            })?;
+        }
+
+        Ok(())
+    }
 
     pub async fn start_game(
         &self,
@@ -409,7 +449,7 @@ impl ZingState {
                 .get_mut(table_token)
                 .expect("we have just loaded the table");
 
-                loaded.finish_game()
+            loaded.finish_game()
         };
 
         if result.is_ok() {

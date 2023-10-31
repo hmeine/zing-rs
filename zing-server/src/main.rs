@@ -46,7 +46,7 @@ async fn axum(#[shuttle_shared_db::Postgres] pool: PgPool) -> shuttle_axum::Shut
         .route("/ws", get(global_ws_handler))
         .route(
             "/table/:table_id",
-            post(join_table).get(get_table_info) // .delete(leave_table),
+            post(join_table).get(get_table_info).delete(leave_table),
         )
         .route(
             "/table/:table_id/game",
@@ -186,13 +186,13 @@ async fn join_table(
     state.join_table(&user, &table_id).await
 }
 
-// async fn leave_table(
-//     AuthenticatedUser(user): AuthenticatedUser,
-//     Path(table_id): Path<String>,
-//     State(state): State<Arc<ZingState>>,
-// ) -> Result<(), GameError> {
-//     state.leave_table(&user, &table_id).await
-// }
+async fn leave_table(
+    AuthenticatedUser(user): AuthenticatedUser,
+    Path(table_id): Path<String>,
+    State(state): State<Arc<ZingState>>,
+) -> Result<(), GameError> {
+    state.leave_table(&user, &table_id).await
+}
 
 async fn start_game(
     AuthenticatedUser(user): AuthenticatedUser,
