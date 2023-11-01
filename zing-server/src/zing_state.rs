@@ -1,6 +1,6 @@
 use axum::Json;
 use entities::prelude::*;
-use sea_orm::{prelude::*, ActiveValue, Condition, QueryOrder};
+use sea_orm::{prelude::*, ActiveValue, Condition, QueryOrder, Set};
 use std::{collections::HashMap, sync::RwLock};
 use tracing::debug;
 use zing_game::game::{GamePhase, GameState};
@@ -46,9 +46,9 @@ impl ZingState {
         let login_token = random_id();
 
         User::insert(entities::user::ActiveModel {
-            name: ActiveValue::Set(user_name.to_owned()),
-            token: ActiveValue::Set(login_token.clone()),
-            logged_in: ActiveValue::Set(true),
+            name: Set(user_name.to_owned()),
+            token: Set(login_token.clone()),
+            logged_in: Set(true),
             ..Default::default()
         })
         .exec_without_returning(&self.db_conn)
@@ -64,7 +64,7 @@ impl ZingState {
 
         // mark as logged out
         let mut user: entities::user::ActiveModel = user.into();
-        user.logged_in = ActiveValue::Set(false);
+        user.logged_in = Set(false);
         user.update(&self.db_conn)
             .await
             .map_err(|_| GameError::DBError("DB update failed unexpectedly"))?;
@@ -221,9 +221,9 @@ impl ZingState {
             .map_err(|_| GameError::DBError("DB query failed unexpectedly"))?;
 
         TableJoin::insert(entities::table_join::ActiveModel {
-            user_id: ActiveValue::Set(user.id),
-            table_id: ActiveValue::Set(table.id),
-            table_pos: ActiveValue::Set(table_pos.try_into().unwrap()),
+            user_id: Set(user.id),
+            table_id: Set(table.id),
+            table_pos: Set(table_pos.try_into().unwrap()),
         })
         .exec_without_returning(&self.db_conn)
         .await
@@ -298,7 +298,7 @@ impl ZingState {
         for table_join in positions_to_change {
             let old_pos = table_join.table_pos;
             let mut table_join: entities::table_join::ActiveModel = table_join.into();
-            table_join.table_pos = ActiveValue::Set(old_pos - 1);
+            table_join.table_pos = Set(old_pos - 1);
             table_join.update(&self.db_conn).await.map_err(|_| {
                 GameError::DBError("DB error (UPDATE table_join, decreasing table_pos)")
             })?;
@@ -533,26 +533,48 @@ impl ZingState {
         let (game_json, phase_changed) = {
             let player_index = self.user_index_at_table(user, table_token).await?;
 
-            let mut tables = self.tables.write().unwrap();
-            let table = tables
-                .get_mut(table_token)
-                .ok_or(GameError::NotFound("table id not found"))?;
+            let table_id;
+            let old_phase;
+            let mut finished_points = None;
+            {
+                let mut tables = self.tables.write().unwrap();
+                let table = tables
+                    .get_mut(table_token)
+                    .ok_or(GameError::NotFound("table id not found"))?;
+                table_id = table.table().id;
 
-            let game = table
-                .game
-                .as_mut()
-                .ok_or(GameError::Conflict("game not started yet"))?;
-
-            let old_phase = game.state().phase;
-
-            result = game
-                .play_card(player_index, card_index)
-                .map_err(GameError::Conflict);
-
-            if result.is_ok() && game.state().phase == GamePhase::Finished {
-                table.game_results.push(game.points());
+                let game = table
+                    .game
+                    .as_mut()
+                    .ok_or(GameError::Conflict("game not started yet"))?;
+    
+                old_phase = game.state().phase;
+    
+                result = game
+                    .play_card(player_index, card_index)
+                    .map_err(GameError::Conflict);
+    
+                if result.is_ok() && game.state().phase == GamePhase::Finished {
+                    finished_points = Some(game.points());
+                    table.game_results.push(finished_points.clone().unwrap());
+                }
             }
-            drop(tables);
+
+            if let Some(finished_points) = finished_points {
+                entities::game_results::ActiveModel {
+                    id: ActiveValue::NotSet,
+                    table_id: Set(table_id),
+                    card_points0: Set(finished_points.card_points.0 as i32),
+                    card_points1: Set(finished_points.card_points.1 as i32),
+                    card_count_points0: Set(finished_points.card_count_points.0 as i32),
+                    card_count_points1: Set(finished_points.card_count_points.1 as i32),
+                    zing_points0: Set(finished_points.zing_points.0 as i32),
+                    zing_points1: Set(finished_points.zing_points.1 as i32),
+                }
+                .insert(&self.db_conn)
+                .await
+                .map_err(|_| GameError::DBError("DB error (INSERT game_results)"))?;
+            }
 
             let tables = self.tables.read().unwrap();
             let table = tables.get(table_token).unwrap();

@@ -92,6 +92,28 @@ impl LoadedTable {
             .await
             .unwrap();
 
+        let game_results = GameResults::find()
+            .filter(entities::game_results::Column::TableId.eq(table.id))
+            .all(db_conn)
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|game_results| ZingGamePoints {
+                card_points: (
+                    game_results.card_points0 as u32,
+                    game_results.card_points1 as u32,
+                ),
+                card_count_points: (
+                    game_results.card_count_points0 as u32,
+                    game_results.card_count_points1 as u32,
+                ),
+                zing_points: (
+                    game_results.zing_points0 as u32,
+                    game_results.zing_points1 as u32,
+                ),
+            })
+            .collect();
+
         let game = table
             .game
             .clone()
@@ -101,8 +123,8 @@ impl LoadedTable {
             table,
             players,
             connections: ClientConnections::new(),
-            game_results: Vec::new(), // FIXME: load results from db
-            game: game,
+            game_results,
+            game,
         }
     }
 
@@ -162,7 +184,8 @@ impl LoadedTable {
         let dealer_index = self.game_results.len() % names.len();
         self.game = Some(ZingGame::new_with_player_names(names, dealer_index));
 
-        // TODO: store game JSON in db
+        // TODO: move game JSON storing code here after finding out how to
+        // return it as closure / future
 
         Ok(())
     }
