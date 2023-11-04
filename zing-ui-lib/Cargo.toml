@@ -29,7 +29,6 @@ tracing = { version = "0.1.37", features = ["release_max_level_off"] }
 bevy_mod_picking = { git = "https://github.com/aevyrie/bevy_mod_picking", branch = "main", features = [
     "bevy_picking_raycast",
     "backend_sprite",
-    "highlight",
 ], default-features = false }
 bevy-inspector-egui = { version = "0.19.0", optional = true }
 
