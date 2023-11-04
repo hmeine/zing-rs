@@ -51,7 +51,6 @@ struct InitialGameStateEvent {
 #[derive(Event)]
 struct CardActionEvent {
     pub action: CardAction,
-    pub table_stack_spread_out: bool,
 }
 
 #[derive(Component, Clone)]
@@ -342,7 +341,7 @@ fn get_next_action_after_animation_finished(
 
     match game_logic.get_next_state_change() {
         Some(StateChange::GameStarted(game_state, we_are_player)) => {
-            let table_stack_spread_out = game_state.phase() == GamePhase::Prepared;
+            let table_stack_spread_out = game_state.phase() != GamePhase::InGame;
             initial_state_events.send(InitialGameStateEvent {
                 game_state,
                 we_are_player,
@@ -352,7 +351,6 @@ fn get_next_action_after_animation_finished(
         Some(StateChange::CardAction(action)) => {
             card_events.send(CardActionEvent {
                 action,
-                table_stack_spread_out: false, // !game_logic.game_phase_is_ingame(),
             })
         }
         None => {
@@ -423,7 +421,10 @@ fn update_cards_from_action(
                 .expect("can only update cards if displayed state is not None"),
         );
 
-        layout_state.table_stack_spread_out = card_action_event.table_stack_spread_out;
+        // not very nice, but we currently have no direct access to the game phase
+        if action.source_location == Some(CardLocation::PlayerHand) {
+            layout_state.table_stack_spread_out = false;
+        }
 
         // state update is finished; now update bevy entities accordingly:
 
