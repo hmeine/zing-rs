@@ -366,7 +366,7 @@ fn spawn_cards_for_initial_state(
     mut query_stacks: Query<(Entity, &mut CardStack)>,
     asset_server: Res<AssetServer>,
 ) {
-    for initial_state_event in initial_state_events.iter() {
+    for initial_state_event in initial_state_events.read() {
         let swap_stacks = initial_state_event.we_are_player != layout_state.we_are_player;
 
         layout_state.displayed_state = Some(initial_state_event.game_state.clone());
@@ -411,7 +411,7 @@ fn update_cards_from_action(
     mut query_transforms: Query<&mut Transform, (With<CardSprite>, Without<CardStack>)>,
     asset_server: Res<AssetServer>,
 ) {
-    for card_action_event in action_events.iter() {
+    for card_action_event in action_events.read() {
         let action = &card_action_event.action;
 
         action.apply(
@@ -626,7 +626,7 @@ fn unzoom_after_hover(
     // if !layout_state.step_animation_timer.finished() {
     //     return;
     // }
-    for id in cards.iter() {
+    for id in cards.read() {
         if let Ok(mut transform) = transform_query.get_mut(id) {
             transform.scale /= HOVER_ZOOM;
         }
