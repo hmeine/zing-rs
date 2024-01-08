@@ -78,6 +78,7 @@
                 :pagination="{ rowsPerPage: 0 }"
                 hide-pagination
                 no-data-label="No table opened or joined yet"
+
                 @row-click="table_clicked"
                 ><template v-slot:body-cell-id="props">
                   <q-td :props="props">
@@ -321,6 +322,7 @@
       }
 
       function table_clicked(event, row) {
+        // trigger reactive update of table columns:
         game_results_players.splice(
           0,
           game_results_players.length,
@@ -330,9 +332,9 @@
         let cumulative = [0, 0];
         game_results.splice(0);
 
-        for (let game_result of row.game_results) {
+        for (const game_result of row.game_results) {
           let flattened = {};
-          for (let i in [0, 1]) {
+          for (const i of row.user_names.keys()) {
             const cards = game_result.card_points[i];
             const bonus = game_result.card_count_points[i];
             const zing = game_result.zing_points[i];
