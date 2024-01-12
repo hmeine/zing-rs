@@ -10,10 +10,10 @@ license = "MIT"
 zing_game = { path = "../zing-game" }
 migration = { path = "migration" }
 
-axum = { version = "0.6.20", features = ["ws"] }
-shuttle-runtime = "0.35.2"
-shuttle-axum = "0.35.2"
-shuttle-shared-db = { version = "0.35.2", features = ["postgres"] }
+axum = { version = "0.7.3", features = ["ws"] }
+shuttle-runtime = "0.36.0"
+shuttle-axum = "0.36.0"
+shuttle-shared-db = { version = "0.36.0", features = ["postgres"] }
 sea-orm = { version = "0.12", features = ["sqlx-postgres", "runtime-tokio-native-tls", "macros"] }
 sqlx = { version = "0.7.2", features = ["sqlx-postgres"] }
 chrono = "0.4.28"
@@ -21,13 +21,13 @@ futures = "0.3.28"
 tokio = { version = "1.32.0", features = ["full"] }
 tower = { version = "0.4.13", features = ["util"] }
 async-trait = "0.1.73"
-tower-cookies = "0.9.0"
+tower-cookies = "0.10.0"
 tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 rand = "0.8.5"
 serde = { version = "1.0.190", features = ["derive"] }
 serde_json = "1.0.108"
-tower-http = { version = "0.4.4", features = ["fs"] }
+tower-http = { version = "0.5.0", features = ["fs"] }
 
 [dev-dependencies]
 anyhow = "1.0.75"
