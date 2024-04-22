@@ -60,7 +60,7 @@ impl Plugin for LayoutPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<InitialGameStateEvent>();
         app.add_event::<CardActionEvent>();
-        app.add_state::<AppState>();
+        app.init_state::<AppState>();
         app.insert_resource(LayoutState::new());
 
         app.add_systems(Startup, (setup_camera, setup_card_stacks));
@@ -88,7 +88,7 @@ impl Plugin for LayoutPlugin {
 // TODO: we need to consider having four players
 
 /// Bevy component representing a stack or hand of cards.
-#[derive(Component, Reflect)]
+#[derive(Component, TypePath)]
 pub struct CardStack {
     /// CardStack may represent either a stack or a hand of cards
     location: CardLocation,
@@ -346,12 +346,12 @@ fn get_next_action_after_animation_finished(
                 game_state,
                 we_are_player,
                 table_stack_spread_out,
-            })
+            });
         }
         Some(StateChange::CardAction(action)) => {
             card_events.send(CardActionEvent {
                 action,
-            })
+            });
         }
         None => {
             next_state.set(AppState::Interaction);
@@ -560,16 +560,16 @@ fn reposition_cards_after_action(
 pub fn handle_keyboard_input(
     mut game_logic: ResMut<GameLogic>,
     runtime: ResMut<TasksRuntime>,
-    keyboard_input: Res<Input<KeyCode>>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
 ) {
     let mut play_card = None;
-    if keyboard_input.just_pressed(KeyCode::Key1) {
+    if keyboard_input.just_pressed(KeyCode::Digit1) {
         play_card = Some(0);
-    } else if keyboard_input.just_pressed(KeyCode::Key2) {
+    } else if keyboard_input.just_pressed(KeyCode::Digit2) {
         play_card = Some(1);
-    } else if keyboard_input.just_pressed(KeyCode::Key3) {
+    } else if keyboard_input.just_pressed(KeyCode::Digit3) {
         play_card = Some(2);
-    } else if keyboard_input.just_pressed(KeyCode::Key4) {
+    } else if keyboard_input.just_pressed(KeyCode::Digit4) {
         play_card = Some(3);
     }
 

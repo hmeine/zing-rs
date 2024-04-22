@@ -3,7 +3,7 @@ use zing_game::{game::CardState, Back, Rank, Suit};
 
 use crate::constants::CARD_HEIGHT;
 
-#[derive(Component,Reflect)]
+#[derive(Component,TypePath)]
 pub struct CardSprite(pub CardState);
 
 impl CardSprite {
