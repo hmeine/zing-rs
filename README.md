@@ -21,7 +21,7 @@ Technical Details
 * A simple Quasar-based reactive web frontend allows to log in, open new tables (for matches with multiple games), or join existing ones by others. It also opens a persistent websocket connection to the server and updates the status of tables in realtime.
 * A Bevy-based UI can connect to the server and provides an animated 2D card game UI.  This component can be compiled as a standalone app (with a networking part based on tokio) or as WASM build (then using the browser's networking stack).  The WASM is embedded in the webpage, making it possible for players to start games without having to download, install, or run other binaries.
 
-I am also using it as a fun project to learn and practice Rust in, and I have been doing it in my limited "spare" time only, besides work and family, so there have been (and always will be) longish stretches of non-activity.
+I am also using it as a fun project to learn and practice Rust in, and I have been doing it in my limited "spare" time only, besides work and family, so there have been (and always will be) longish stretches of non-activity.  For details on the software design, how to build or develop, see [DEVELOPMENT.md](DEVELOPMENT.md).
 
 Limitations
 -----------
