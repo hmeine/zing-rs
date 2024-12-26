@@ -18,7 +18,7 @@ mod debug;
 pub fn start_remote_game(login_id: String, table_id: String, base_url: String) {
     App::new()
         .insert_resource(Msaa::default())
-        .insert_resource(ClearColor(Color::rgb_u8(0x33, 0x69, 0x1d)))
+        .insert_resource(ClearColor(Color::srgb_u8(0x33, 0x69, 0x1d)))
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "Zing".to_string(),

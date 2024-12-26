@@ -6,7 +6,7 @@ use crate::constants::*;
 use crate::game_logic::{GameLogic, StateChange, TasksRuntime};
 use bevy::{prelude::*, render::camera::ScalingMode};
 use bevy_mod_picking::prelude::*;
-use bevy_tweening::{Animator, EaseFunction, Lens, Tween};
+use bevy_tweening::{Animator, EaseFunction, Lens, Targetable, Tween};
 use zing_game::card_action::CardAction;
 use zing_game::game::{GamePhase, GameState};
 use zing_game::zing_game::ZingGame;
@@ -505,7 +505,7 @@ pub struct TransformPositionScaleLens {
 }
 
 impl Lens<Transform> for TransformPositionScaleLens {
-    fn lerp(&mut self, target: &mut Transform, ratio: f32) {
+    fn lerp(&mut self, target: &mut dyn Targetable<Transform>, ratio: f32) {
         let value = self.start_position + (self.end_position - self.start_position) * ratio;
         target.translation = value;
         let value = self.start_scale + (self.end_scale - self.start_scale) * ratio;
