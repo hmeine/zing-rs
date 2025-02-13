@@ -7,5 +7,5 @@ repository = "https://github.com/hmeine/zing-rs"
 license = "MIT"
 
 [dependencies]
-clap = { version = "4.0.32", features = ["derive"] }
+clap = { version = "4.5.28", features = ["derive"] }
 zing_ui_lib = { path = "../zing-ui-lib" }

@@ -1,5 +1,5 @@
-use rand::distributions::{Alphanumeric, DistString};
+use rand::distr::{Alphanumeric, SampleString};
 
 pub fn random_id() -> String {
-    Alphanumeric.sample_string(&mut rand::thread_rng(), 16)
+    Alphanumeric.sample_string(&mut rand::rng(), 16)
 }

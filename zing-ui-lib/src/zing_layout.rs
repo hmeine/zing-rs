@@ -5,8 +5,7 @@ use crate::card_sprite::CardSprite;
 use crate::constants::*;
 use crate::game_logic::{GameLogic, StateChange, TasksRuntime};
 use bevy::{prelude::*, render::camera::ScalingMode};
-use bevy_mod_picking::prelude::*;
-use bevy_tweening::{Animator, EaseFunction, Lens, Targetable, Tween};
+use bevy_tweening::*;
 use zing_game::card_action::CardAction;
 use zing_game::game::{GamePhase, GameState};
 use zing_game::zing_game::ZingGame;
@@ -110,22 +109,22 @@ impl CardStack {
         location: CardLocation,
         index: usize,
     ) -> Entity {
-        let mut stack = commands.spawn(SpatialBundle {
-            transform: Transform {
-                translation: top_left_position,
-                scale,
-                ..Default::default()
-            },
-            ..Default::default()
-        });
-        stack.insert(Self {
-            location,
-            index,
-            peeping_offset,
-            score_offset,
-        });
-
-        stack.id()
+        commands
+            .spawn((
+                Self {
+                    location,
+                    index,
+                    peeping_offset,
+                    score_offset,
+                },
+                Transform {
+                    translation: top_left_position,
+                    scale,
+                    ..Default::default()
+                },
+                InheritedVisibility::VISIBLE,
+            ))
+            .id()
     }
 
     fn card_states<'a>(&self, game: &'a GameState) -> &'a Vec<CardState> {
@@ -151,19 +150,21 @@ impl CardStack {
 }
 
 fn setup_camera(mut commands: Commands) {
-    commands.spawn(Camera2dBundle {
-        projection: OrthographicProjection {
-            scaling_mode: ScalingMode::FixedVertical(1.0),
-            ..Default::default()
-        },
-        transform: Transform {
+    commands.spawn((
+        Camera2d,
+        Projection::from(OrthographicProjection {
+            scaling_mode: ScalingMode::FixedVertical {
+                viewport_height: 1.0,
+            },
+            ..OrthographicProjection::default_2d()
+        }),
+        Transform {
             // by default, the camera is at z=0 and only displays stuff with z<0
             // (2D frustrum culling came with 0.11)
             translation: Vec3::new(0., 0., 500.),
             ..Default::default()
         },
-        ..Default::default()
-    });
+    ));
 }
 
 fn setup_card_stacks(mut commands: Commands, layout_state: Res<LayoutState>) {
@@ -203,11 +204,15 @@ fn setup_card_stacks(mut commands: Commands, layout_state: Res<LayoutState>) {
         CardLocation::PlayerHand,
         we_are_player, // own hand
     );
-    commands.entity(own_hand).insert((
-        On::<Pointer<Over>>::target_insert(ZoomedOnHover {}),
-        On::<Pointer<Out>>::target_remove::<ZoomedOnHover>(),
-        On::<Pointer<Click>>::run(card_clicked),
-    ));
+    commands
+        .entity(own_hand)
+        .observe(card_clicked)
+        .observe(|trigger: Trigger<Pointer<Over>>, mut commands: Commands| {
+            commands.entity(trigger.target).insert(ZoomedOnHover);
+        })
+        .observe(|trigger: Trigger<Pointer<Out>>, mut commands: Commands| {
+            commands.entity(trigger.target).remove::<ZoomedOnHover>();
+        });
 
     // TODO: we need to know if we have two or four players
 
@@ -349,9 +354,7 @@ fn get_next_action_after_animation_finished(
             });
         }
         Some(StateChange::CardAction(action)) => {
-            card_events.send(CardActionEvent {
-                action,
-            });
+            card_events.send(CardActionEvent { action });
         }
         None => {
             next_state.set(AppState::Interaction);
@@ -392,7 +395,7 @@ fn spawn_cards_for_initial_state(
                 })
                 .collect();
 
-            commands.entity(stack_id).push_children(&card_entities);
+            commands.entity(stack_id).add_children(&card_entities);
         }
     }
 }
@@ -407,7 +410,7 @@ fn update_cards_from_action(
     mut action_events: EventReader<CardActionEvent>,
     query_stacks: Query<(Entity, &CardStack, &Transform)>,
     query_children: Query<&Children>,
-    mut query_sprites: Query<(&mut CardSprite, &mut Handle<Image>), Without<CardStack>>,
+    mut query_sprites: Query<(&mut CardSprite, &mut Sprite), Without<CardStack>>,
     mut query_transforms: Query<&mut Transform, (With<CardSprite>, Without<CardStack>)>,
     asset_server: Res<AssetServer>,
 ) {
@@ -579,7 +582,7 @@ pub fn handle_keyboard_input(
 }
 
 pub fn card_clicked(
-    click: Listener<Pointer<Click>>,
+    click: Trigger<Pointer<Click>>,
     layout_state: ResMut<LayoutState>,
     query_stacks: Query<(Entity, &Children)>,
     mut game_logic: ResMut<GameLogic>,

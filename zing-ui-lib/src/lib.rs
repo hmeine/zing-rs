@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use bevy_mod_picking::DefaultPickingPlugins;
 use bevy_tweening::TweeningPlugin;
 #[cfg(target_family = "wasm")]
 use wasm_bindgen::prelude::*;
@@ -7,9 +6,9 @@ use wasm_bindgen::prelude::*;
 mod app_state;
 mod card_sprite;
 mod constants;
+mod debug;
 mod game_logic;
 mod zing_layout;
-mod debug;
 
 // The login_id is actually unused in wasm builds (because the .wasm re-uses the
 // browser cookies), but I don't know how to elegantly handle that here (so I
@@ -17,7 +16,6 @@ mod debug;
 #[cfg_attr(target_family = "wasm", wasm_bindgen)]
 pub fn start_remote_game(login_id: String, table_id: String, base_url: String) {
     App::new()
-        .insert_resource(Msaa::default())
         .insert_resource(ClearColor(Color::srgb_u8(0x33, 0x69, 0x1d)))
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
@@ -28,7 +26,6 @@ pub fn start_remote_game(login_id: String, table_id: String, base_url: String) {
             }),
             ..Default::default()
         }))
-        .add_plugins(DefaultPickingPlugins)
         .add_plugins(TweeningPlugin)
         .add_plugins(zing_layout::LayoutPlugin)
         .add_plugins(game_logic::GameLogicPlugin {

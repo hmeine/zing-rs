@@ -3,7 +3,7 @@ use zing_game::{game::CardState, Back, Rank, Suit};
 
 use crate::constants::CARD_HEIGHT;
 
-#[derive(Component,TypePath)]
+#[derive(Component, TypePath)]
 pub struct CardSprite(pub CardState);
 
 impl CardSprite {
@@ -50,28 +50,26 @@ impl CardSprite {
         let png = asset_server.load(png_path);
 
         commands
-            .spawn(SpriteBundle {
-                texture: png,
-                transform: Transform {
+            .spawn((
+                Sprite::from_image(png),
+                Transform {
                     translation,
                     scale: Self::default_scale(),
                     ..Default::default()
                 },
-                ..Default::default()
-            })
+            ))
             .insert(Self(card_state.clone()))
             .id()
     }
 
     pub fn change_state(
         &mut self,
-        card_sprite: &mut Handle<Image>,
+        card_sprite: &mut Sprite,
         asset_server: &Res<AssetServer>,
         card_state: &CardState,
-    )
-    {
+    ) {
         let png_path = Self::png_path(card_state);
-        *card_sprite = asset_server.load(png_path);
+        card_sprite.image = asset_server.load(png_path);
         self.0 = card_state.clone();
     }
 }

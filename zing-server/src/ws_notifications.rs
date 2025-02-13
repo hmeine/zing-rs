@@ -1,4 +1,4 @@
-use axum::extract::ws::{Message, WebSocket};
+use axum::extract::ws::{Message, Utf8Bytes, WebSocket};
 use tokio::sync::mpsc;
 use tracing::debug;
 
@@ -8,7 +8,7 @@ struct NotificationSender {
 }
 
 struct Notification {
-    json: String,
+    json: Utf8Bytes,
 }
 
 impl NotificationSender {
@@ -43,7 +43,9 @@ impl NotificationSenderHandle {
 
     pub async fn send(&self, json: String) -> Result<(), &'static str> {
         self.sender
-            .send(Notification { json })
+            .send(Notification {
+                json: Utf8Bytes::from(json),
+            })
             .await
             .map_err(|_tokio_err| "could not contact NotificationSender")
     }

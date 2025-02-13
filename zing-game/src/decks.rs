@@ -1,5 +1,5 @@
+use rand::rng;
 use rand::seq::SliceRandom;
-use rand::thread_rng;
 use strum::IntoEnumIterator;
 
 use crate::cards::{Back, Card, Rank, Suit};
@@ -20,7 +20,7 @@ pub fn deck(backs: Back) -> Vec<Card> {
 /// Returns a shuffled [deck].
 pub fn shuffled_deck(backs: Back) -> Vec<Card> {
     let mut result = deck(backs);
-    result.shuffle(&mut thread_rng());
+    result.shuffle(&mut rng());
     result
 }
 

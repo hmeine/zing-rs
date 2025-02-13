@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use async_trait::async_trait;
 use axum::{
     extract::{FromRequestParts, Path, State, WebSocketUpgrade},
     http::request::Parts,
@@ -8,11 +7,11 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use tower_cookies::cookie::SameSite;
 use game_error::GameError;
 use migration::MigratorTrait;
 use sea_orm::SqlxPostgresConnector;
 use serde::Deserialize;
+use tower_cookies::cookie::SameSite;
 use tower_cookies::{Cookie, CookieManagerLayer, Cookies};
 use tower_http::services::{ServeDir, ServeFile};
 use tracing::info;
@@ -39,20 +38,20 @@ async fn axum(#[shuttle_shared_db::Postgres] pool: sqlx::PgPool) -> shuttle_axum
     let state = Arc::new(ZingState::new(conn).await);
 
     let app = Router::new()
-        .nest_service("/", ServeFile::new("zing-server/assets/index.html"))
+        .route_service("/", ServeFile::new("zing-server/assets/index.html"))
         .route("/login", post(login).get(whoami).delete(logout))
         .route("/table", post(create_table).get(list_tables))
         .route("/ws", get(global_ws_handler))
         .route(
-            "/table/:table_id",
+            "/table/{table_id}",
             post(join_table).get(get_table_info).delete(leave_table),
         )
         .route(
-            "/table/:table_id/game",
+            "/table/{table_id}/game",
             post(start_game).get(game_status).delete(finish_game),
         )
-        .route("/table/:table_id/game/play", post(play_card))
-        .route("/table/:table_id/ws", get(table_ws_handler))
+        .route("/table/{table_id}/game/play", post(play_card))
+        .route("/table/{table_id}/ws", get(table_ws_handler))
         .nest_service(
             "/zing_ui_lib.js",
             ServeFile::new("zing-ui-lib/pkg/zing_ui_lib.js"),
@@ -111,7 +110,6 @@ async fn logout(
 
 struct LoginToken(String);
 
-#[async_trait]
 impl<S> FromRequestParts<S> for LoginToken
 where
     S: Send + Sync,
@@ -135,7 +133,6 @@ where
 
 struct AuthenticatedUser(entities::user::Model);
 
-#[async_trait]
 impl FromRequestParts<Arc<ZingState>> for AuthenticatedUser {
     type Rejection = GameError;
 
