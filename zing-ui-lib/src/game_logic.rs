@@ -262,12 +262,12 @@ impl GameLogic {
     ) {
         use bevy::tasks::AsyncComputeTaskPool;
 
-        let mut opts = RequestInit::new();
-        opts.method("POST");
-        opts.body(Some(&JsValue::from_str(&format!(
+        let opts = RequestInit::new();
+        opts.set_method("POST");
+        opts.set_body(&JsValue::from_str(&format!(
             "{{ \"card_index\": {} }}",
             card_index
-        ))));
+        )));
 
         let request = Request::new_with_str_and_init(&self.play_uri, &opts).unwrap();
 
