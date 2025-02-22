@@ -11,16 +11,17 @@ Crates Overview
   crate contains a few unit tests.
 * The `zing-server` provides a Rest API on top of the above.  There are tests
   that can be excuted with `cargo test`, but they require a server to run
-  locally, so one has to run `cargo shuttle run` first / in parallel.
+  locally, so one has to run `shuttle run` first / in parallel.
   * There is a `migration` sub-crate that is used for sea-orm database
-    migration.  That is important since the sea-orm versions need to be in sync.
+    migration.  That is important since the sea-orm versions of the two crates
+    need to be in sync.
 * The `zing-ui-lib` crate implements a bevy-based UI that talks to the above
   server.  The `zing-ui` crate is a small binary around this library, and this
   separation is needed because the zing-ui-lib can also be built as WASM binary
   for embedding into a webpage.  Use
 
   ```sh
-  wasm-pack build zing-ui-lib --release --target web
+  RUSTFLAGS='--cfg getrandom_backend="wasm_js"' wasm-pack build zing-ui-lib --release --target web
   ```
 
   in order to build the WASM UI.

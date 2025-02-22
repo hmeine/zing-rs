@@ -1,2 +1,4 @@
 .vscode/settings.json
 /target
+.shuttle*
+Secrets*.toml

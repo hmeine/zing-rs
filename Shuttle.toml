@@ -1,6 +1,7 @@
 name = "zing"
 
-assets = [
+[deploy]
+include = [
   "zing-ui-lib/pkg/zing_ui_lib.js",
   "zing-ui-lib/pkg/zing_ui_lib_bg.wasm",
 ]

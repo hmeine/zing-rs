@@ -5,14 +5,14 @@ This is a WIP implementation of a simple, but very fun card game named "Zing", a
 
 The idea to implement an electronic edition came to me during the pandemic, when people were staying home, and playing online games was a good way to socialize with your peers or to have teambuilding activities for new groups.
 
-As of October 2023, the status is that the game is at last playable, only the official deployment running on shuttle.rs under the address [zing.shuttleapp.rs](https://zing.shuttleapp.rs/) gets frequently reset (as expected on the free tier), which currently requires reloading the frontend (TODO: show a proper "connection lost" popup).
+As of October 2023, the status is that the game is at last playable, only the official deployment running on shuttle.rs under the address [zing-fgy5.shuttle.app](https://zing-fgy5.shuttle.app/) gets frequently reset (as expected on the free tier), which currently requires reloading the frontend (TODO: show a proper "connection lost" popup).
 
 How to Play
 -----------
 
 Although there is some code for computer players, the game can currently only be played with human players.  Each "table" requires exactly two players (four are not supported yet).
 
-Visit the server URL (e.g. [on shuttle](https://zing.shuttleapp.rs/) or on [localhost](http://localhost:8000/) or wherever a server is running) and log in with a player name of your choice.  One player needs to open a table and send an opponent a link to join this table.  Then, games can be started and played according to [rules](Rules_en.md).  By reloading the URL, one returns to the table overview.  This might come in handy if the connection is lost, in which case the game can be resumed, and it is currently a necessary step if the game has finished, in order to start a new game.
+Visit the server URL (e.g. [on shuttle](https://zing-fgy5.shuttle.app/) or on [localhost](http://localhost:8000/) or wherever a server is running) and log in with a player name of your choice.  One player needs to open a table and send an opponent a link to join this table.  Then, games can be started and played according to [rules](Rules_en.md).  By reloading the URL, one returns to the table overview.  This might come in handy if the connection is lost, in which case the game can be resumed, and it is currently a necessary step if the game has finished, in order to start a new game.
 
 Technical Details
 -----------------
