@@ -5,3 +5,11 @@ include = [
   "zing-ui-lib/pkg/zing_ui_lib.js",
   "zing-ui-lib/pkg/zing_ui_lib_bg.wasm",
 ]
+
+[build]
+assets = [
+  "zing-ui-lib/pkg/zing_ui_lib.js",
+  "zing-ui-lib/pkg/zing_ui_lib_bg.wasm",
+  "zing-server/assets/index.html",
+  "zing-ui-lib/assets/vector_cards_3.2/*.png",
+]
