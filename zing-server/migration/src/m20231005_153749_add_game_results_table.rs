@@ -21,12 +21,36 @@ impl MigrationTrait for Migration {
                             .primary_key(),
                     )
                     .col(ColumnDef::new(GameResults::TableId).integer().not_null())
-                    .col(ColumnDef::new(GameResults::CardPoints0).integer().not_null())
-                    .col(ColumnDef::new(GameResults::CardPoints1).integer().not_null())
-                    .col(ColumnDef::new(GameResults::CardCountPoints0).integer().not_null())
-                    .col(ColumnDef::new(GameResults::CardCountPoints1).integer().not_null())
-                    .col(ColumnDef::new(GameResults::ZingPoints0).integer().not_null())
-                    .col(ColumnDef::new(GameResults::ZingPoints1).integer().not_null())
+                    .col(
+                        ColumnDef::new(GameResults::CardPoints0)
+                            .integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(GameResults::CardPoints1)
+                            .integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(GameResults::CardCountPoints0)
+                            .integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(GameResults::CardCountPoints1)
+                            .integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(GameResults::ZingPoints0)
+                            .integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(GameResults::ZingPoints1)
+                            .integer()
+                            .not_null(),
+                    )
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk-game_results-table_id")
@@ -40,7 +64,11 @@ impl MigrationTrait for Migration {
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
-            .drop_table(sea_orm_migration::prelude::Table::drop().table(GameResults::Table).to_owned())
+            .drop_table(
+                sea_orm_migration::prelude::Table::drop()
+                    .table(GameResults::Table)
+                    .to_owned(),
+            )
             .await
     }
 }

@@ -103,12 +103,7 @@ impl GameLogic {
 
         let play_uri = format!("{}/table/{}/game/play", base_url, table_id);
 
-        let ws_uri = format!(
-            "{}/table/{}/ws",
-            base_url.replace("http", "ws"),
-            table_id
-        )
-        .parse()?;
+        let ws_uri = format!("{}/table/{}/ws", base_url.replace("http", "ws"), table_id).parse()?;
 
         let login_cookie = format!("login_id={}", login_id);
 
@@ -129,11 +124,7 @@ impl GameLogic {
     ) -> Result<Self, Box<dyn std::error::Error>> {
         let play_uri = format!("{}/table/{}/game/play", base_url, table_id);
 
-        let ws_uri = format!(
-            "{}/table/{}/ws",
-            base_url.replace("http", "ws"),
-            table_id
-        );
+        let ws_uri = format!("{}/table/{}/ws", base_url.replace("http", "ws"), table_id);
 
         Ok(Self {
             notifications: VecDeque::new(),
@@ -255,11 +246,7 @@ impl GameLogic {
     }
 
     #[cfg(target_family = "wasm")]
-    pub fn play_card(
-        &mut self,
-        _runtime: ResMut<TasksRuntime>,
-        card_index: usize,
-    ) {
+    pub fn play_card(&mut self, _runtime: ResMut<TasksRuntime>, card_index: usize) {
         use bevy::tasks::AsyncComputeTaskPool;
 
         let opts = RequestInit::new();
@@ -273,7 +260,8 @@ impl GameLogic {
 
         request
             .headers()
-            .set(http::header::CONTENT_TYPE.as_str(), "application/json").unwrap();
+            .set(http::header::CONTENT_TYPE.as_str(), "application/json")
+            .unwrap();
 
         let thread_pool = AsyncComputeTaskPool::get();
         let task = thread_pool.spawn(async move {

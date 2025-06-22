@@ -547,13 +547,13 @@ impl ZingState {
                     .game
                     .as_mut()
                     .ok_or(GameError::Conflict("game not started yet"))?;
-    
+
                 old_phase = game.state().phase;
-    
+
                 result = game
                     .play_card(player_index, card_index)
                     .map_err(GameError::Conflict);
-    
+
                 if result.is_ok() && game.state().phase == GamePhase::Finished {
                     finished_points = Some(game.points());
                     table.game_results.push(finished_points.clone().unwrap());
