@@ -11,9 +11,9 @@ zing_game = { path = "../zing-game" }
 migration = { path = "migration" }
 
 axum = { version = "0.8.1", features = ["ws"] }
-shuttle-runtime = "0.52.0"
-shuttle-axum = "0.52.0"
-shuttle-shared-db = { version = "0.52.0", features = [
+shuttle-runtime = "0.55.0"
+shuttle-axum = "0.55.0"
+shuttle-shared-db = { version = "0.55.0", features = [
     "postgres",
     "sqlx-native-tls",
 ] }
