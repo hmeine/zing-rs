@@ -57,6 +57,7 @@ impl CardSprite {
                     scale: Self::default_scale(),
                     ..Default::default()
                 },
+                Pickable::default(),
             ))
             .insert(Self(card_state.clone()))
             .id()
