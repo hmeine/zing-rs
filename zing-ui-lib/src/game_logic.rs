@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use std::collections::VecDeque;
+use tracing::{debug, error, info, warn};
 use zing_game::card_action::CardAction;
 use zing_game::client_notification::ClientNotification;
 use zing_game::game::GameState;
@@ -176,7 +177,8 @@ impl GameLogic {
                                     }
                                 }
                                 Some(Err(e)) => {
-                                    error!("WebSocket message error: {}", e);
+                                    // error message starts with "WebSocket protocol error: " already:
+                                    error!("{}", e);
                                     break; // Exit the loop on error
                                 }
                                 None => {
@@ -276,11 +278,7 @@ impl GameLogic {
             let retry_delay = retry_delay_ms.clone();
             let onclose_callback = Closure::<dyn FnMut(_)>::new(move |e: web_sys::CloseEvent| {
                 warn!("WebSocket closed: code={}, reason={}", e.code(), e.reason());
-                Self::schedule_reconnect(
-                    ws_uri.clone(),
-                    sender.clone(),
-                    retry_delay.clone(),
-                );
+                Self::schedule_reconnect(ws_uri.clone(), sender.clone(), retry_delay.clone());
             });
             ws.set_onclose(Some(onclose_callback.as_ref().unchecked_ref()));
             onclose_callback.forget();

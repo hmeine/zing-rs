@@ -1,4 +1,5 @@
 use std::time::Duration;
+use tracing::{debug, info};
 
 use crate::app_state::AppState;
 use crate::card_sprite::CardSprite;
@@ -347,14 +348,14 @@ fn get_next_action_after_animation_finished(
     match game_logic.get_next_state_change() {
         Some(StateChange::GameStarted(game_state, we_are_player)) => {
             let table_stack_spread_out = game_state.phase() != GamePhase::InGame;
-            initial_state_events.send(InitialGameStateEvent {
+            initial_state_events.write(InitialGameStateEvent {
                 game_state,
                 we_are_player,
                 table_stack_spread_out,
             });
         }
         Some(StateChange::CardAction(action)) => {
-            card_events.send(CardActionEvent { action });
+            card_events.write(CardActionEvent { action });
         }
         None => {
             next_state.set(AppState::Interaction);
@@ -599,7 +600,7 @@ pub fn card_clicked(
 
     for (_entity, children) in &query_stacks {
         for (card_index, card) in children.iter().enumerate() {
-            if *card == click.target {
+            if card == click.target {
                 play_card = Some(card_index);
             }
         }
