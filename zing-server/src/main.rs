@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{env, io, sync::Arc};
 
 use axum::{
     extract::{FromRequestParts, Path, State, WebSocketUpgrade},
@@ -11,10 +11,12 @@ use game_error::GameError;
 use migration::MigratorTrait;
 use sea_orm::SqlxPostgresConnector;
 use serde::Deserialize;
+use sqlx::postgres::PgPoolOptions;
 use tower_cookies::cookie::SameSite;
 use tower_cookies::{Cookie, CookieManagerLayer, Cookies};
 use tower_http::services::{ServeDir, ServeFile};
 use tracing::info;
+use tracing_subscriber::EnvFilter;
 use ws_notifications::NotificationSenderHandle;
 use zing_game::game::GameState;
 use zing_state::ZingState;
@@ -27,17 +29,8 @@ mod util;
 mod ws_notifications;
 mod zing_state;
 
-#[shuttle_runtime::main]
-async fn axum(#[shuttle_shared_db::Postgres] pool: sqlx::PgPool) -> shuttle_axum::ShuttleAxum {
-    let conn = SqlxPostgresConnector::from_sqlx_postgres_pool(pool);
-
-    migration::Migrator::up(&conn, None)
-        .await
-        .expect("DB migration failed");
-
-    let state = Arc::new(ZingState::new(conn).await);
-
-    let app = Router::new()
+fn app(state: Arc<ZingState>) -> Router {
+    Router::new()
         .route_service("/", ServeFile::new("zing-server/assets/index.html"))
         .route("/login", post(login).get(whoami).delete(logout))
         .route("/table", post(create_table).get(list_tables))
@@ -62,9 +55,55 @@ async fn axum(#[shuttle_shared_db::Postgres] pool: sqlx::PgPool) -> shuttle_axum
         )
         .nest_service("/assets", ServeDir::new("zing-ui-lib/assets"))
         .with_state(state)
-        .layer(CookieManagerLayer::new());
+        .layer(CookieManagerLayer::new())
+}
 
-    Ok(app.into())
+fn required_env(name: &'static str) -> Result<String, io::Error> {
+    env::var(name)
+        .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, format!("{name} must be set")))
+}
+
+fn parse_port() -> Result<u16, io::Error> {
+    match env::var("PORT") {
+        Ok(port) => port.parse::<u16>().map_err(|err| {
+            io::Error::new(
+                io::ErrorKind::InvalidInput,
+                format!("invalid PORT value {port:?}: {err}"),
+            )
+        }),
+        Err(env::VarError::NotPresent) => Ok(8000),
+        Err(env::VarError::NotUnicode(_)) => Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "PORT must be valid Unicode",
+        )),
+    }
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
+        )
+        .init();
+
+    let database_url = required_env("DATABASE_URL")?;
+    let host = env::var("HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
+    let port = parse_port()?;
+
+    let pool = PgPoolOptions::new().connect(&database_url).await?;
+    let conn = SqlxPostgresConnector::from_sqlx_postgres_pool(pool);
+
+    migration::Migrator::up(&conn, None).await?;
+
+    let state = Arc::new(ZingState::new(conn).await);
+    let listener = tokio::net::TcpListener::bind((host.as_str(), port)).await?;
+
+    info!("Listening on http://{}:{}", host, port);
+
+    axum::serve(listener, app(state)).await?;
+
+    Ok(())
 }
 
 #[derive(Deserialize)]

@@ -5,14 +5,26 @@ This is a WIP implementation of a simple, but very fun card game named "Zing", a
 
 The idea to implement an electronic edition came to me during the pandemic, when people were staying home, and playing online games was a good way to socialize with your peers or to have teambuilding activities for new groups.
 
-As of October 2023, the status is that the game is at last playable, only the official deployment running on shuttle.rs under the address [zing-fgy5.shuttle.app](https://zing-fgy5.shuttle.app/) gets frequently reset (as expected on the free tier), which currently requires reloading the frontend (TODO: show a proper "connection lost" popup).
-
 How to Play
 -----------
 
 Although there is some code for computer players, the game can currently only be played with human players.  Each "table" requires exactly two players (four are not supported yet).
 
-Visit the server URL (e.g. [on shuttle](https://zing-fgy5.shuttle.app/) or on [localhost](http://localhost:8000/) or wherever a server is running) and log in with a player name of your choice.  One player needs to open a table and send an opponent a link to join this table.  Then, games can be started and played according to [rules](Rules_en.md).  By reloading the URL, one returns to the table overview.  This might come in handy if the connection is lost, in which case the game can be resumed, and it is currently a necessary step if the game has finished, in order to start a new game.
+Visit the server URL (e.g. [localhost](http://localhost:8000/) or wherever a server is running) and log in with a player name of your choice.  One player needs to open a table and send an opponent a link to join this table.  Then, games can be started and played according to [rules](Rules_en.md).  By reloading the URL, one returns to the table overview.  This might come in handy if the connection is lost, in which case the game can be resumed, and it is currently a necessary step if the game has finished, in order to start a new game.
+
+Running Locally
+---------------
+
+The server expects an existing PostgreSQL database and reads its connection
+settings from environment variables.  `DATABASE_URL` is required, while `HOST`
+and `PORT` are optional and default to `0.0.0.0` and `8000`:
+
+```sh
+export DATABASE_URL=postgres://USER:PASSWORD@localhost/zing
+cargo run -p zing-server
+```
+
+Database migrations are applied automatically during server startup.
 
 Technical Details
 -----------------
@@ -34,7 +46,6 @@ Limitations
   * scores
   * exit / finish / next round buttons
 * The four player mode is not fully supported yet (mostly due to UI layout complications).
-* Practical nuisance: The shuttle deployment is frequently reset (every 30 minutes or so), which means that all server connections break. The web UI would still show the most recent state, but games suddenly stop working (you would notice that you can no longer play cards, and you could see 401 unauthorized errors in the browser console because the login cookie becomes invalid). Reloading, however, should allow to resume games and matches.
 
 See also the [issue section on GitHub](https://github.com/hmeine/zing-rs/issues).
 

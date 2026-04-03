@@ -11,7 +11,16 @@ Crates Overview
   crate contains a few unit tests.
 * The `zing-server` provides a Rest API on top of the above.  There are tests
   that can be excuted with `cargo test`, but they require a server to run
-  locally, so one has to run `shuttle run` first / in parallel.
+  locally, so start it in parallel with
+
+  ```sh
+  docker run --rm -it --env POSTGRES_PASSWORD='MYPASSWORD' -p 5432:5432 postgres:15 -d
+
+  DATABASE_URL=postgres://postgres:MYPASSWORD@localhost/postgres cargo run -p zing-server
+  ```
+
+  It also accepts optional `HOST` / `PORT` environment variables for the bind
+  address and applies DB migrations automatically during startup.
   * There is a `migration` sub-crate that is used for sea-orm database
     migration.  That is important since the sea-orm versions of the two crates
     need to be in sync.
