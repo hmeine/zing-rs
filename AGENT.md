@@ -1,17 +1,18 @@
 # Zing Game - Rust Workspace Agent Guide
 
 ## Build/Test Commands
-- `cargo test` - Run all tests (NOTE: zing-server tests require `shuttle run` to be running first)
+- `cargo test` - Run all tests
 - `cargo test [TESTNAME]` - Run specific test by name
+- `cargo test -p zing-server test_login_logout` - Run a single server integration test (requires a backend on `http://localhost:8000`)
 - `cargo build` - Build all workspace members
-- `shuttle run` - Run server (requires Docker)
+- `cp .env.example .env && cargo run -p zing-server` - Run server against an existing Postgres instance
 - `cargo clippy` - Lint code
 - `cargo fmt` - Format code
 - WASM build: `RUSTFLAGS='--cfg getrandom_backend="wasm_js"' wasm-pack build zing-ui-lib --release --target web`
 
 ## Architecture
 - **Workspace members**: zing-game (game logic), zing-server (REST API + WebSockets + Postgres), zing-ui-lib (Bevy UI), zing-ui (binary wrapper)
-- **Database**: PostgreSQL via sea-orm, with migration sub-crate in zing-server/migration
+- **Database**: PostgreSQL via sea-orm, with migration sub-crate in zing-server/migration; `zing-server` loads `.env`, reads `DATABASE_URL` / `HOST` / `PORT`, and runs migrations on startup
 - **API**: axum-based REST + WebSocket for real-time game updates
 - **Frontend**: Bevy-based UI (can compile to WASM) + minimal Quasar web UI in zing-server/assets/
 

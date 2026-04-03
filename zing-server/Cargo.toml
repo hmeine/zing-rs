@@ -28,6 +28,7 @@ rand = "0.9.0"
 serde = { version = "1.0.217", features = ["derive"] }
 serde_json = "1.0.138"
 tower-http = { version = "0.6.2", features = ["fs"] }
+dotenvy = "0.15.7"
 
 [dev-dependencies]
 anyhow = "1.0.95"

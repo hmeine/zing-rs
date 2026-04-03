@@ -14,13 +14,18 @@ Crates Overview
   locally, so start it in parallel with
 
   ```sh
-  docker run --rm -it --env POSTGRES_PASSWORD='MYPASSWORD' -p 5432:5432 postgres:15 -d
-
-  DATABASE_URL=postgres://postgres:MYPASSWORD@localhost/postgres cargo run -p zing-server
+  # you need some postgres server, e.g. with docker:
+  docker run --rm -it --env POSTGRES_PASSWORD='MYPASSWORD' -p 5432:5432 postgres -d
+  
+  # adapt .env to your environment (e.g. above password)
+  cp .env.example .env
+  
+  cargo run -p zing-server
   ```
 
-  It also accepts optional `HOST` / `PORT` environment variables for the bind
-  address and applies DB migrations automatically during startup.
+  The server loads `.env` automatically, accepts optional `HOST` / `PORT`
+  variables for the bind address, and applies DB migrations automatically
+  during startup.
   * There is a `migration` sub-crate that is used for sea-orm database
     migration.  That is important since the sea-orm versions of the two crates
     need to be in sync.

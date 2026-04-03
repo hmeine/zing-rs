@@ -20,11 +20,18 @@ settings from environment variables.  `DATABASE_URL` is required, while `HOST`
 and `PORT` are optional and default to `0.0.0.0` and `8000`:
 
 ```sh
-export DATABASE_URL=postgres://USER:PASSWORD@localhost/zing
+# you need some postgres server, e.g. with docker:
+docker run --rm -it --env POSTGRES_PASSWORD='MYPASSWORD' -p 5432:5432 postgres -d
+
+# adapt .env to your environment (e.g. above password)
+cp .env.example .env
+
 cargo run -p zing-server
 ```
 
-Database migrations are applied automatically during server startup.
+The server loads `.env` automatically via `dotenvy`, so local settings such as
+`DATABASE_URL`, `HOST`, `PORT`, and `RUST_LOG` can live there.  Database
+migrations are applied automatically during server startup.
 
 Technical Details
 -----------------
