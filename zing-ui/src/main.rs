@@ -1,4 +1,5 @@
 use clap::Parser;
+use tracing_subscriber::EnvFilter;
 
 #[derive(Parser)]
 struct Cli {
@@ -9,7 +10,11 @@ struct Cli {
 }
 
 fn main() {
-    tracing_subscriber::fmt().init();
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
+        )
+        .init();
 
     let args = Cli::parse();
     zing_ui_lib::start_remote_game(args.login_id, args.table_id, args.base_url)
