@@ -1,6 +1,9 @@
 use axum::extract::ws::{Message, Utf8Bytes, WebSocket};
 use tokio::sync::mpsc;
+use tokio::time::{self, Duration};
 use tracing::debug;
+
+const KEEPALIVE_INTERVAL: Duration = Duration::from_secs(30);
 
 struct NotificationSender {
     receiver: mpsc::Receiver<Notification>,
@@ -17,11 +20,27 @@ impl NotificationSender {
     }
 
     async fn run(&mut self) {
-        while let Some(msg) = self.receiver.recv().await {
-            if self.socket.send(Message::Text(msg.json)).await.is_err() {
-                debug!("*** NotificationSender: WebSocket send() failed ***");
-                // connection closed, finish actor
-                break;
+        let mut keepalive = time::interval(KEEPALIVE_INTERVAL);
+        keepalive.tick().await;
+
+        loop {
+            tokio::select! {
+                maybe_msg = self.receiver.recv() => {
+                    let Some(msg) = maybe_msg else {
+                        break;
+                    };
+
+                    if self.socket.send(Message::Text(msg.json)).await.is_err() {
+                        debug!("*** NotificationSender: WebSocket send() failed ***");
+                        break;
+                    }
+                }
+                _ = keepalive.tick() => {
+                    if self.socket.send(Message::Ping(Vec::new().into())).await.is_err() {
+                        debug!("*** NotificationSender: WebSocket ping() failed ***");
+                        break;
+                    }
+                }
             }
         }
     }
