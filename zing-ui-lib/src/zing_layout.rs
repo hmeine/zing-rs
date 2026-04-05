@@ -88,7 +88,7 @@ impl Plugin for LayoutPlugin {
 // TODO: we need to consider having four players
 
 /// Bevy component representing a stack or hand of cards.
-#[derive(Component, TypePath)]
+#[derive(Component, Reflect)]
 pub struct CardStack {
     /// CardStack may represent either a stack or a hand of cards
     location: CardLocation,

@@ -1,4 +1,8 @@
 use bevy::prelude::*;
+
+#[cfg(feature = "bevy-inspector-egui")]
+use bevy_inspector_egui::bevy_egui::EguiPlugin;
+
 #[cfg(feature = "bevy-inspector-egui")]
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
@@ -11,6 +15,7 @@ impl Plugin for DebugPlugin {
     #[cfg(feature = "bevy-inspector-egui")]
     fn build(&self, app: &mut App) {
         if cfg!(debug_assertions) {
+            app.add_plugins(EguiPlugin::default());
             app.add_plugins(WorldInspectorPlugin::new());
             app.register_type::<CardStack>();
             app.register_type::<CardSprite>();
