@@ -382,6 +382,8 @@ fn spawn_cards_for_initial_state(
                 stack.swap_player();
             }
 
+            commands.entity(stack_id).despawn_related::<Children>();
+
             let card_states = stack.card_states(layout_state.displayed_state.as_ref().unwrap());
 
             let card_entities: Vec<_> = card_states
