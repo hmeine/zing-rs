@@ -10,6 +10,7 @@ const MAX_RETRY_DELAY: u16 = 30;
 #[cfg(not(target_family = "wasm"))]
 use {
     bevy_tokio_tasks::{TokioTasksPlugin, TokioTasksRuntime},
+    futures_util::SinkExt,
     futures_util::StreamExt,
     reqwest::cookie,
     std::sync::Arc,
@@ -159,8 +160,8 @@ impl GameLogic {
                         let mut stream = ws_stream;
                         loop {
                             match stream.next().await {
-                                Some(Ok(message)) => {
-                                    if let Ok(json) = message.into_text() {
+                                Some(Ok(message)) => match message {
+                                    tungstenite::Message::Text(json) => {
                                         if let Ok(client_notification) = serde_json::from_str(&json)
                                         {
                                             ctx.run_on_main_thread(move |ctx| {
@@ -175,7 +176,21 @@ impl GameLogic {
                                             .await;
                                         }
                                     }
-                                }
+                                    tungstenite::Message::Ping(bytes) => {
+                                        stream
+                                            .send(tungstenite::Message::Pong(bytes))
+                                            .await
+                                            .unwrap_or_else(|e| {
+                                                error!("Failed to send Pong response: {}", e);
+                                            });
+                                    }
+                                    _ => {
+                                        debug!(
+                                            "Received non-text WebSocket message: {:?}",
+                                            message
+                                        );
+                                    }
+                                },
                                 Some(Err(e)) => {
                                     // error message starts with "WebSocket protocol error: " already:
                                     error!("{}", e);

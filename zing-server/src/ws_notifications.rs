@@ -21,7 +21,7 @@ impl NotificationSender {
 
     async fn run(&mut self) {
         let mut keepalive = time::interval(KEEPALIVE_INTERVAL);
-        keepalive.tick().await;
+        keepalive.tick().await; // the first tick completes immediately
 
         loop {
             tokio::select! {
