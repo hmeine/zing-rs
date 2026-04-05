@@ -177,6 +177,7 @@ impl GameLogic {
                                         }
                                     }
                                     tungstenite::Message::Ping(bytes) => {
+                                        debug!("Received WebSocket ping, sending Pong response");
                                         stream
                                             .send(tungstenite::Message::Pong(bytes))
                                             .await
