@@ -45,3 +45,7 @@ pub const PLAYING_CENTER_Y: f32 = (OWN_CARD_ZOOM - 1.) * CARD_HEIGHT / 2.;
 
 pub const ANIMATION_MILLIS: u64 = 500;
 pub const STEP_DURATION_MILLIS: u64 = 550;
+
+pub const PLAYER_NAME_FONT_SIZE: f32 = 24.0;
+pub const PLAYER_NAME_FONT: &str = "fonts/NotoSans-Regular.ttf";
+pub const PLAYER_NAME_MARGIN: f32 = 12.0;

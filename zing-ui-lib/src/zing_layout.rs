@@ -56,6 +56,11 @@ struct CardActionEvent {
 #[derive(Component, Clone)]
 struct ZoomedOnHover;
 
+#[derive(Component, Clone, Copy, Eq, PartialEq)]
+struct PlayerNameLabel {
+    player: usize,
+}
+
 impl Plugin for LayoutPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<InitialGameStateEvent>();
@@ -168,10 +173,15 @@ fn setup_camera(mut commands: Commands) {
     ));
 }
 
-fn setup_card_stacks(mut commands: Commands, layout_state: Res<LayoutState>) {
+fn setup_card_stacks(
+    mut commands: Commands,
+    layout_state: Res<LayoutState>,
+    asset_server: Res<AssetServer>,
+) {
     let opposite_hand_pos_y = PLAYING_CENTER_Y + VERTICAL_SPACING + CARD_HEIGHT;
 
     let we_are_player = layout_state.we_are_player;
+    let font = asset_server.load(PLAYER_NAME_FONT);
 
     info!("layouting card stacks");
 
@@ -285,6 +295,33 @@ fn setup_card_stacks(mut commands: Commands, layout_state: Res<LayoutState>) {
         CardLocation::Stack,
         4 + we_are_player % 2, // own score stack
     );
+
+    for (player_index, node) in [
+        (1 - we_are_player, Node {
+            position_type: PositionType::Absolute,
+            top: Val::Px(PLAYER_NAME_MARGIN),
+            left: Val::Px(0.),
+            right: Val::Px(0.),
+            ..default()
+        }),
+        (we_are_player, Node {
+            position_type: PositionType::Absolute,
+            bottom: Val::Px(PLAYER_NAME_MARGIN),
+            left: Val::Px(0.),
+            right: Val::Px(0.),
+            ..default()
+        }),
+    ] {
+        commands.spawn((
+            Text::new(""),
+            TextFont::from_font(font.clone()).with_font_size(PLAYER_NAME_FONT_SIZE),
+            TextColor(Color::WHITE),
+            TextShadow { color: Color::BLACK, offset: Vec2::new(2., 2.) },
+            TextLayout::new_with_justify(JustifyText::Center),
+            node,
+            PlayerNameLabel { player: player_index },
+        ));
+    }
 }
 
 fn card_offsets_for_stack<'a>(
@@ -368,6 +405,7 @@ fn spawn_cards_for_initial_state(
     mut initial_state_events: EventReader<InitialGameStateEvent>,
     mut layout_state: ResMut<LayoutState>,
     mut query_stacks: Query<(Entity, &mut CardStack)>,
+    mut query_player_labels: Query<(&PlayerNameLabel, &mut Text)>,
     asset_server: Res<AssetServer>,
 ) {
     for initial_state_event in initial_state_events.read() {
@@ -376,6 +414,13 @@ fn spawn_cards_for_initial_state(
         layout_state.displayed_state = Some(initial_state_event.game_state.clone());
         layout_state.we_are_player = initial_state_event.we_are_player;
         layout_state.table_stack_spread_out = initial_state_event.table_stack_spread_out;
+
+        for (label, mut text) in &mut query_player_labels {
+            text.clear();
+            if let Some(player) = initial_state_event.game_state.players.get(label.player) {
+                text.push_str(&player.name);
+            }
+        }
 
         for (stack_id, mut stack) in query_stacks.iter_mut() {
             if swap_stacks {

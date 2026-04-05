@@ -46,8 +46,7 @@ Limitations
 -----------
 
 * In general, both the web UI as well as the game itself could be more beautiful.
-* The game currently *only* renders cards and does not have *any* text or UI elements.  Although it is totally playable as-is, it would be cooler to display UI elements, for instance
-  * player names
+* The game currently *only* renders cards and does not have *any* text or UI elements.  Although it is totally playable as-is, it would be cooler to display more UI elements, for instance
   * whose turn it is
   * proper messages if the connection is lost
   * scores
@@ -59,7 +58,7 @@ See also the [issue section on GitHub](https://github.com/hmeine/zing-rs/issues)
 License
 -------
 
-This project is shared with you under the permissive MIT license.  The card faces used here are LGPL'd:
+This project is shared with you under the permissive MIT license.  The [card faces used here](https://totalnonsense.com/open-source-vector-playing-cards/) are LGPL'd:
 
     Vector Playing Cards 3.2
     https://totalnonsense.com/open-source-vector-playing-cards/

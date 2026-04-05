@@ -16,6 +16,8 @@ bevy = { version = "0.16", features = [
     "async_executor",
     "std",
     "bevy_asset",
+    "bevy_text",
+    "bevy_ui",
     "bevy_winit",
     "bevy_picking",
     "bevy_sprite",
