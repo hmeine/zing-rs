@@ -61,6 +61,12 @@ struct PlayerNameLabel {
     player: usize,
 }
 
+impl PlayerNameLabel {
+    fn swap_player(&mut self) {
+        self.player ^= 1; // FIXME would probably not work for four players
+    }
+}
+
 impl Plugin for LayoutPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<InitialGameStateEvent>();
@@ -453,7 +459,7 @@ fn spawn_cards_for_initial_state(
     mut initial_state_events: EventReader<InitialGameStateEvent>,
     mut layout_state: ResMut<LayoutState>,
     mut query_stacks: Query<(Entity, &mut CardStack)>,
-    mut query_player_labels: Query<(&PlayerNameLabel, &mut Text)>,
+    mut query_player_labels: Query<(&mut PlayerNameLabel, &mut Text)>,
     asset_server: Res<AssetServer>,
 ) {
     for initial_state_event in initial_state_events.read() {
@@ -463,7 +469,10 @@ fn spawn_cards_for_initial_state(
         layout_state.we_are_player = initial_state_event.we_are_player;
         layout_state.table_stack_spread_out = initial_state_event.table_stack_spread_out;
 
-        for (label, mut text) in &mut query_player_labels {
+        for (mut label, mut text) in &mut query_player_labels {
+            if swap_stacks {
+                label.swap_player();
+            }
             text.clear();
             if let Some(player) = initial_state_event.game_state.players.get(label.player) {
                 text.push_str(&player.name);
