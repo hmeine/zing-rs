@@ -52,3 +52,6 @@ pub const PLAYER_NAME_MARGIN: f32 = 12.0;
 pub const PLAYER_NAME_ROUNDING: f32 = 8.0;
 pub const PLAYER_NAME_COLOR: Color = Color::WHITE;
 pub const PLAYER_NAME_SHADOW_COLOR: Color = Color::BLACK;
+pub const ACTIVE_PLAYER_BORDER_WIDTH: f32 = 2.0;
+pub const ACTIVE_PLAYER_BLINK_SPEED: f32 = 4.0;
+pub const ACTIVE_PLAYER_BORDER_COLOR: Color = Color::srgb(1.0, 0.9, 0.3);

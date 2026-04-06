@@ -23,6 +23,8 @@ pub struct LayoutState {
     /// During the game, only the topmost card put to the table is visible, but
     /// initially, they are dealt spread out
     pub table_stack_spread_out: bool,
+    /// Player whose turn it currently is, if known.
+    pub active_player: Option<usize>,
 }
 
 impl LayoutState {
@@ -35,6 +37,7 @@ impl LayoutState {
                 TimerMode::Once,
             ),
             table_stack_spread_out: false,
+            active_player: None,
         }
     }
 }
@@ -67,6 +70,17 @@ impl PlayerNameLabel {
     }
 }
 
+#[derive(Component, Clone, Copy, Eq, PartialEq)]
+struct PlayerNamePanel {
+    player: usize,
+}
+
+impl PlayerNamePanel {
+    fn swap_player(&mut self) {
+        self.player ^= 1; // FIXME would probably not work for four players
+    }
+}
+
 impl Plugin for LayoutPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<InitialGameStateEvent>();
@@ -83,6 +97,7 @@ impl Plugin for LayoutPlugin {
                     .before(spawn_cards_for_initial_state)
                     .before(update_cards_from_action),
                 spawn_cards_for_initial_state,
+                update_active_player_border,
                 zoom_on_hover.run_if(in_state(AppState::Interaction)),
                 unzoom_after_hover.run_if(in_state(AppState::Interaction)),
                 handle_keyboard_input
@@ -354,10 +369,15 @@ fn setup_card_stacks(
                     Node {
                         padding: inner_padding,
                         margin: margin,
+                        border: UiRect::all(Val::Px(ACTIVE_PLAYER_BORDER_WIDTH)),
                         ..default()
                     },
                     BackgroundColor(Color::srgba(0.2, 0.2, 0.2, 2. / 3.)),
+                    BorderColor(Color::NONE),
                     BorderRadius::all(Val::Px(PLAYER_NAME_ROUNDING)),
+                    PlayerNamePanel {
+                        player: player_index,
+                    },
                 ))
                 .with_children(|parent| {
                     parent.spawn((
@@ -448,6 +468,10 @@ fn get_next_action_after_animation_finished(
         Some(StateChange::CardAction(action)) => {
             card_events.write(CardActionEvent { action });
         }
+        Some(StateChange::ActivePlayer(active_player)) => {
+            layout_state.active_player = active_player;
+            next_state.set(AppState::Interaction);
+        }
         None => {
             next_state.set(AppState::Interaction);
         }
@@ -460,6 +484,7 @@ fn spawn_cards_for_initial_state(
     mut layout_state: ResMut<LayoutState>,
     mut query_stacks: Query<(Entity, &mut CardStack)>,
     mut query_player_labels: Query<(&mut PlayerNameLabel, &mut Text)>,
+    mut query_player_panels: Query<&mut PlayerNamePanel>,
     asset_server: Res<AssetServer>,
 ) {
     for initial_state_event in initial_state_events.read() {
@@ -476,6 +501,12 @@ fn spawn_cards_for_initial_state(
             text.clear();
             if let Some(player) = initial_state_event.game_state.players.get(label.player) {
                 text.push_str(&player.name);
+            }
+        }
+
+        if swap_stacks {
+            for mut panel in &mut query_player_panels {
+                panel.swap_player();
             }
         }
 
@@ -683,6 +714,26 @@ pub fn handle_keyboard_input(
 
     if let Some(card_index) = play_card {
         game_logic.play_card(runtime, card_index);
+    }
+}
+
+fn update_active_player_border(
+    layout_state: Res<LayoutState>,
+    time: Res<Time>,
+    mut query_panels: Query<(&PlayerNamePanel, &mut BorderColor)>,
+) {
+    let blink = 0.35
+        + 0.65
+            * ((time.elapsed_secs() * ACTIVE_PLAYER_BLINK_SPEED)
+                .sin()
+                .abs());
+
+    for (panel, mut border_color) in &mut query_panels {
+        border_color.0 = if layout_state.active_player == Some(panel.player) {
+            ACTIVE_PLAYER_BORDER_COLOR.with_alpha(blink)
+        } else {
+            Color::NONE
+        };
     }
 }
 

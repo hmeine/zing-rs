@@ -248,6 +248,7 @@ impl LoadedTable {
                                     .iter()
                                     .map(|action| action.new_view_for_player(player_index))
                                     .collect(),
+                                self.game.as_ref().and_then(|game| game.current_player()),
                             )),
                         )
                     } else {

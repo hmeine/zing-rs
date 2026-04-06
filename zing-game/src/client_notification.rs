@@ -5,5 +5,5 @@ use crate::{card_action::CardAction, game::GameState};
 #[derive(Serialize, Deserialize, Debug)]
 pub enum ClientNotification {
     GameStatus(GameState, usize),
-    CardActions(Vec<CardAction>),
+    CardActions(Vec<CardAction>, Option<usize>),
 }

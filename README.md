@@ -47,7 +47,6 @@ Limitations
 
 * In general, both the web UI as well as the game itself could be more beautiful.
 * The game currently *only* renders cards and does not have *any* text or UI elements.  Although it is totally playable as-is, it would be cooler to display more UI elements, for instance
-  * whose turn it is
   * proper messages if the connection is lost
   * error or info messages like "not your turn" or "XY got a Zing!"
   * final scores
