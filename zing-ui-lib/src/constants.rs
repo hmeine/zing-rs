@@ -1,4 +1,4 @@
-use bevy::prelude::Vec3;
+use bevy::{color::Color, prelude::Vec3};
 
 /// margin at top / bottom of screen (relative to full screen height)
 pub const MARGIN: f32 = 0.05;
@@ -49,3 +49,6 @@ pub const STEP_DURATION_MILLIS: u64 = 550;
 pub const PLAYER_NAME_FONT_SIZE: f32 = 24.0;
 pub const PLAYER_NAME_FONT: &str = "fonts/NotoSans-Regular.ttf";
 pub const PLAYER_NAME_MARGIN: f32 = 12.0;
+pub const PLAYER_NAME_ROUNDING: f32 = 8.0;
+pub const PLAYER_NAME_COLOR: Color = Color::WHITE;
+pub const PLAYER_NAME_SHADOW_COLOR: Color = Color::BLACK;

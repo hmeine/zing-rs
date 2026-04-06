@@ -296,27 +296,49 @@ fn setup_card_stacks(
         4 + we_are_player % 2, // own score stack
     );
 
-    for (player_index, node) in [
+    for (player_index, node, margin, inner_padding) in [
         (
             1 - we_are_player,
             Node {
                 position_type: PositionType::Absolute,
-                top: Val::Px(PLAYER_NAME_MARGIN),
+                top: Val::Px(0.),
                 left: Val::Px(0.),
                 right: Val::Px(0.),
                 justify_content: JustifyContent::Center,
                 ..default()
+            },
+            UiRect {
+                top: Val::Px(-PLAYER_NAME_MARGIN),
+                ..UiRect::default()
+            },
+            UiRect {
+                top: Val::Px(1.5 * PLAYER_NAME_MARGIN),
+                ..UiRect::axes(
+                    Val::Px(PLAYER_NAME_MARGIN),
+                    Val::Px(PLAYER_NAME_MARGIN * 0.5),
+                )
             },
         ),
         (
             we_are_player,
             Node {
                 position_type: PositionType::Absolute,
-                bottom: Val::Px(PLAYER_NAME_MARGIN),
+                bottom: Val::Px(0.),
                 left: Val::Px(0.),
                 right: Val::Px(0.),
                 justify_content: JustifyContent::Center,
                 ..default()
+            },
+            UiRect {
+                bottom: Val::Px(-PLAYER_NAME_MARGIN),
+                ..UiRect::default()
+            },
+            UiRect {
+                bottom: Val::Px(1.5 * PLAYER_NAME_MARGIN),
+                ..UiRect::axes(
+                    Val::Px(PLAYER_NAME_MARGIN),
+                    Val::Px(PLAYER_NAME_MARGIN * 0.5),
+                )
             },
         ),
     ] {
@@ -324,18 +346,20 @@ fn setup_card_stacks(
             parent
                 .spawn((
                     Node {
-                        padding: UiRect::axes(Val::Px(12.), Val::Px(6.)),
+                        padding: inner_padding,
+                        margin: margin,
                         ..default()
                     },
-                    BackgroundColor(Color::srgba(0.2, 0.2, 0.2, 0.5)),
+                    BackgroundColor(Color::srgba(0.2, 0.2, 0.2, 2. / 3.)),
+                    BorderRadius::all(Val::Px(PLAYER_NAME_ROUNDING)),
                 ))
                 .with_children(|parent| {
                     parent.spawn((
                         Text::new(""),
                         TextFont::from_font(font.clone()).with_font_size(PLAYER_NAME_FONT_SIZE),
-                        TextColor(Color::WHITE),
+                        TextColor(PLAYER_NAME_COLOR),
                         TextShadow {
-                            color: Color::BLACK,
+                            color: PLAYER_NAME_SHADOW_COLOR,
                             offset: Vec2::new(2., 2.),
                         },
                         TextLayout::new_with_justify(JustifyText::Center),
