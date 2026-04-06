@@ -95,8 +95,13 @@ impl ZingGame {
         self.turn
     }
 
-    pub fn current_player(&self) -> usize {
-        (self.dealer + 1 + self.turn) % self.state().player_count()
+    pub fn current_player(&self) -> Option<usize> {
+        match self.state().phase {
+            GamePhase::Initial | GamePhase::Finished => None,
+            GamePhase::Prepared | GamePhase::InGame => {
+                Some((self.dealer + 1 + self.turn) % self.state().player_count())
+            }
+        }
     }
 
     pub fn finished(&self) -> bool {
@@ -194,7 +199,7 @@ impl ZingGame {
     }
 
     pub fn play_card(&mut self, player: usize, card_index: usize) -> Result<(), &'static str> {
-        if player != self.current_player() {
+        if Some(player) != self.current_player() {
             return Err("not player's turn");
         }
 
@@ -280,10 +285,12 @@ impl ZingGame {
     pub fn is_valid_action(&self, action: &CardAction) -> bool {
         match action.source_location {
             Some(CardLocation::PlayerHand) => {
-                (action.source_index == self.current_player())
+                (Some(action.source_index) == self.current_player())
                     && (action.source_card_indices.len() == 1)
                     && (*action.source_card_indices.first().unwrap()
-                        < self.game_state.players[self.current_player()].hand.len())
+                        < self.game_state.players[self.current_player().unwrap()]
+                            .hand
+                            .len())
             }
             _ => false,
         }
@@ -293,7 +300,10 @@ impl ZingGame {
         let table_stack = &self.game_state.stacks[1];
         if let [.., card1, card2] = &table_stack.cards[..] {
             if card1.card.rank == card2.card.rank {
-                let target_score_stack = 2 + self.current_player() % 2;
+                let target_score_stack = 2 + self
+                    .current_player()
+                    .expect("When the top two cards are equal, we must be in game, so there must be a current player")
+                    % 2;
                 self.last_trick_winner = target_score_stack;
 
                 if table_stack.cards.len() == 2 {
@@ -324,7 +334,7 @@ impl ZingGame {
         let table_stack = &self.game_state.stacks[1];
         if let Some(top_card) = table_stack.cards.last() {
             if top_card.card.rank == Rank::Jack && table_stack.cards.len() > 1 {
-                let target_stack = 2 + self.current_player() % 2;
+                let target_stack = 2 + self.current_player().expect("When the top card is a Jack, we must be in game, so there must be a current player") % 2;
                 self.last_trick_winner = target_stack;
 
                 self.perform_and_remember_action(

@@ -17,7 +17,7 @@ fn show_state(game: &ZingGame) {
             "{}: {}{}",
             player.name,
             unicode(&player.hand),
-            if i == game.current_player() {
+            if Some(i) == game.current_player() {
                 " <= turn"
             } else {
                 ""
@@ -36,7 +36,7 @@ fn main() {
     while !game.finished() {
         show_state(&game);
 
-        players[game.current_player()].auto_play(&mut game);
+        players[game.current_player().unwrap()].auto_play(&mut game);
     }
 
     show_state(&game);
