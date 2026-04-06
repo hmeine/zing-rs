@@ -49,7 +49,8 @@ Limitations
 * The game currently *only* renders cards and does not have *any* text or UI elements.  Although it is totally playable as-is, it would be cooler to display more UI elements, for instance
   * whose turn it is
   * proper messages if the connection is lost
-  * scores
+  * error or info messages like "not your turn" or "XY got a Zing!"
+  * final scores
   * exit / finish / next round buttons
 * The four player mode is not fully supported yet (mostly due to UI layout complications).
 
