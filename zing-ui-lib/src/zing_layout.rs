@@ -297,30 +297,54 @@ fn setup_card_stacks(
     );
 
     for (player_index, node) in [
-        (1 - we_are_player, Node {
-            position_type: PositionType::Absolute,
-            top: Val::Px(PLAYER_NAME_MARGIN),
-            left: Val::Px(0.),
-            right: Val::Px(0.),
-            ..default()
-        }),
-        (we_are_player, Node {
-            position_type: PositionType::Absolute,
-            bottom: Val::Px(PLAYER_NAME_MARGIN),
-            left: Val::Px(0.),
-            right: Val::Px(0.),
-            ..default()
-        }),
+        (
+            1 - we_are_player,
+            Node {
+                position_type: PositionType::Absolute,
+                top: Val::Px(PLAYER_NAME_MARGIN),
+                left: Val::Px(0.),
+                right: Val::Px(0.),
+                justify_content: JustifyContent::Center,
+                ..default()
+            },
+        ),
+        (
+            we_are_player,
+            Node {
+                position_type: PositionType::Absolute,
+                bottom: Val::Px(PLAYER_NAME_MARGIN),
+                left: Val::Px(0.),
+                right: Val::Px(0.),
+                justify_content: JustifyContent::Center,
+                ..default()
+            },
+        ),
     ] {
-        commands.spawn((
-            Text::new(""),
-            TextFont::from_font(font.clone()).with_font_size(PLAYER_NAME_FONT_SIZE),
-            TextColor(Color::WHITE),
-            TextShadow { color: Color::BLACK, offset: Vec2::new(2., 2.) },
-            TextLayout::new_with_justify(JustifyText::Center),
-            node,
-            PlayerNameLabel { player: player_index },
-        ));
+        commands.spawn(node).with_children(|parent| {
+            parent
+                .spawn((
+                    Node {
+                        padding: UiRect::axes(Val::Px(12.), Val::Px(6.)),
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgba(0.2, 0.2, 0.2, 0.5)),
+                ))
+                .with_children(|parent| {
+                    parent.spawn((
+                        Text::new(""),
+                        TextFont::from_font(font.clone()).with_font_size(PLAYER_NAME_FONT_SIZE),
+                        TextColor(Color::WHITE),
+                        TextShadow {
+                            color: Color::BLACK,
+                            offset: Vec2::new(2., 2.),
+                        },
+                        TextLayout::new_with_justify(JustifyText::Center),
+                        PlayerNameLabel {
+                            player: player_index,
+                        },
+                    ));
+                });
+        });
     }
 }
 
