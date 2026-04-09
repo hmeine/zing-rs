@@ -42,3 +42,22 @@ Crates Overview
 * The Quasar-based web frontend is relatively minimal at the moment; it is
   located in `zing-server/assets/index.html` (single file with CDN JS
   embeddings).
+
+Design
+------
+
+The server supports subscriptions via WebSockets, and the UIs (both the web
+interface and the Bevy game UI) open persistent WebSocket connections to the
+server to receive real-time updates on the game state.  These come in the form
+of `ClientNotification` messages.
+
+The server also offers a REST API for performing actions; the WebSocket
+connection is purely uni-directional to push updates to the clients.  There are
+currently exactly two types of client notifications, namely GameStatus (which
+sends the full game state, for instance when a player joins a table or when the
+connection is first established) and CardActions (can be incrementally applied
+to change the game state, replicating the server-side state at each client).
+
+The Bevy UI uses events to react to these notifications and update the UI
+accordingly, and there are currently exactly two types of events corresponding
+to these two types of client notifications.
