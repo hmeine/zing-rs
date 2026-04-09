@@ -201,6 +201,7 @@ impl LoadedTable {
             self.game_status(c.client_login_token())
                 .expect("game should be started, so must have valid state"),
             self.player_index(c.client_login_token()).unwrap(), // FIXME: include in game status result?
+            self.game.as_ref().and_then(|game| game.current_player()),
         ))
     }
 

@@ -349,10 +349,12 @@ impl GameLogic {
 
     pub fn handle_client_notification(&mut self, notification: ClientNotification) {
         match notification {
-            ClientNotification::GameStatus(initial_state, we_are_player) => {
+            ClientNotification::GameStatus(initial_state, we_are_player, active_player) => {
                 self.notifications.clear();
                 self.notifications
                     .push_back(StateChange::GameStarted(initial_state, we_are_player));
+                self.notifications
+                    .push_back(StateChange::ActivePlayer(active_player));
             }
             ClientNotification::CardActions(actions, active_player) => {
                 self.notifications
