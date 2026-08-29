@@ -5,7 +5,7 @@ use crate::app_state::AppState;
 use crate::card_sprite::CardSprite;
 use crate::constants::*;
 use crate::game_logic::{GameLogic, StateChange, TasksRuntime};
-use bevy::{prelude::*, render::camera::ScalingMode};
+use bevy::{camera::ScalingMode, ecs::change_detection::Mut, prelude::*};
 use bevy_tweening::*;
 use zing_game::card_action::CardAction;
 use zing_game::game::{GamePhase, GameState};
@@ -44,14 +44,14 @@ impl LayoutState {
 
 pub struct LayoutPlugin;
 
-#[derive(Event)]
+#[derive(Message)]
 struct InitialGameStateEvent {
     pub game_state: GameState,
     pub we_are_player: usize,
     pub table_stack_spread_out: bool,
 }
 
-#[derive(Event)]
+#[derive(Message)]
 struct CardActionEvent {
     pub action: CardAction,
 }
@@ -83,8 +83,8 @@ impl PlayerNamePanel {
 
 impl Plugin for LayoutPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<InitialGameStateEvent>();
-        app.add_event::<CardActionEvent>();
+        app.add_message::<InitialGameStateEvent>();
+        app.add_message::<CardActionEvent>();
         app.init_state::<AppState>();
         app.insert_resource(LayoutState::new());
 
@@ -239,11 +239,15 @@ fn setup_card_stacks(
     commands
         .entity(own_hand)
         .observe(card_clicked)
-        .observe(|trigger: Trigger<Pointer<Over>>, mut commands: Commands| {
-            commands.entity(trigger.target).insert(ZoomedOnHover);
+        .observe(|over: On<Pointer<Over>>, mut commands: Commands| {
+            commands
+                .entity(over.original_event_target())
+                .insert(ZoomedOnHover);
         })
-        .observe(|trigger: Trigger<Pointer<Out>>, mut commands: Commands| {
-            commands.entity(trigger.target).remove::<ZoomedOnHover>();
+        .observe(|out: On<Pointer<Out>>, mut commands: Commands| {
+            commands
+                .entity(out.original_event_target())
+                .remove::<ZoomedOnHover>();
         });
 
     // TODO: we need to know if we have two or four players
@@ -370,11 +374,11 @@ fn setup_card_stacks(
                         padding: inner_padding,
                         margin: margin,
                         border: UiRect::all(Val::Px(ACTIVE_PLAYER_BORDER_WIDTH)),
+                        border_radius: BorderRadius::all(Val::Px(PLAYER_NAME_ROUNDING)),
                         ..default()
                     },
                     BackgroundColor(Color::srgba(0.2, 0.2, 0.2, 2. / 3.)),
-                    BorderColor(Color::NONE),
-                    BorderRadius::all(Val::Px(PLAYER_NAME_ROUNDING)),
+                    BorderColor::all(Color::NONE),
                     PlayerNamePanel {
                         player: player_index,
                     },
@@ -382,13 +386,13 @@ fn setup_card_stacks(
                 .with_children(|parent| {
                     parent.spawn((
                         Text::new(""),
-                        TextFont::from_font(font.clone()).with_font_size(PLAYER_NAME_FONT_SIZE),
+                        TextFont::from_font_size(PLAYER_NAME_FONT_SIZE).with_font(font.clone()),
                         TextColor(PLAYER_NAME_COLOR),
                         TextShadow {
                             color: PLAYER_NAME_SHADOW_COLOR,
                             offset: Vec2::new(2., 2.),
                         },
-                        TextLayout::new_with_justify(JustifyText::Center),
+                        TextLayout::justify(Justify::Center),
                         PlayerNameLabel {
                             player: player_index,
                         },
@@ -446,13 +450,13 @@ fn card_offsets_for_stack<'a>(
 fn get_next_action_after_animation_finished(
     mut game_logic: ResMut<GameLogic>,
     mut layout_state: ResMut<LayoutState>,
-    mut initial_state_events: EventWriter<InitialGameStateEvent>,
-    mut card_events: EventWriter<CardActionEvent>,
+    mut initial_state_events: MessageWriter<InitialGameStateEvent>,
+    mut card_events: MessageWriter<CardActionEvent>,
     mut next_state: ResMut<NextState<AppState>>,
     time: Res<Time>,
 ) {
     layout_state.step_animation_timer.tick(time.delta());
-    if !layout_state.step_animation_timer.finished() {
+    if !layout_state.step_animation_timer.is_finished() {
         return;
     }
 
@@ -480,7 +484,7 @@ fn get_next_action_after_animation_finished(
 
 fn spawn_cards_for_initial_state(
     mut commands: Commands,
-    mut initial_state_events: EventReader<InitialGameStateEvent>,
+    mut initial_state_events: MessageReader<InitialGameStateEvent>,
     mut layout_state: ResMut<LayoutState>,
     mut query_stacks: Query<(Entity, &mut CardStack)>,
     mut query_player_labels: Query<(&mut PlayerNameLabel, &mut Text)>,
@@ -543,7 +547,7 @@ fn update_cards_from_action(
     mut commands: Commands,
     mut next_state: ResMut<NextState<AppState>>,
     mut layout_state: ResMut<LayoutState>,
-    mut action_events: EventReader<CardActionEvent>,
+    mut action_events: MessageReader<CardActionEvent>,
     query_stacks: Query<(Entity, &CardStack, &Transform)>,
     query_children: Query<&Children>,
     mut query_sprites: Query<(&mut CardSprite, &mut Sprite), Without<CardStack>>,
@@ -600,7 +604,7 @@ fn update_cards_from_action(
         // remove from source_parent, reposition source stack if necessary
         commands
             .entity(source_parent)
-            .remove_children(&source_cards);
+            .detach_children(&source_cards);
         if let Some(CardLocation::Stack) = action.source_location {
             commands.entity(source_parent).insert(StackRepositioning);
         }
@@ -644,7 +648,7 @@ pub struct TransformPositionScaleLens {
 }
 
 impl Lens<Transform> for TransformPositionScaleLens {
-    fn lerp(&mut self, target: &mut dyn Targetable<Transform>, ratio: f32) {
+    fn lerp(&mut self, mut target: Mut<Transform>, ratio: f32) {
         let value = self.start_position + (self.end_position - self.start_position) * ratio;
         target.translation = value;
         let value = self.start_scale + (self.end_scale - self.start_scale) * ratio;
@@ -676,7 +680,7 @@ fn reposition_cards_after_action(
             {
                 // TODO: some cards "fly through" stacks, but should be on top
                 // (others must not get a large Z value, though)
-                commands.entity(*card).insert(Animator::new(Tween::new(
+                commands.entity(*card).insert(TweenAnim::new(Tween::new(
                     EaseFunction::QuadraticInOut,
                     Duration::from_millis(ANIMATION_MILLIS),
                     TransformPositionScaleLens {
@@ -729,22 +733,22 @@ fn update_active_player_border(
                 .abs());
 
     for (panel, mut border_color) in &mut query_panels {
-        border_color.0 = if layout_state.active_player == Some(panel.player) {
+        border_color.set_all(if layout_state.active_player == Some(panel.player) {
             ACTIVE_PLAYER_BORDER_COLOR.with_alpha(blink)
         } else {
             Color::NONE
-        };
+        });
     }
 }
 
 pub fn card_clicked(
-    click: Trigger<Pointer<Click>>,
+    click: On<Pointer<Click>>,
     layout_state: ResMut<LayoutState>,
     query_stacks: Query<(Entity, &Children)>,
     mut game_logic: ResMut<GameLogic>,
     runtime: ResMut<TasksRuntime>,
 ) {
-    if !layout_state.step_animation_timer.finished() {
+    if !layout_state.step_animation_timer.is_finished() {
         return;
     }
     if click.button != PointerButton::Primary {
@@ -755,7 +759,7 @@ pub fn card_clicked(
 
     for (_entity, children) in &query_stacks {
         for (card_index, card) in children.iter().enumerate() {
-            if card == click.target {
+            if card == click.original_event_target() {
                 play_card = Some(card_index);
             }
         }
@@ -770,9 +774,6 @@ pub fn card_clicked(
 fn zoom_on_hover(
     mut interaction_query: Query<&mut Transform, (Added<ZoomedOnHover>, With<CardSprite>)>,
 ) {
-    // if !layout_state.step_animation_timer.finished() {
-    //     return;
-    // }
     for mut transform in &mut interaction_query {
         transform.scale *= HOVER_ZOOM;
     }
@@ -782,9 +783,8 @@ fn unzoom_after_hover(
     mut transform_query: Query<&mut Transform>,
     mut cards: RemovedComponents<ZoomedOnHover>,
 ) {
-    // if !layout_state.step_animation_timer.finished() {
-    //     return;
-    // }
+    // since the cards have already lost the ZoomedOnHover component,
+    // we need to use the RemovedComponents query to find them:
     for id in cards.read() {
         if let Ok(mut transform) = transform_query.get_mut(id) {
             transform.scale /= HOVER_ZOOM;
