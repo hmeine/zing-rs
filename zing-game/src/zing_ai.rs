@@ -1,5 +1,5 @@
 use crate::zing_game::ZingGame;
-use rand::{rng, Rng};
+use rand::{rng, RngExt};
 
 pub trait ZingAI {
     fn auto_play(&self, game: &mut ZingGame);
