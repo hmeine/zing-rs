@@ -10,26 +10,26 @@ license = "MIT"
 zing_game = { path = "../zing-game" }
 migration = { path = "migration" }
 
-axum = { version = "0.8.1", features = ["ws"] }
-sea-orm = { version = "1.1.4", features = [
+axum = { version = "0.8.9", features = ["ws"] }
+sea-orm = { version = "2.0.2", features = [
     "sqlx-postgres",
     "runtime-tokio-native-tls",
     "macros",
 ] }
-sqlx = { version = "0.8.3", features = ["postgres", "runtime-tokio-native-tls"] }
+sqlx = { version = "0.9.0", features = ["postgres", "runtime-tokio"] }
 chrono = "0.4.45"
 futures = "0.3.34"
-tokio = { version = "1.43.0", features = ["full"] }
-tower = { version = "0.5.2", features = ["util"] }
+tokio = { version = "1.53.1", features = ["full"] }
+tower = { version = "0.5.3", features = ["util"] }
 tower-cookies = "0.11.0"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 rand = "0.10.2"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
-tower-http = { version = "0.6.2", features = ["fs"] }
+tower-http = { version = "0.7.0", features = ["fs"] }
 dotenvy = "0.15.7"
 
 [dev-dependencies]
-anyhow = "1.0.95"
-reqwest = { version = "0.12.12", features = ["cookies", "json"] }
+anyhow = "1.0.104"
+reqwest = { version = "0.13.4", features = ["cookies", "json"] }
