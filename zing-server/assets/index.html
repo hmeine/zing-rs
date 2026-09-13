@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -78,7 +78,6 @@
                 :pagination="{ rowsPerPage: 0 }"
                 hide-pagination
                 no-data-label="No table opened or joined yet"
-
                 @row-click="table_clicked"
                 ><template v-slot:body-cell-id="props">
                   <q-td :props="props">
@@ -100,8 +99,13 @@
                   </q-td>
                 </template>
               </q-table>
-              
-              <q-card bordered class="q-mt-md" style="max-width: 80ex" v-if="game_results.length > 0">
+
+              <q-card
+                bordered
+                class="q-mt-md"
+                style="max-width: 80ex"
+                v-if="game_results.length > 0"
+              >
                 <q-card-section>
                   <div class="text-h6">Scores</div>
                 </q-card-section>
@@ -326,7 +330,7 @@
         game_results_players.splice(
           0,
           game_results_players.length,
-          ...row.user_names
+          ...row.user_names,
         );
 
         let cumulative = [0, 0];
@@ -379,7 +383,7 @@
             // 409 Conflict is expected if table is already joined
             if (error.response.status == 404) {
               Quasar.Notify.create(
-                "Invalid table ID, cannot join – ask sender for valid share link!"
+                "Invalid table ID, cannot join – ask sender for valid share link!",
               );
             } else if (error.response.status != 409) {
               console.log("CAUGHT ERROR:", error);
@@ -394,12 +398,12 @@
           window.location.protocol.replace("http", "ws") +
             "//" +
             window.location.host +
-            "/ws"
+            "/ws",
         );
         ws.addEventListener("message", (event) => {
           const table_info = JSON.parse(event.data);
           const i = user_info.tables.findIndex(
-            (row) => row.id == table_info.id
+            (row) => row.id == table_info.id,
           );
           if (i == undefined) {
             user_info.tables.unshift(table_info);
@@ -433,7 +437,7 @@
           start_remote_game(
             "not_needed",
             table_id,
-            window.location.protocol + "//" + window.location.host
+            window.location.protocol + "//" + window.location.host,
           );
         } catch (error) {
           console.log("ERROR from start_remote_game(): " + error);
