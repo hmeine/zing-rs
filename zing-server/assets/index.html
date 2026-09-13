@@ -366,10 +366,23 @@
       }
 
       function share(cell_props) {
-        Quasar.copyToClipboard(
-          window.location.origin + "?join=" + cell_props.key
-        );
-        this.$q.notify("Share link copied to clipboard.");
+        const share_url = window.location.origin + "?join=" + cell_props.key;
+
+        Quasar.copyToClipboard(share_url)
+          .then(() => {
+            this.$q.notify("Share link copied to clipboard.");
+          })
+          .catch(() => {
+            Quasar.Dialog.create({
+              title: "Share Table Link",
+              message:
+                '<p>Direct clipboard access denied. Please copy the link manually:</p>' +
+                '<textarea readonly rows="3" style="width: 100%; resize: vertical; box-sizing: border-box;">' +
+                share_url +
+                "</textarea>",
+              html: true,
+            });
+          });
       }
 
       async function maybe_join_table() {
