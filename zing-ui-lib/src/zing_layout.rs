@@ -59,7 +59,7 @@ struct CardActionEvent {
 #[derive(Component, Clone)]
 struct ZoomedOnHover;
 
-#[derive(Component, Clone, Copy, Eq, PartialEq)]
+#[derive(Component, Clone, Copy, Eq, PartialEq, Reflect)]
 struct PlayerNameLabel {
     player: usize,
 }
@@ -70,7 +70,7 @@ impl PlayerNameLabel {
     }
 }
 
-#[derive(Component, Clone, Copy, Eq, PartialEq)]
+#[derive(Component, Clone, Copy, Eq, PartialEq, Reflect)]
 struct PlayerNamePanel {
     player: usize,
 }
