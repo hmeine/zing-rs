@@ -19,6 +19,7 @@ bevy = { version = "0.19.1", features = [
     "reflect_auto_register",
     "bevy_text",
     "bevy_ui",
+    "bevy_ui_render",
     "bevy_winit",
     "bevy_picking",
     "bevy_sprite",
